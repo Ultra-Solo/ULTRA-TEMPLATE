@@ -174,7 +174,8 @@ test("the contract states every pair of statuses, legal or not, as the rules do"
   const moves = new Map();
   for (const c of loadCases()) {
     if (c.method !== "PATCH" || c.path !== "/api/tasks/{id}/status" || typeof c.body !== "string") continue;
-    // Some bodies are malformed on purpose; they state no move.
+    // Some bodies are malformed on purpose, or padded to a size; they state no move.
+    if ("padTo" in c) continue;
     let body = null;
     try {
       body = JSON.parse(c.body || "null");

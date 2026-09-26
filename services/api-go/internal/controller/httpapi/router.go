@@ -62,11 +62,19 @@ type handler struct {
 }
 
 type taskResponse struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// timeLayout is how every task service writes a time: UTC, to the millisecond, with a Z. encoding/json
+// alone would write the clock's zone and nanoseconds, and drop the fraction of a whole second.
+const timeLayout = "2006-01-02T15:04:05.000Z"
+
+func formatTime(t time.Time) string {
+	return t.UTC().Format(timeLayout)
 }
 
 type errorResponse struct {
@@ -78,8 +86,8 @@ func toResponse(task entity.Task) taskResponse {
 		ID:        task.ID,
 		Title:     task.Title,
 		Status:    string(task.Status),
-		CreatedAt: task.CreatedAt,
-		UpdatedAt: task.UpdatedAt,
+		CreatedAt: formatTime(task.CreatedAt),
+		UpdatedAt: formatTime(task.UpdatedAt),
 	}
 }
 

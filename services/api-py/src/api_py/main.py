@@ -35,8 +35,8 @@ def log(entry: dict[str, object]) -> None:
 
 class SystemClock:
     def now(self) -> str:
-        # RFC 3339 with a Z, which is what the other two services emit.
-        return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        # UTC to the millisecond with a Z, as every task service writes a time.
+        return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 class RandomIds:

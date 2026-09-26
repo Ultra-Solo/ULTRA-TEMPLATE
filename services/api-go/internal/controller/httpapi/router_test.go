@@ -185,3 +185,29 @@ func TestAWrongMethodNamesTheMethodsThePathAllows(t *testing.T) {
 		})
 	}
 }
+
+// Every task service writes a time in UTC to the millisecond, whatever the clock's precision and zone:
+// encoding/json alone writes nanoseconds and drops trailing zeros, so a whole second has no fraction.
+func TestTimesAreUTCToTheMillisecond(t *testing.T) {
+	t.Parallel()
+
+	for _, at := range []time.Time{
+		time.Date(2026, 1, 2, 3, 4, 5, 678901234, time.FixedZone("CET", 3600)),
+		time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	} {
+		tasks := usecase.NewTasks(memory.NewTaskRepository(), func() time.Time { return at }, func() string { return "id-1" })
+		server := httptest.NewServer(httpapi.NewRouter(tasks, slog.New(slog.DiscardHandler)))
+		t.Cleanup(server.Close)
+
+		_, body := do(t, server, http.MethodPost, "/api/tasks", `{"title":"x"}`)
+
+		var task struct{ CreatedAt, UpdatedAt string }
+		if err := json.Unmarshal([]byte(body), &task); err != nil {
+			t.Fatal(err)
+		}
+		want := at.UTC().Format("2006-01-02T15:04:05.000Z")
+		if task.CreatedAt != want || task.UpdatedAt != want {
+			t.Fatalf("createdAt %q, updatedAt %q, want %q", task.CreatedAt, task.UpdatedAt, want)
+		}
+	}
+}

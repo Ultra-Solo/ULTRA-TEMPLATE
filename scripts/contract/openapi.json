@@ -90,12 +90,13 @@
           "id": { "type": "string" },
           "title": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Trimmed; the length is counted in characters (code points), not bytes" },
           "status": { "$ref": "#/components/schemas/Status" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "createdAt": { "$ref": "#/components/schemas/Timestamp" },
+          "updatedAt": { "$ref": "#/components/schemas/Timestamp" }
         },
         "additionalProperties": false
       },
       "Status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+      "Timestamp": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$", "description": "UTC, to the millisecond, as every task service writes it" },
       "CreateTask": {
         "type": "object",
         "properties": {

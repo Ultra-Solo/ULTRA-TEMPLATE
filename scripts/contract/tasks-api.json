@@ -58,6 +58,7 @@
 
     { "name": "list", "method": "GET", "path": "/api/tasks", "status": 200, "array": true },
     { "name": "list answers HEAD like GET", "method": "HEAD", "path": "/api/tasks", "status": 200 },
+    { "name": "list shows the tasks oldest first", "method": "GET", "path": "/api/tasks", "status": 200, "array": true, "oldestFirst": true },
     { "name": "list ignores a query string", "method": "GET", "path": "/api/tasks?limit=1", "status": 200, "array": true },
     { "name": "list refuses DELETE", "method": "DELETE", "path": "/api/tasks", "status": 405, "error": true },
     { "name": "list refuses OPTIONS", "method": "OPTIONS", "path": "/api/tasks", "status": 405, "error": true },
@@ -112,6 +113,8 @@
     { "name": "move refuses a status that is not a string", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "{\"status\":7}", "status": 400, "error": true },
     { "name": "move refuses a field spelled with capitals", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "{\"Status\":\"in_progress\"}", "status": 400, "error": true },
     { "name": "move refuses NaN, which is not JSON", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "{\"status\":NaN}", "status": 400, "error": true },
+    { "name": "move takes a body of the largest size", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "{\"status\":\"in_progress\"}", "padTo": { "ref": "limits.maxBodyBytes" }, "status": 200 },
+    { "name": "move refuses a body one byte over the largest size", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "{\"status\":\"in_progress\"}", "padTo": { "ref": "limits.maxBodyBytes", "plus": 1 }, "status": 400, "error": true },
     { "name": "move refuses an empty body", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "", "status": 400, "error": true },
     { "name": "move refuses an undocumented field", "method": "PATCH", "path": "/api/tasks/{id}/status", "body": "{\"status\":\"in_progress\",\"x\":1}", "status": 400, "error": true },
     { "name": "move an unknown task", "method": "PATCH", "path": "/api/tasks/no-such-task/status", "body": "{\"status\":\"in_progress\"}", "status": 404, "error": true },
