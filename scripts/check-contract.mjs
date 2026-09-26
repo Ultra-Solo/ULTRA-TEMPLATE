@@ -26,7 +26,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { request } from "node:http";
-import { createServer } from "node:net";
+import { connect, createServer } from "node:net";
 import { availableParallelism, tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -623,6 +623,88 @@ async function pool(items, limit, work) {
   return results;
 }
 
+/**
+ * The shutdown cases: the variable `startup.stopped.within` names, unset (its default), at the longest
+ * value it accepts, where a timer that overflows would fire at once, and at the shortest, where a request
+ * that never finishes must be abandoned.
+ */
+export function shutdownCases({ config, startup }) {
+  const variable = startup.stopped.within;
+  const accepted = [...config[variable].accept].sort((a, b) => a.effective - b.effective);
+  return [
+    { variable, value: undefined, finishes: true },
+    { variable, value: accepted.at(-1).value, finishes: true },
+    { variable, value: accepted[0].value, finishes: false },
+  ];
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Long enough for a service to read what was sent, and for a signal to be handled.
+const SETTLE_MS = 300;
+const ANSWER_MS = 5_000;
+const EXIT_MS = 10_000;
+
+/** The exit code (or signal) the service ended with, or null if it is still running after `ms`. */
+async function exitWithin(running, ms) {
+  const timer = sleep(ms).then(() => null);
+  return Promise.race([running.closed.then(() => running.child.exitCode ?? running.child.signalCode), timer]);
+}
+
+/** One shutdown case: SIGTERM with a request half sent, then what the contract says must follow. */
+async function shutdownOnce(cmd, dir, contract, facts, testCase, baseEnv) {
+  const { ready, stopped } = contract.startup;
+  const port = await freePort();
+  const running = start(cmd, dir, configEnv(contract.config, testCase, port, baseEnv));
+  let socket;
+  try {
+    if (!(await waitForReady(`http://127.0.0.1:${port}`, running, ready, facts))) return [`did not answer ${ready.path}`];
+    socket = connect(port, "127.0.0.1");
+    let received = "";
+    socket.on("data", (chunk) => (received += chunk));
+    socket.on("error", () => {});
+    const ended = new Promise((resolve) => socket.on("close", resolve));
+    const body = '{"title":"in flight"}';
+    const half = Math.floor(body.length / 2);
+    socket.write(`POST /api/tasks HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${body.slice(0, half)}`);
+    await sleep(SETTLE_MS);
+    // To the process itself, as `docker stop` signals PID 1: a launcher such as uv passes it on.
+    process.kill(running.child.pid, stopped.signal);
+    await sleep(SETTLE_MS);
+    if (!testCase.finishes) {
+      const code = await exitWithin(running, EXIT_MS);
+      if (code === null) return [`still running ${EXIT_MS / 1000}s after SIGTERM, with a request it could not finish, long after its ${testCase.variable}`];
+      return code === stopped.abandoned.exitCode ? [] : [`exited ${code} after giving up on a request in flight, expected ${stopped.abandoned.exitCode}`];
+    }
+    if (running.child.exitCode !== null || running.child.signalCode !== null) {
+      return [`exited ${running.child.exitCode ?? running.child.signalCode} with a request in flight, before its ${testCase.variable} passed`];
+    }
+    socket.write(body.slice(half));
+    await Promise.race([ended, sleep(ANSWER_MS)]);
+    const problems = [];
+    const status = /^HTTP\/1\.[01] (\d{3})/.exec(received)?.[1];
+    if (status !== "201") problems.push(`answered the request in flight with ${JSON.stringify(received.split("\r\n")[0] ?? "")}, expected 201`);
+    const code = await exitWithin(running, EXIT_MS);
+    if (code !== stopped.exitCode) problems.push(code === null ? `still running ${EXIT_MS / 1000}s after answering its last request` : `exited ${code} after answering its last request, expected ${stopped.exitCode}`);
+    return problems;
+  } finally {
+    socket?.destroy();
+    await stop(running);
+  }
+}
+
+/**
+ * Stops the service with a request in flight, once for each of shutdownCases, and returns what went
+ * wrong. Not on Windows, where no signal a service can handle can be sent to it.
+ */
+export async function checkShutdown(cmd, dir, contract, facts, baseEnv = process.env) {
+  const failures = [];
+  for (const testCase of shutdownCases(contract)) {
+    const problems = await shutdownOnce(cmd, dir, contract, facts, testCase, baseEnv);
+    if (problems.length > 0) failures.push({ name: `shutdown with ${configCaseName(testCase)}`, problems });
+  }
+  return failures;
+}
+
 /** Starts the service once for every configuration case in the contract, and returns what went wrong. */
 export async function checkConfig(cmd, dir, contract) {
   const cases = configCases(contract.config);
@@ -670,6 +752,8 @@ async function checkService(module, contract, facts) {
     }
     const config = await checkConfig(cmd, dir, contract);
     failures.push(...config.failures);
+    if (process.platform === "win32") console.log(`check-contract: ${module.id} shutdown not checked: Windows cannot send it SIGTERM.`);
+    else failures.push(...(await checkShutdown(cmd, dir, contract, facts)));
     return { module, failures, configCount: config.count };
   } finally {
     rmSync(scratch, { recursive: true, force: true });

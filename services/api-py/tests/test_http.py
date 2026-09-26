@@ -218,3 +218,26 @@ def test_a_body_is_utf8_json_with_fields_of_the_documented_type(method: str, pat
     client = Client()
     assert client.request("POST", "/api/tasks", {"title": "a"})[0] == 201
     assert client.request(method, path, raw=raw)[0] == 400
+
+
+class _Stalled(io.BytesIO):
+    def read(self, _size: int | None = -1) -> bytes:
+        raise TimeoutError("timed out")
+
+
+def test_a_body_that_stops_arriving_is_answered_408() -> None:
+    client = Client()
+    environ: dict[str, Any] = {
+        "REQUEST_METHOD": "POST",
+        "PATH_INFO": "/api/tasks",
+        "RAW_URI": "/api/tasks",
+        "CONTENT_LENGTH": "20",
+        "wsgi.input": _Stalled(),
+    }
+    captured: dict[str, Any] = {}
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+
+    b"".join(client.app(environ, start_response))
+    assert captured["status"] == "408 Request Timeout"

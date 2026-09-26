@@ -44,16 +44,44 @@ class RandomIds:
         return secrets.token_hex(8)
 
 
-class _ThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
-    """One thread per connection; shutdown waits for them, bounded by SHUTDOWN_TIMEOUT."""
+class ThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
+    """One daemon thread per connection, so one still blocked when SHUTDOWN_TIMEOUT passes does not keep
+    the process alive. socketserver waits only for threads that are not daemons, so this server keeps
+    its own list and waits for it in finish_requests."""
 
-    daemon_threads = False
-    block_on_close = True
+    daemon_threads = True
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._requests: list[threading.Thread] = []
+        self._requests_lock = threading.Lock()
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        thread = threading.Thread(target=self.process_request_thread, args=(request, client_address), daemon=True)
+        self.track(thread)
+
+    def track(self, thread: threading.Thread) -> None:
+        with self._requests_lock:
+            self._requests = [t for t in self._requests if t.is_alive()] + [thread]
+        thread.start()
+
+    def finish_requests(self, timeout_s: float) -> bool:
+        """Waits up to `timeout_s` for every request in flight; False if one is still running."""
+        deadline = time.monotonic() + timeout_s
+        with self._requests_lock:
+            requests = list(self._requests)
+        for thread in requests:
+            thread.join(max(0.0, deadline - time.monotonic()))
+        return not any(thread.is_alive() for thread in requests)
 
 
 class _QuietHandler(WSGIRequestHandler):
     """Requests are logged by the application, in the line every task service writes; the server
     reports only its own trouble."""
+
+    # A read that waits longer than this raises, and the request is answered 408, so a client that
+    # stops sending does not hold a thread for ever; api-ts bounds a request the same way.
+    timeout = 15
 
     def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
         pass
@@ -71,8 +99,14 @@ def build_app(service: TaskService | None = None) -> Any:
 app = build_app()
 
 
-def serve(config: Config) -> None:
-    server = make_server("", config.port, app, server_class=_ThreadingWSGIServer, handler_class=_QuietHandler)
+def join_seconds(timeout_ms: float) -> float:
+    """SHUTDOWN_TIMEOUT as a thread join takes it: in seconds, and no longer than threads can wait."""
+    return min(timeout_ms / 1000, threading.TIMEOUT_MAX)
+
+
+def serve(config: Config) -> int:
+    """Serves until SIGTERM or SIGINT; 0 once every request finished, 1 if the timeout passed first."""
+    server = make_server("", config.port, app, server_class=ThreadingWSGIServer, handler_class=_QuietHandler)
     stopping = threading.Event()
 
     def stop(_signum: int, _frame: FrameType | None) -> None:
@@ -88,12 +122,12 @@ def serve(config: Config) -> None:
     log({"level": "info", "msg": "listening", "port": config.port, "shutdownTimeoutMs": config.shutdown_timeout_ms})
     server.serve_forever()
 
-    # server_close waits for in-flight requests; the timeout bounds how long, as it does in api-go.
-    closing = threading.Thread(target=server.server_close, daemon=True)
-    closing.start()
-    closing.join(config.shutdown_timeout_ms / 1000)
-    if closing.is_alive():
+    server.server_close()
+    # Requests in flight may finish within the timeout, as in every task service; then they are abandoned.
+    if not server.finish_requests(join_seconds(config.shutdown_timeout_ms)):
         log({"level": "warn", "msg": "shutdown timed out with requests still in flight"})
+        return 1
+    return 0
 
 
 def run() -> int:
@@ -102,8 +136,7 @@ def run() -> int:
     except ConfigError as err:
         log({"level": "error", "msg": "invalid configuration", "error": str(err)})
         return 2
-    serve(config)
-    return 0
+    return serve(config)
 
 
 if __name__ == "__main__":

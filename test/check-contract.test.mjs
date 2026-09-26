@@ -7,6 +7,8 @@ import {
   checkConfig,
   checkImage,
   checkLogs,
+  checkShutdown,
+  shutdownCases,
   checkSpec,
   codePointsWith,
   conforms,
@@ -520,4 +522,53 @@ test("a title built from the rules' whitespace property holds every character wi
   const body = JSON.parse(encodeBody({ title: { whitespace: "rules.titleWhitespace", around: "a" } }, FACTS));
   assert.equal(body.title, `${all}a${all}`);
   assert.throws(() => encodeBody({ title: { whitespace: "rules.nothing" } }, FACTS), /rules\.nothing names no Unicode property/);
+});
+
+// A service that shuts down as the contract says, unless FAKE_MISTAKE names what it gets wrong.
+const SHUTTING_DOWN_SERVICE = `
+const http = require("node:http");
+const units = { h: 3600000, m: 60000, s: 1000, ms: 1, us: 0.001, ns: 0.000001 };
+const raw = process.env.SHUTDOWN_TIMEOUT || "10s";
+const [, n, unit] = /^([0-9.]+)([a-z]+)$/.exec(raw);
+const timeout = Number(n) * units[unit];
+const mistake = process.env.FAKE_MISTAKE;
+const server = http.createServer((req, res) => {
+  let body = "";
+  req.on("data", (c) => (body += c));
+  req.on("end", () => {
+    res.writeHead(req.url === "/healthz" ? 200 : 201, { "content-type": "application/json" });
+    res.end("{}");
+  });
+});
+server.listen(Number(process.env.PORT), "127.0.0.1");
+process.on("SIGTERM", () => {
+  if (mistake === "exitAtOnce") process.exit(0);
+  server.close(() => process.exit(0));
+  server.closeIdleConnections();
+  if (mistake !== "waitForever") setTimeout(() => process.exit(1), Math.min(timeout, 2 ** 31 - 1));
+});
+`;
+
+test("the shutdown cases are the timeout's default, its longest accepted value and its shortest", () => {
+  const cases = shutdownCases(CONTRACT);
+  assert.deepEqual(
+    cases.map((c) => [c.value, c.finishes]),
+    [
+      [undefined, true],
+      ["2562047h", true],
+      ["400ns", false],
+    ],
+  );
+});
+
+test("a service must finish a request in flight after SIGTERM, and give up on it once the timeout passes", { skip: process.platform === "win32" && "SIGTERM cannot be sent on Windows" }, async () => {
+  const run = (mistake) => checkShutdown([process.execPath, "-e", SHUTTING_DOWN_SERVICE], process.cwd(), CONTRACT, FACTS, { ...process.env, FAKE_MISTAKE: mistake ?? "" });
+  assert.deepEqual(await run(), []);
+  const early = await run("exitAtOnce");
+  assert.deepEqual(early.map((f) => f.name), ["shutdown with SHUTDOWN_TIMEOUT unset", 'shutdown with SHUTDOWN_TIMEOUT="2562047h"', 'shutdown with SHUTDOWN_TIMEOUT="400ns"']);
+  assert.match(early[0].problems.join(), /exited 0 with a request in flight/);
+  assert.match(early[2].problems.join(), /exited 0 after giving up on a request in flight, expected 1/);
+  const stuck = await run("waitForever");
+  assert.deepEqual(stuck.map((f) => f.name), ['shutdown with SHUTDOWN_TIMEOUT="400ns"']);
+  assert.match(stuck[0].problems.join(), /still running .* after SIGTERM, with a request it could not finish/);
 });

@@ -4,6 +4,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
+import { after } from "./adapters/after.ts";
 import { createHandler, type Log } from "./adapters/http.ts";
 import { MemoryTaskRepository } from "./adapters/memory-task-repository.ts";
 import { withRequestLog } from "./adapters/request-log.ts";
@@ -39,6 +40,6 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
     log({ level: "info", msg: "shutting down", signal });
     server.close(() => process.exit(0));
     server.closeIdleConnections();
-    setTimeout(() => process.exit(1), config.shutdownTimeoutMs).unref();
+    after(config.shutdownTimeoutMs, () => process.exit(1));
   });
 }

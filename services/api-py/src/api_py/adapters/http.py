@@ -36,6 +36,7 @@ REASON: Final[dict[int, str]] = {
     400: "Bad Request",
     404: "Not Found",
     405: "Method Not Allowed",
+    408: "Request Timeout",
     409: "Conflict",
     422: "Unprocessable Content",
     500: "Internal Server Error",
@@ -55,6 +56,10 @@ class BadRequestError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message: Final = message
+
+
+class RequestTimeoutError(Exception):
+    """The client stopped sending the body before it was complete."""
 
 
 class MethodNotAllowedError(Exception):
@@ -81,6 +86,8 @@ def create_app(service: TaskService, log: Log) -> WSGIApplication:
         headers: list[tuple[str, str]] = []
         try:
             status, body = _route(service, environ)
+        except RequestTimeoutError:
+            status, body = 408, {"error": "request body not received in time"}
         except MethodNotAllowedError as err:
             status, body = 405, {"error": "method not allowed"}
             headers.append(("allow", err.allow))
@@ -175,7 +182,10 @@ def _read_object(environ: dict[str, Any], allowed: list[str]) -> dict[str, objec
     if length > MAX_BODY_BYTES:
         _drain(stream, min(length, MAX_DRAIN_BYTES))
         raise invalid
-    raw = stream.read(length) if stream is not None and length > 0 else b""
+    try:
+        raw = stream.read(length) if stream is not None and length > 0 else b""
+    except TimeoutError:
+        raise RequestTimeoutError from None
     # An empty body is not an empty object: api-go and api-ts refuse it as malformed, and so does this.
     if raw.strip() == b"":
         raise invalid
