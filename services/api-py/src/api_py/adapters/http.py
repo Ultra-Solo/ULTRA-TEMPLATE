@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable, Iterable
-from typing import Any, Final
+from typing import Any, Final, NoReturn
 from urllib.parse import unquote
 
 from api_py.application.task_service import TaskService
@@ -57,6 +57,14 @@ class BadRequestError(Exception):
         self.message: Final = message
 
 
+class MethodNotAllowedError(Exception):
+    """A method the path does not take; `allow` names the ones it does, as a 405 must."""
+
+    def __init__(self, allow: str) -> None:
+        super().__init__(allow)
+        self.allow: Final = allow
+
+
 def as_json(task: Task) -> dict[str, str]:
     """The wire shape, which is camelCase in every one of the three services."""
     return {
@@ -70,8 +78,12 @@ def as_json(task: Task) -> dict[str, str]:
 
 def create_app(service: TaskService, log: Log) -> WSGIApplication:
     def app(environ: dict[str, Any], start_response: StartResponse) -> Iterable[bytes]:
+        headers: list[tuple[str, str]] = []
         try:
             status, body = _route(service, environ)
+        except MethodNotAllowedError as err:
+            status, body = 405, {"error": "method not allowed"}
+            headers.append(("allow", err.allow))
         except DomainError as err:
             status, body = STATUS_BY_CODE[err.code], {"error": err.message}
         except BadRequestError as err:
@@ -92,7 +104,7 @@ def create_app(service: TaskService, log: Log) -> WSGIApplication:
         payload = json.dumps(body).encode()
         start_response(
             f"{status} {REASON[status]}",
-            [("content-type", "application/json"), ("content-length", str(len(payload)))],
+            [("content-type", "application/json"), ("content-length", str(len(payload))), *headers],
         )
         # A HEAD response describes the GET response and carries no body; WSGI servers send whatever
         # the application returns, so leaving it out is this code's job.
@@ -108,7 +120,7 @@ def _route(service: TaskService, environ: dict[str, Any]) -> tuple[int, object]:
     path = _path(environ)
 
     if path == "/healthz":
-        return (200, {"status": "ok"}) if method == "GET" else _not_allowed()
+        return (200, {"status": "ok"}) if method == "GET" else _not_allowed("GET, HEAD")
 
     if path == "/api/tasks":
         if method == "GET":
@@ -116,7 +128,7 @@ def _route(service: TaskService, environ: dict[str, Any]) -> tuple[int, object]:
         if method == "POST":
             body = _read_object(environ, ["title"])
             return 201, as_json(service.create(_optional_string(body, "title")))
-        return _not_allowed()
+        return _not_allowed("GET, HEAD, POST")
 
     match = _TASK_PATH.match(path)
     if match is None:
@@ -126,10 +138,10 @@ def _route(service: TaskService, environ: dict[str, Any]) -> tuple[int, object]:
         raise BadRequestError("malformed path")
     task_id = unquote(match.group(1))
     if match.group(2) is None:
-        return (200, as_json(service.get(task_id))) if method == "GET" else _not_allowed()
+        return (200, as_json(service.get(task_id))) if method == "GET" else _not_allowed("GET, HEAD")
 
     if method != "PATCH":
-        return _not_allowed()
+        return _not_allowed("PATCH")
     body = _read_object(environ, ["status"])
     return 200, as_json(service.transition(task_id, parse_status(body.get("status"))))
 
@@ -148,8 +160,8 @@ def _path(environ: dict[str, Any]) -> str:
     return path if isinstance(path, str) and path != "" else "/"
 
 
-def _not_allowed() -> tuple[int, object]:
-    return 405, {"error": "method not allowed"}
+def _not_allowed(allow: str) -> NoReturn:
+    raise MethodNotAllowedError(allow)
 
 
 def _read_object(environ: dict[str, Any], allowed: list[str]) -> dict[str, object]:

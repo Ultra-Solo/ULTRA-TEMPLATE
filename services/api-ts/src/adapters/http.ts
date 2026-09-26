@@ -45,7 +45,7 @@ async function route(service: TaskService, req: IncomingMessage, res: ServerResp
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
 
   if (path === "/healthz") {
-    return method === "GET" ? send(res, 200, { status: "ok" }) : notAllowed(res);
+    return method === "GET" ? send(res, 200, { status: "ok" }) : notAllowed(res, "GET, HEAD");
   }
   if (path === "/api/tasks") {
     if (method === "GET") return send(res, 200, await service.list());
@@ -53,16 +53,16 @@ async function route(service: TaskService, req: IncomingMessage, res: ServerResp
       const body = await readObject(req, ["title"]);
       return send(res, 201, await service.create(optionalString(body, "title")));
     }
-    return notAllowed(res);
+    return notAllowed(res, "GET, HEAD, POST");
   }
 
   const match = /^\/api\/tasks\/([^/]+)(\/status)?$/.exec(path);
   if (match?.[1] === undefined) return send(res, 404, { error: "not found" });
   const id = decodeSegment(match[1]);
   if (match[2] === undefined) {
-    return method === "GET" ? send(res, 200, await service.get(id)) : notAllowed(res);
+    return method === "GET" ? send(res, 200, await service.get(id)) : notAllowed(res, "GET, HEAD");
   }
-  if (method !== "PATCH") return notAllowed(res);
+  if (method !== "PATCH") return notAllowed(res, "PATCH");
   const body = await readObject(req, ["status"]);
   return send(res, 200, await service.transition(id, parseStatus(body["status"])));
 }
@@ -106,7 +106,9 @@ function decodeSegment(segment: string): string {
   }
 }
 
-function notAllowed(res: ServerResponse): void {
+/** A 405 names what the path does allow, HEAD wherever GET is, as HTTP requires of it. */
+function notAllowed(res: ServerResponse, allow: string): void {
+  res.setHeader("allow", allow);
   send(res, 405, { error: "method not allowed" });
 }
 

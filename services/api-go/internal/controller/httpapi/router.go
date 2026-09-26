@@ -40,9 +40,15 @@ func NewRouter(tasks TaskService, log *slog.Logger) http.Handler {
 
 	// Left to itself the mux answers a wrong method or an unknown path in plain text, while every
 	// other error this API returns is JSON. A pattern with a method wins over the same pattern
-	// without one, so these catch only what the routes above do not.
-	for _, path := range []string{"/healthz", "/api/tasks", "/api/tasks/{id}", "/api/tasks/{id}/status"} {
-		mux.HandleFunc(path, methodNotAllowed)
+	// without one, so these catch only what the routes above do not. Each names what its path allows,
+	// HEAD wherever GET is, as a 405 must; a new route adds its method here too.
+	for path, allow := range map[string]string{
+		"/healthz":               "GET, HEAD",
+		"/api/tasks":             "GET, HEAD, POST",
+		"/api/tasks/{id}":        "GET, HEAD",
+		"/api/tasks/{id}/status": "PATCH",
+	} {
+		mux.HandleFunc(path, methodNotAllowed(allow))
 	}
 	mux.HandleFunc("/", notFound)
 
@@ -209,8 +215,11 @@ func (h handler) fail(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
-func methodNotAllowed(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method not allowed"})
+func methodNotAllowed(allow string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", allow)
+		writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method not allowed"})
+	}
 }
 
 func notFound(w http.ResponseWriter, _ *http.Request) {

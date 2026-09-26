@@ -146,3 +146,36 @@ func TestRequestsAreValidatedAtTheBoundary(t *testing.T) {
 		})
 	}
 }
+
+// A 405 must say what the path does allow (RFC 9110, section 15.5.6), HEAD wherever GET is.
+func TestAWrongMethodNamesTheMethodsThePathAllows(t *testing.T) {
+	t.Parallel()
+
+	server := newServer(t)
+
+	tests := []struct{ method, path, allow string }{
+		{http.MethodPost, "/healthz", "GET, HEAD"},
+		{http.MethodDelete, "/api/tasks", "GET, HEAD, POST"},
+		{http.MethodPut, "/api/tasks/id-1", "GET, HEAD"},
+		{http.MethodGet, "/api/tasks/id-1/status", "PATCH"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequestWithContext(t.Context(), tt.method, server.URL+tt.path, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res, err := server.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = res.Body.Close()
+			if res.StatusCode != http.StatusMethodNotAllowed || res.Header.Get("Allow") != tt.allow {
+				t.Fatalf("%d with Allow %q, want 405 with %q", res.StatusCode, res.Header.Get("Allow"), tt.allow)
+			}
+		})
+	}
+}

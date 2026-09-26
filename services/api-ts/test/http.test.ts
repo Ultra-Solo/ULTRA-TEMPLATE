@@ -57,3 +57,17 @@ test("requests are validated at the boundary, with the same status codes as api-
     assert.equal((await call(base, method, path, body)).status, want, name);
   }
 });
+
+test("a wrong method is answered 405 with the methods the path allows, HEAD wherever GET is", async (t) => {
+  const base = await start(t);
+  const cases: [string, string, string][] = [
+    ["POST", "/healthz", "GET, HEAD"],
+    ["DELETE", "/api/tasks", "GET, HEAD, POST"],
+    ["PUT", "/api/tasks/id-1", "GET, HEAD"],
+    ["GET", "/api/tasks/id-1/status", "PATCH"],
+  ];
+  for (const [method, path, allow] of cases) {
+    const res = await fetch(base + path, { method });
+    assert.deepEqual([res.status, res.headers.get("allow")], [405, allow], `${method} ${path}`);
+  }
+});

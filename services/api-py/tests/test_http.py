@@ -53,6 +53,7 @@ class Client:
 
         chunks = b"".join(self.app(environ, start_response))
         assert captured["headers"]["content-type"] == "application/json"
+        self.headers: dict[str, str] = captured["headers"]
         return captured["status"], json.loads(chunks)
 
 
@@ -182,3 +183,18 @@ def test_an_unexpected_failure_is_logged_and_never_returned() -> None:
     assert (status, payload) == (500, {"error": "internal error"})
     assert "secret detail" not in json.dumps(payload)
     assert any("secret detail" in str(entry.get("error", "")) for entry in client.logged)
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "allow"),
+    [
+        ("POST", "/healthz", "GET, HEAD"),
+        ("DELETE", "/api/tasks", "GET, HEAD, POST"),
+        ("PUT", "/api/tasks/t1", "GET, HEAD"),
+        ("GET", "/api/tasks/t1/status", "PATCH"),
+    ],
+)
+def test_a_wrong_method_names_the_methods_the_path_allows(method: str, path: str, allow: str) -> None:
+    client = Client()
+    status, _ = client.request(method, path)
+    assert (status, client.headers.get("allow")) == (405, allow)

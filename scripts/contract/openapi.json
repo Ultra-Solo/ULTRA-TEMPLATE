@@ -3,7 +3,7 @@
   "info": {
     "title": "Task API",
     "version": "1.0.0",
-    "description": "The task API every task service in this repository serves. It is held to the contract cases beside it, scripts/contract/tasks-api.json, and to the task rules in scripts/rules/task-rules.json, by checkSpec in scripts/check-contract.mjs: every response documented here is exercised by a case, every case on a documented operation answers with a status documented here, and the schemas state the same fields, statuses and title length. A method a path does not list is answered 405, and a path not listed here 404, both with an Error body. Every response carries the RequestId header, and every request is logged once as one JSON line; the contract check reads both."
+    "description": "The task API every task service in this repository serves. It is held to the contract cases beside it, scripts/contract/tasks-api.json, and to the task rules in scripts/rules/task-rules.json, by checkSpec in scripts/check-contract.mjs: every response documented here is exercised by a case, every case on a documented operation answers with a status documented here, and the schemas state the same fields, statuses and title length. A method a path does not list is answered 405 with an Allow header naming the methods it does list (HEAD wherever GET is), and a path not listed here 404, both with an Error body. Every response carries the RequestId header, and every request is logged once as one JSON line; the contract check reads both."
   },
   "paths": {
     "/healthz": {
