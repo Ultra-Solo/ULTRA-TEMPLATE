@@ -67,7 +67,7 @@ A new feature has to meet the five requirements in [ADR-0008](../docs/adr/0008-a
 
 The template is a product with a public contract, and its version says what a release does to the projects made from it.
 
-**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`), `template-update.mjs`'s flags (`--to`, `--add`, `--remove`, `--dry-run`, `--template`, `--owner`, `--repo`), the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and reads back (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a 1.x feature or preset disappears.
+**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`), `template-update.mjs`'s flags (`--to`, which also takes `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`), the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and reads back (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a 1.x feature or preset disappears.
 
 | Bump | When | Example |
 |---|---|---|

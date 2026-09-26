@@ -156,6 +156,14 @@ test("identity input is validated at the boundary", () => {
   }
 });
 
+test("a name derived from the repository blames the repository, and says how to name the project instead", () => {
+  // "2025-report" becomes "2025-report", which cannot start a package name; the person never typed --name.
+  assert.throws(
+    () => validateIdentity({ name: toProjectName("2025-report"), owner: "my-org", repo: "2025-report" }, { nameFrom: "2025-report" }),
+    (err) => err instanceof InitError && /the repository name "2025-report"/.test(err.message) && /pass --name/.test(err.message) && !/^--name must/.test(err.message),
+  );
+});
+
 test("the real manifest is consistent and every marker in the tree is well formed", () => {
   const manifest = loadManifest();
   assert.deepEqual(validateManifest(manifest, (p) => existsSync(join(ROOT, p))), []);
