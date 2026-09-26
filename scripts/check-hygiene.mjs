@@ -47,6 +47,9 @@
  *      Container installs no tool at a version scripts/tools/tools.json does not pin, uv's pin satisfies
  *      `required-version`, and every Node module pins one Biome. A copy nothing compares drifts, and the
  *      image or the Dev Container then runs a toolchain CI never proved.
+ *  18. A job that calls a workflow in this repository grants at least every permission that workflow's
+ *      jobs ask for. GitHub refuses to start a run whose call grants less, before any `if:` is read, so
+ *      the caller fails on every push while nothing on the pull request can see it.
  *
  *   node scripts/check-hygiene.mjs
  *
@@ -630,6 +633,111 @@ export function checkWorkflow(path, text) {
   return problems;
 }
 
+const LEVELS = ["none", "read", "write"];
+
+/**
+ * The `permissions:` value on line `i`, whose key sits `indent` spaces in: each scope's level (0 none,
+ * 1 read, 2 write), or `all` for read-all and write-all. Null when it is not written in a form read here.
+ */
+function permissionsAt(lines, i, indent) {
+  const value = lines[i]
+    .slice(lines[i].indexOf("permissions:") + "permissions:".length)
+    .replace(/\s+#.*$/, "")
+    .trim();
+  if (value === "read-all" || value === "write-all") return { all: LEVELS.indexOf(value.slice(0, -"-all".length)) };
+  const scopes = {};
+  const add = (pair) => {
+    const match = /^([a-z-]+):\s*(none|read|write)$/.exec(pair.trim());
+    if (match) scopes[match[1]] = LEVELS.indexOf(match[2]);
+    return match !== null;
+  };
+  if (value.startsWith("{")) {
+    const inner = /^\{(.*)\}$/.exec(value)?.[1];
+    if (inner === undefined) return null;
+    const pairs = inner.split(",").filter((pair) => pair.trim() !== "");
+    return pairs.every(add) ? { scopes } : null;
+  }
+  if (value !== "") return null;
+  for (let j = i + 1; j < lines.length; j++) {
+    if (/^\s*(#.*)?$/.test(lines[j])) continue;
+    if (/^ */.exec(lines[j])[0].length <= indent) break;
+    if (!add(lines[j].replace(/\s+#.*$/, ""))) return null;
+  }
+  return { scopes };
+}
+
+/** A workflow's top-level permissions, and each job's own and the workflow it calls. Same layout as checkWorkflow. */
+export function workflowJobs(text) {
+  const lines = text.split(/\r?\n/);
+  const at = lines.findIndex((l) => l.startsWith("permissions:"));
+  const top = at === -1 ? undefined : { line: at + 1, grant: permissionsAt(lines, at, 0) };
+  const jobs = [];
+  const start = lines.findIndex((l) => /^jobs:\s*$/.test(l));
+  for (let i = start + 1; start !== -1 && i < lines.length; i++) {
+    const line = lines[i];
+    if (/^[^\s#]/.test(line)) break;
+    const opened = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(line);
+    if (opened) jobs.push({ id: opened[1], line: i + 1 });
+    else if (jobs.length > 0) {
+      const uses = /^ {4}uses:\s*["']?([^"'\s]+)/.exec(line)?.[1];
+      if (uses !== undefined) jobs.at(-1).uses = uses;
+      if (/^ {4}permissions:/.test(line)) jobs.at(-1).permissions = { line: i + 1, grant: permissionsAt(lines, i, 4) };
+    }
+  }
+  return { top, jobs };
+}
+
+/**
+ * Rule 18 over every workflow, `{path: text}`. A called job runs with its own block, else its workflow's
+ * top level, else what the call grants; the call grants the calling job's block, else its workflow's top
+ * level. Only what a called job will run with is required, so this never fails a call GitHub accepts.
+ */
+export function checkCalledPermissions(workflows) {
+  const problems = new Set();
+  const parsed = Object.fromEntries(Object.entries(workflows).map(([path, text]) => [path, workflowJobs(text)]));
+  const unreadable = (path, block) => `${path}:${block.line} has a \`permissions:\` block this check cannot read; write each scope as a \`scope: level\` line.`;
+  for (const [path, { top, jobs }] of Object.entries(parsed)) {
+    for (const job of jobs.filter((j) => j.uses?.startsWith("./.github/workflows/"))) {
+      const target = job.uses.slice(2);
+      const granted = job.permissions ?? top;
+      // With no block anywhere, rule 8 already fails the workflow.
+      if (granted === undefined) continue;
+      if (granted.grant === null) {
+        problems.add(unreadable(path, granted));
+        continue;
+      }
+      const called = parsed[target];
+      if (called === undefined) {
+        problems.add(`${path}:${job.line} job \`${job.id}\` calls ${target}, which is not in the repository.`);
+        continue;
+      }
+      const grants = (scope) => granted.grant.all ?? granted.grant.scopes[scope] ?? 0;
+      for (const calledJob of called.jobs) {
+        const asked = calledJob.permissions ?? called.top;
+        if (asked === undefined) continue;
+        if (asked.grant === null) {
+          problems.add(unreadable(target, asked));
+          continue;
+        }
+        const shortfalls =
+          asked.grant.all !== undefined
+            ? (granted.grant.all ?? -1) < asked.grant.all
+              ? [[`${LEVELS[asked.grant.all]}-all`, granted.grant.all === undefined ? "only named scopes" : `\`${LEVELS[granted.grant.all]}-all\``]]
+              : []
+            : Object.entries(asked.grant.scopes)
+                .filter(([scope, level]) => grants(scope) < level)
+                .map(([scope, level]) => [`${scope}: ${LEVELS[level]}`, `\`${scope}: ${LEVELS[grants(scope)]}\``]);
+        for (const [want, have] of shortfalls) {
+          problems.add(
+            `${path}:${job.line} job \`${job.id}\` calls ${target}, whose job \`${calledJob.id}\` asks for \`${want}\`, but the call grants ${have}. Grant it on the calling job: GitHub refuses to start the run otherwise, before any \`if:\` is read.`,
+          );
+        }
+      }
+    }
+  }
+  return [...problems];
+}
+
 /** Rule 9. Same layout assumption as checkWorkflow: jobs at two spaces, `needs` as a block list. */
 export function checkGate(path, text) {
   const lines = text.split(/\r?\n/);
@@ -729,6 +837,8 @@ export function checkRepoHygiene(root = process.cwd()) {
   for (const path of present.filter((p) => WORKFLOW.test(p))) {
     failures.push(...checkDownloads(path, read(path)), ...checkPins(path, read(path)), ...checkWorkflow(path, read(path)));
   }
+  const workflows = present.filter((p) => WORKFLOW.test(p) && p.includes("/workflows/"));
+  failures.push(...checkCalledPermissions(Object.fromEntries(workflows.map((p) => [p, read(p)]))));
   for (const path of present.filter((p) => /(^|\/)Dockerfile$/.test(p))) failures.push(...checkDigests(path, read(path)), ...checkInstalls(path, read(path)));
   failures.push(...checkModules(tracked, read));
   failures.push(...checkVersions(present, read));

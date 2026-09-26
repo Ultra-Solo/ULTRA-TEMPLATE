@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import {
+  checkCalledPermissions,
   checkDigests,
   checkDownloads,
   checkGate,
@@ -136,6 +137,90 @@ test("a verify.yml job missing from the gate's needs fails", () => {
   assert.match(checkGate("verify.yml", workflow(["lint"])).join(""), /job\(s\) test are missing/);
   assert.deepEqual(checkGate("verify.yml", workflow(["lint", "test"])), []);
   assert.match(checkGate("verify.yml", "jobs:\n  lint:\n    timeout-minutes: 5\n").join(""), /no aggregate `verify` job/);
+});
+
+// The shape release.yml and mcp-publish.yml had through v1.2.0: GitHub refused to start every run.
+const CALLED = `on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo release
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - run: echo image
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - run: echo publish
+`;
+const caller = (grant, top = "permissions:\n  contents: read\n") => `on:
+  push:
+${top}jobs:
+  publish-mcp-server:
+${grant}    uses: ./.github/workflows/mcp-publish.yml
+`;
+const grant = (...scopes) => `    permissions:\n${scopes.map((s) => `      ${s}\n`).join("")}`;
+const calls = (callerText, calledText = CALLED) =>
+  checkCalledPermissions({ ".github/workflows/release.yml": callerText, ".github/workflows/mcp-publish.yml": calledText }).join("\n");
+
+test("rule 18: a call that grants less than a called job asks for fails, naming the scope", () => {
+  const found = calls(caller(grant("contents: read", "packages: write", "id-token: write")));
+  assert.match(found, /release\.yml:6 job `publish-mcp-server` calls \.github\/workflows\/mcp-publish\.yml, whose job `publish` asks for `attestations: write`, but the call grants `attestations: none`/);
+  assert.doesNotMatch(found, /`image`|`release` asks/, "the jobs the grant covers are not named");
+  assert.equal(calls(caller(grant("contents: read", "packages: write", "id-token: write", "attestations: write"))), "");
+  assert.equal(calls(caller(grant("contents: write", "packages: write", "id-token: write", "attestations: write"))), "", "write satisfies read");
+  assert.equal(calls(caller("    permissions: { contents: read, packages: write, id-token: write, attestations: write }\n")), "", "a flow map is read too");
+});
+
+test("rule 18: a caller job with no block grants its workflow's top level; a called job with none inherits", () => {
+  const top = "permissions:\n  contents: read\n  packages: write\n  id-token: write\n  attestations: write\n";
+  assert.equal(calls(caller("", top)), "");
+  assert.match(calls(caller("", "permissions:\n  contents: read\n")), /whose job `image` asks for `packages: write`, but the call grants `packages: none`/);
+  const inherits = "on:\n  workflow_call:\njobs:\n  only:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - run: echo\n";
+  assert.equal(calls(caller("    permissions: {}\n"), inherits), "", "a called job with no block anywhere runs with what the call grants");
+  const fromTop = "on:\n  workflow_call:\npermissions:\n  contents: read\njobs:\n  only:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - run: echo\n";
+  assert.match(calls(caller("    permissions: {}\n"), fromTop), /whose job `only` asks for `contents: read`, but the call grants `contents: none`/);
+});
+
+test("rule 18: read-all and write-all are asked and granted as a whole; {} asks for nothing", () => {
+  const readAll = "on:\n  workflow_call:\njobs:\n  scan:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    permissions: read-all\n    steps:\n      - run: echo\n";
+  assert.match(calls(caller(grant("contents: read")), readAll), /whose job `scan` asks for `read-all`, but the call grants only named scopes/);
+  assert.equal(calls(caller("    permissions: write-all\n"), readAll), "");
+  const nothing = readAll.replace("permissions: read-all", "permissions: {}");
+  assert.equal(calls(caller("    permissions: {}\n"), nothing), "");
+});
+
+test("rule 18: a block it cannot read, or a call to a workflow that is not here, is reported", () => {
+  assert.match(calls(caller("    permissions: ${{ inputs.scope }}\n")), /release\.yml:7 has a `permissions:` block this check cannot read/);
+  assert.match(
+    checkCalledPermissions({ ".github/workflows/release.yml": caller(grant("contents: read")) }).join("\n"),
+    /job `publish-mcp-server` calls \.github\/workflows\/mcp-publish\.yml, which is not in the repository/,
+  );
+  assert.equal(checkCalledPermissions({ ".github/workflows/ci.yml": "on:\n  push:\npermissions:\n  contents: read\njobs:\n  a:\n    uses: org/repo/.github/workflows/x.yml@0123\n" }).join(""), "", "a workflow in another repository is not ours to read");
+});
+
+test("rule 18 runs over the repository's workflows", (t) => {
+  const root = fixture(t, {
+    ".github/workflows/release.yml": caller(grant("contents: read", "packages: write", "id-token: write")),
+    ".github/workflows/mcp-publish.yml": CALLED,
+  });
+  assert.match(failures(root), /asks for `attestations: write`, but the call grants `attestations: none`/);
 });
 
 test("a raw control character in a source file fails, and an escape does not", (t) => {

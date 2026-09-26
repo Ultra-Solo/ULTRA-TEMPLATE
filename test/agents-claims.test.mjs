@@ -11,7 +11,7 @@ import { auditLedger, claims, hygieneRules } from "./claims.mjs";
 const LEDGER = {
   "One required check.": { rules: [9], paths: [".github/workflows/verify.yml", "scripts/configure-github.mjs"] },
   "Pinned supply chain.": { rules: [8, 14, 15, 16, 17], paths: ["scripts/tools/tools.json", "scripts/tools.mjs", ".github/workflows/pins.yml", "scripts/check-pins.mjs"] },
-  "Least privilege in workflows.": { rules: [8], paths: [".github/zizmor.yml"] },
+  "Least privilege in workflows.": { rules: [8, 18], paths: [".github/zizmor.yml"] },
   "Repository shape.": { rules: [1, 2, 3, 4, 5, 6, 10, 11, 12] },
   "Independent modules.": { rules: [13], paths: ["scripts/modules.mjs"] },
   "One set of instructions.": { paths: ["scripts/check-docs.mjs"] },

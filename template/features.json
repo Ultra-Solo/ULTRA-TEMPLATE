@@ -1,6 +1,6 @@
 {
   "$comment": "Read by template/init.mjs, and deleted with it. A feature's paths are deleted when it is not selected; content inside shared files is selected with marker lines instead. See template/README.md.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "identity": {
     "owner": "hynix666",
     "repo": "ULTRA-TEMPLATE",
