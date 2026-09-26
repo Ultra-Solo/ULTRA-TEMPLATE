@@ -125,7 +125,10 @@ jobs:
           failed=0
           for dockerfile in "${dockerfiles[@]}"; do
             dir="$(dirname "$dockerfile")"
-            image="scan-$(basename "$dir" | tr '[:upper:]' '[:lower:]'):ci"
+            # An image name takes lowercase letters, digits and separators, and cannot start with a
+            # separator: `.devcontainer` is tagged scan-devcontainer.
+            name="$(basename "$dir" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^-*//')"
+            image="scan-${name}:ci"
             if ! docker build --quiet --tag "$image" "$dir" > /dev/null; then
               echo "### image scan could not build ${dir}" | tee -a "$GITHUB_STEP_SUMMARY"
               failed=1
