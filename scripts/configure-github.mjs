@@ -21,13 +21,19 @@
  *   - Dependabot alerts and security updates, and the private vulnerability reporting SECURITY.md links to.
  *   - Secret scanning and push protection. Free on public repositories; GitHub refuses them on a private
  *     repository without Advanced Security, and that is reported as unavailable rather than as a failure.
+ *   - A ruleset on release tags (`v*`): anyone who may push can create one, and nobody, administrators
+ *     included, moves or deletes it, so a version always names the code that was released.
  *   - Only when release.yml exists and init has run (template/ is gone): GitHub Actions may open pull
- *     requests, and RELEASE_ENABLED=true turns the release workflow on.
+ *     requests, and RELEASE_ENABLED=true turns the release workflow on. Opening pull requests is the
+ *     whole of what release-please needs; GitHub names the setting `can_approve_pull_request_reviews`,
+ *     but with no approving review required by the ruleset there is nothing for Actions to approve.
+ *     Each deployment environment a workflow names (npm, mcp-registry) then admits the default branch
+ *     alone, the branch whose push runs the publishing jobs.
  *
  * Exit 0 applied · 1 a required setting failed · 2 invalid arguments or no usable `gh`.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
@@ -71,10 +77,39 @@ export const RULESET = {
   ],
 };
 
+/**
+ * Release tags, once made, stay where they were made: nobody deletes or moves a `v*` tag, so a version
+ * always names the code that was released and the notes written about it. Creating one stays open, since
+ * releasing is how a tag is made.
+ */
+export const TAG_RULESET = {
+  name: "release-tags",
+  target: "tag",
+  enforcement: "active",
+  conditions: { ref_name: { include: ["refs/tags/v*"], exclude: [] } },
+  bypass_actors: [],
+  rules: [{ type: "deletion" }, { type: "update" }, { type: "non_fast_forward" }],
+};
+
+/**
+ * The deployment environments the workflows name as a plain `environment: NAME`, sorted. GitHub Pages
+ * writes its own (`environment: { name: github-pages }`) and limits it to the Pages branch itself.
+ */
+export function deploymentEnvironments(workflows) {
+  const names = new Set();
+  for (const text of Object.values(workflows)) {
+    for (const line of text.split(/\r?\n/)) {
+      const name = /^\s+environment:\s*["']?([\w.-]+)["']?\s*(?:#.*)?$/.exec(line)?.[1];
+      if (name) names.add(name);
+    }
+  }
+  return [...names].sort();
+}
+
 export const isRepo = (value) => typeof value === "string" && /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(value);
 
 /** Every change, in order. `optional` marks settings GitHub may refuse because of the plan or visibility. */
-export function plan(repo, { release }) {
+export function plan(repo, { release, environments = [], defaultBranch = "main" }) {
   const r = `repos/${repo}`;
   const steps = [
     {
@@ -92,6 +127,7 @@ export function plan(repo, { release }) {
       },
     },
     { name: `ruleset "${RULESET.name}": pull requests and the ${REQUIRED_CHECK} check`, upsertRuleset: RULESET },
+    { name: `ruleset "${TAG_RULESET.name}": release tags are never moved or deleted`, upsertRuleset: TAG_RULESET },
     { name: "Dependabot alerts", method: "PUT", path: `${r}/vulnerability-alerts` },
     { name: "Dependabot security updates", method: "PUT", path: `${r}/automated-security-fixes` },
     { name: "private vulnerability reporting", method: "PUT", path: `${r}/private-vulnerability-reporting`, optional: true },
@@ -114,6 +150,12 @@ export function plan(repo, { release }) {
       { name: "repository variable RELEASE_ENABLED=true", upsertVariable: { name: "RELEASE_ENABLED", value: "true" } },
     );
   }
+  // A publishing job runs on the push to the default branch, so its environment admits that branch alone:
+  // a workflow run from any other branch cannot reach the environment's trust (npm's trusted publisher,
+  // the registry's OIDC login) even if someone edits the workflow there.
+  for (const name of environments) {
+    steps.push({ name: `environment ${name}: deployments from ${defaultBranch} only`, upsertEnvironment: { name, branch: defaultBranch } });
+  }
   return steps;
 }
 
@@ -134,6 +176,12 @@ function apply(repo, step) {
     const existing = gh("GET", `${r}/rulesets`).find((ruleset) => ruleset.name === step.upsertRuleset.name);
     if (existing) gh("PUT", `${r}/rulesets/${existing.id}`, step.upsertRuleset);
     else gh("POST", `${r}/rulesets`, step.upsertRuleset);
+  } else if (step.upsertEnvironment) {
+    const { name, branch } = step.upsertEnvironment;
+    gh("PUT", `${r}/environments/${name}`, { deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } });
+    const policies = gh("GET", `${r}/environments/${name}/deployment-branch-policies`).branch_policies;
+    for (const policy of policies.filter((p) => p.name !== branch || p.type !== "branch")) gh("DELETE", `${r}/environments/${name}/deployment-branch-policies/${policy.id}`);
+    if (!policies.some((p) => p.name === branch && p.type === "branch")) gh("POST", `${r}/environments/${name}/deployment-branch-policies`, { name: branch, type: "branch" });
   } else if (step.upsertVariable) {
     const { name } = step.upsertVariable;
     const exists = gh("GET", `${r}/actions/variables`).variables.some((v) => v.name === name);
@@ -165,11 +213,26 @@ function main() {
   // While template/ exists the repository is the uninitialized template, whose release.yml must stay off:
   // turning it on would release the template itself.
   const release = existsSync(join(ROOT, ".github/workflows/release.yml")) && !existsSync(join(ROOT, "template"));
-  const steps = plan(repo, { release });
+  const dir = join(ROOT, ".github/workflows");
+  const environments = release ? deploymentEnvironments(Object.fromEntries(readdirSync(dir).filter((f) => /\.ya?ml$/.test(f)).map((f) => [f, readFileSync(join(dir, f), "utf8")]))) : [];
+  let defaultBranch = "main";
+  if (environments.length > 0) {
+    try {
+      defaultBranch = gh("GET", `repos/${repo}`).default_branch;
+    } catch (err) {
+      if (!values["dry-run"]) {
+        console.error(`configure-github: cannot read ${repo}'s default branch (${firstLine(err)}).`);
+        return 2;
+      }
+      defaultBranch = "<default branch>";
+    }
+  }
+  const steps = plan(repo, { release, environments, defaultBranch });
   if (values["dry-run"]) {
     console.log(`configure-github: dry run for ${repo}; nothing is changed.\n`);
     for (const step of steps) {
       const request = step.upsertRuleset ? `upsert repos/${repo}/rulesets`
+        : step.upsertEnvironment ? `upsert repos/${repo}/environments/${step.upsertEnvironment.name}, one branch policy`
         : step.upsertVariable ? `upsert repos/${repo}/actions/variables`
           : `${step.method} ${step.path}`;
       console.log(`  ${step.name}${step.optional ? " (optional)" : ""}\n    ${request}${step.body ? ` ${JSON.stringify(step.body)}` : ""}`);
