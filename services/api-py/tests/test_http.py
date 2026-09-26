@@ -53,6 +53,7 @@ class Client:
 
         chunks = b"".join(self.app(environ, start_response))
         assert captured["headers"]["content-type"] == "application/json"
+        self.headers: dict[str, str] = captured["headers"]
         return captured["status"], json.loads(chunks)
 
 
@@ -182,3 +183,61 @@ def test_an_unexpected_failure_is_logged_and_never_returned() -> None:
     assert (status, payload) == (500, {"error": "internal error"})
     assert "secret detail" not in json.dumps(payload)
     assert any("secret detail" in str(entry.get("error", "")) for entry in client.logged)
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "allow"),
+    [
+        ("POST", "/healthz", "GET, HEAD"),
+        ("DELETE", "/api/tasks", "GET, HEAD, POST"),
+        ("PUT", "/api/tasks/t1", "GET, HEAD"),
+        ("GET", "/api/tasks/t1/status", "PATCH"),
+    ],
+)
+def test_a_wrong_method_names_the_methods_the_path_allows(method: str, path: str, allow: str) -> None:
+    client = Client()
+    status, _ = client.request(method, path)
+    assert (status, client.headers.get("allow")) == (405, allow)
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "raw"),
+    [
+        # json.loads(bytes) detects UTF-16 and a byte-order mark on its own; JSON on the wire is UTF-8.
+        ("POST", "/api/tasks", b'\xef\xbb\xbf{"title":"a"}'),
+        ("POST", "/api/tasks", '{"title":"a"}'.encode("utf-16-le")),
+        ("POST", "/api/tasks", b'{"title":"\xff"}'),
+        # NaN and Infinity are not JSON, though Python's parser takes them.
+        ("PATCH", "/api/tasks/t1/status", b'{"status":NaN}'),
+        ("PATCH", "/api/tasks/t1/status", b'{"status":-Infinity}'),
+        # A field of the wrong type is malformed, as a non-string title already is.
+        ("PATCH", "/api/tasks/t1/status", b'{"status":7}'),
+    ],
+)
+def test_a_body_is_utf8_json_with_fields_of_the_documented_type(method: str, path: str, raw: bytes) -> None:
+    client = Client()
+    assert client.request("POST", "/api/tasks", {"title": "a"})[0] == 201
+    assert client.request(method, path, raw=raw)[0] == 400
+
+
+class _Stalled(io.BytesIO):
+    def read(self, _size: int | None = -1) -> bytes:
+        raise TimeoutError("timed out")
+
+
+def test_a_body_that_stops_arriving_is_answered_408() -> None:
+    client = Client()
+    environ: dict[str, Any] = {
+        "REQUEST_METHOD": "POST",
+        "PATH_INFO": "/api/tasks",
+        "RAW_URI": "/api/tasks",
+        "CONTENT_LENGTH": "20",
+        "wsgi.input": _Stalled(),
+    }
+    captured: dict[str, Any] = {}
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+
+    b"".join(client.app(environ, start_response))
+    assert captured["status"] == "408 Request Timeout"

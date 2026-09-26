@@ -1,6 +1,6 @@
 # ADR-0015: Hand-pinned tools live in one manifest
 
-**Status:** Accepted, amends [ADR-0003](0003-pin-third-party-code.md) and [ADR-0011](0011-what-local-verify-guarantees.md) · **Date:** 2026-09-24
+**Status:** Accepted, amends [ADR-0003](0003-pin-third-party-code.md) and [ADR-0011](0011-what-local-verify-guarantees.md) · Amended by [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md) · **Date:** 2026-09-24
 
 ## Context
 

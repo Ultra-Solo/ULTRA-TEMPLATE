@@ -29,17 +29,20 @@
  *      toolchain installs from, has every `npm run` script its module.json names, a verify.yml job
  *      named after it, and a dependabot.yml entry for its directory. Deleting the job or the entry
  *      leaves everything green while CI stops checking the module and its dependencies stop moving.
+ *      The other way round, a verify.yml job that runs the module action for a module no module.json
+ *      declares fails too: deleting a module leaves its job behind, which fails only once CI runs it.
  *      A toolchain manifest (package.json, go.mod, pyproject.toml) below the root with no module.json
  *      beside it or above it fails too: nothing would install or verify it.
- *  14. Every Dockerfile `FROM` names its base image by digest. A tag can be repointed at a different
- *      image with no diff here, the exposure ADR-0003 pins actions against.
+ *  14. Every Dockerfile `FROM`, and a Dev Container's `image`, names its base image by digest. A tag can
+ *      be repointed at a different image with no diff here, the exposure ADR-0003 pins actions against.
  *  15. A download in a workflow or local action that keeps a file is verified against a checksum in
  *      the same step, and no download is piped into an interpreter, which runs it before anything
  *      could check it.
  *  16. No workflow or local action writes a version of its own: a tool version (`X_VERSION:`, `@vX.Y.Z`,
  *      `==X.Y.Z`, a release download, `version: vX`) belongs in scripts/tools/tools.json, and a toolchain
  *      version (`node-version: 24`) in the file its setup action reads. A pin written anywhere else is
- *      one the pin report and the installer cannot see.
+ *      one the pin report and the installer cannot see. Nor does one use a setup action a tool there lists
+ *      under `actions`, which would install that tool at a version and from a download nothing checks.
  *  17. Every copy of a toolchain version agrees with the file that declares it: `.node-version` for
  *      `engines`, the `@types/node` major, `node` base images and the Dev Container's node feature;
  *      `go.mod` for `golang` base images and the go feature; `.python-version` for `python` base images
@@ -50,6 +53,10 @@
  *  18. A job that calls a workflow in this repository grants at least every permission that workflow's
  *      jobs ask for. GitHub refuses to start a run whose call grants less, before any `if:` is read, so
  *      the caller fails on every push while nothing on the pull request can see it.
+ *  19. Each third-party action is pinned at one SHA in every workflow and local action, and Dependabot's
+ *      github-actions entry lists every directory that holds an `action.yml`. Dependabot reads only the
+ *      directories it is given, so a pin in a local action is one it never proposes to move, and the
+ *      same action then runs at two versions.
  *
  *   node scripts/check-hygiene.mjs
  *
@@ -117,6 +124,7 @@ export function checkModules(tracked, read) {
   const manifests = tracked.filter((path) => path.endsWith(`/${MANIFEST}`));
   const dirs = manifests.map((path) => path.slice(0, -MANIFEST.length - 1));
   const ids = new Map();
+  const declared = new Set();
   for (const [i, path] of manifests.entries()) {
     const dir = dirs[i];
     let module;
@@ -126,6 +134,8 @@ export function checkModules(tracked, read) {
     } catch {
       continue;
     }
+    // A manifest that fails validation still names its module; it is reported for what is wrong with it.
+    if (typeof module?.id === "string") declared.add(module.id);
     const problems = validateManifest(module, path);
     if (problems.length > 0) {
       failures.push(...problems.map((problem) => `${problem}.`));
@@ -156,6 +166,11 @@ export function checkModules(tracked, read) {
       if (!(script in scripts)) failures.push(`\`${path}\` runs \`npm run ${script}\`, which \`${dir}/package.json\` does not define.`);
     }
   }
+  if (jobs !== null) {
+    for (const { job, id } of moduleJobs(read(GATE)).filter(({ id }) => !declared.has(id))) {
+      failures.push(`\`verify.yml\` job \`${job}\` runs module \`${id}\`, which no module.json here declares; delete the job, and its \`needs\` entry, with the module.`);
+    }
+  }
   // A module nothing declares is a module nothing installs or verifies, while it looks like part of the build.
   const manifestNames = new Set(Object.values(TOOLCHAINS).map((t) => t.manifest));
   for (const path of tracked) {
@@ -167,6 +182,26 @@ export function checkModules(tracked, read) {
     }
   }
   return failures;
+}
+
+/** Each verify.yml job that runs `./.github/actions/module`, and the module `id` it passes. Same layout as jobIds. */
+export function moduleJobs(text) {
+  const found = [];
+  let job = null;
+  let inModuleStep = false;
+  for (const line of text.split(/\r?\n/)) {
+    const opened = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(line);
+    if (opened) {
+      job = opened[1];
+      inModuleStep = false;
+    } else if (/^\s*- /.test(line)) {
+      inModuleStep = /^\s*- uses:\s*\.\/\.github\/actions\/module\s*$/.test(line);
+    } else if (inModuleStep && job !== null) {
+      const id = /^\s+id:\s*["']?([A-Za-z0-9_-]+)/.exec(line)?.[1];
+      if (id !== undefined) found.push({ job, id });
+    }
+  }
+  return found;
 }
 
 /** The npm scripts a module's manifest runs, from its checks, coverage and facts commands. */
@@ -188,6 +223,56 @@ function dependabotDirectories(text) {
   return found;
 }
 
+/** Each dependabot.yml entry: its ecosystem and the directories it updates. */
+function dependabotEntries(text) {
+  const entries = [];
+  for (const line of text.split(/\r?\n/)) {
+    const opened = /^\s*-\s*package-ecosystem:\s*["']?([\w-]+)/.exec(line);
+    if (opened) entries.push({ ecosystem: opened[1], text: "" });
+    else if (entries.length > 0) entries.at(-1).text += `${line}\n`;
+  }
+  return entries.map(({ ecosystem, text }) => ({
+    ecosystem,
+    directories: [...dependabotDirectories(text), ...[...text.matchAll(/directories:\s*\[([^\]]*)\]/g)].flatMap((m) => m[1].split(",").map((d) => d.trim().replace(/^["']|["']$/g, "").replace(/(.)\/$/, "$1")).filter(Boolean))],
+  }));
+}
+
+/**
+ * Rule 19, over every workflow and local action (`files`, path to text) and dependabot.yml's text, or
+ * null when the project has none.
+ */
+export function checkActionPins(files, dependabot) {
+  const problems = [];
+  const pins = new Map();
+  for (const [path, text] of Object.entries(files)) {
+    text.split(/\r?\n/).forEach((line, i) => {
+      if (/^\s*#/.test(line)) return;
+      const used = /^\s*-?\s*uses:\s*["']?([^/@\s"'.][^/@\s"']*\/[^/@\s"']+)[^@\s"']*@([0-9a-f]{40})/i.exec(line);
+      if (!used) return;
+      const action = used[1].toLowerCase();
+      if (!pins.has(action)) pins.set(action, new Map());
+      const shas = pins.get(action);
+      if (!shas.has(used[2])) shas.set(used[2], `${path}:${i + 1}`);
+    });
+  }
+  for (const [action, shas] of pins) {
+    if (shas.size > 1) {
+      problems.push(`${action} is pinned at ${shas.size} SHAs: ${[...shas].map(([sha, at]) => `${sha.slice(0, 12)} at ${at}`).join(", ")}. Pin one release everywhere, so every job runs the code that was reviewed.`);
+    }
+  }
+  if (dependabot === null) return problems;
+  const entry = dependabotEntries(dependabot).find((e) => e.ecosystem === "github-actions");
+  const dirs = [...new Set(Object.keys(files).filter((p) => /(^|\/)action\.ya?ml$/.test(p)).map((p) => `/${p.replace(/\/?action\.ya?ml$/, "")}`))];
+  if (!entry) {
+    problems.push(`\`${DEPENDABOT}\` has no github-actions entry, so no action pin is ever proposed for update.`);
+    return problems;
+  }
+  for (const dir of dirs.filter((d) => !entry.directories.includes(d))) {
+    problems.push(`\`${DEPENDABOT}\`'s github-actions entry does not list \`${dir}\`, so the pins in its action.yml are never proposed for update. Add it to \`directories\`.`);
+  }
+  return problems;
+}
+
 /** The job ids of a workflow, in the two-space layout this repository writes. */
 export function jobIds(text) {
   const lines = text.split(/\r?\n/);
@@ -199,6 +284,18 @@ export function jobIds(text) {
     if (opened) ids.push(opened[1]);
   }
   return ids;
+}
+
+/** Rule 14 for a Dev Container: an `image` it names directly carries a digest, as a Dockerfile's FROM does. */
+export function checkDevcontainerImage(path, text) {
+  const problems = [];
+  text.split(/\r?\n/).forEach((line, i) => {
+    const image = /^\s*"image"\s*:\s*"([^"]+)"/.exec(line)?.[1];
+    if (image && !/@sha256:[0-9a-f]{64}$/.test(image)) {
+      problems.push(`${path}:${i + 1} names image \`${image}\` by tag alone. Add its digest (\`@sha256:…\`), or build from a Dockerfile whose FROM carries one: a tag can be repointed.`);
+    }
+  });
+  return problems;
 }
 
 /** Rule 14. Stage aliases and `scratch` name no image; anything else must carry a full digest. */
@@ -288,11 +385,18 @@ const PIN_SHAPED = [
   [/^\s+(?:node|go|python|java|ruby|dotnet)-version:\s*["']?\d/, "a toolchain version"],
 ];
 
-/** Rule 16, for one workflow or action file. */
-export function checkPins(path, text) {
+/** Rule 16, for one workflow or action file, and the tools `tools.json` pins. */
+export function checkPins(path, text, tools = {}) {
   const problems = [];
+  // A setup action installs its tool at whatever version it is given, outside the checksum tools.mjs checks.
+  const owner = new Map(Object.entries(tools).flatMap(([name, tool]) => (tool.actions ?? []).map((action) => [action.toLowerCase(), name])));
   text.split(/\r?\n/).forEach((line, i) => {
-    if (/^\s*#/.test(line) || /^\s*-?\s*uses:/.test(line)) return;
+    if (/^\s*#/.test(line)) return;
+    const action = /^\s*-?\s*uses:\s*["']?([^/@\s"']+\/[^/@\s"']+)/.exec(line)?.[1]?.toLowerCase();
+    if (action && owner.has(action)) {
+      problems.push(`${path}:${i + 1} installs ${owner.get(action)} outside its pin in ${TOOLS_PATH} (\`${line.trim()}\`). Install it with scripts/tools.mjs, as \`install --for\` and \`./.github/actions/tool\` do.`);
+    }
+    if (/^\s*-?\s*uses:/.test(line)) return;
     const found = PIN_SHAPED.find(([shape]) => shape.test(line));
     if (found) {
       problems.push(`${path}:${i + 1} writes ${found[1]} (\`${line.trim()}\`). Pin a tool in scripts/tools/tools.json and read it with scripts/tools.mjs; read a toolchain version from its file (node-version-file, go-version-file).`);
@@ -834,11 +938,14 @@ export function checkRepoHygiene(root = process.cwd()) {
     if (leftovers.length > 0) failures.push(`template marker line(s) survived initialization: ${leftovers.join(", ")}.`);
   }
 
+  const pinned = tracked.includes(TOOLS_PATH) ? (JSON.parse(read(TOOLS_PATH)).tools ?? {}) : {};
   for (const path of present.filter((p) => WORKFLOW.test(p))) {
-    failures.push(...checkDownloads(path, read(path)), ...checkPins(path, read(path)), ...checkWorkflow(path, read(path)));
+    failures.push(...checkDownloads(path, read(path)), ...checkPins(path, read(path), pinned), ...checkWorkflow(path, read(path)));
   }
   const workflows = present.filter((p) => WORKFLOW.test(p) && p.includes("/workflows/"));
+  failures.push(...checkActionPins(Object.fromEntries(present.filter((p) => WORKFLOW.test(p)).map((p) => [p, read(p)])), tracked.includes(DEPENDABOT) ? read(DEPENDABOT) : null));
   failures.push(...checkCalledPermissions(Object.fromEntries(workflows.map((p) => [p, read(p)]))));
+  for (const path of present.filter((p) => /(^|\/)\.devcontainer\/devcontainer\.json$/.test(p))) failures.push(...checkDevcontainerImage(path, read(path)));
   for (const path of present.filter((p) => /(^|\/)Dockerfile$/.test(p))) failures.push(...checkDigests(path, read(path)), ...checkInstalls(path, read(path)));
   failures.push(...checkModules(tracked, read));
   failures.push(...checkVersions(present, read));

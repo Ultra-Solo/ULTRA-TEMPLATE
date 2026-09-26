@@ -33,18 +33,15 @@ jobs:
         id: needs
         run: |
           node scripts/modules.mjs toolchains --github-output
-          echo "uv=$(node scripts/tools.mjs version uv)" >> "$GITHUB_OUTPUT"
+      # No cache: this job builds little, and under the same key as the go-service job it would save a
+      # near-empty cache that the go-service job then restores instead of its own.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: steps.needs.outputs.go == 'true'
         with:
           go-version-file: ${{ steps.needs.outputs.go-version-file }}
-          cache-dependency-path: ${{ steps.needs.outputs.go-version-file }}
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        if: steps.needs.outputs.python == 'true'
-        with:
-          version: ${{ steps.needs.outputs.uv }}
-          enable-cache: true
-      - name: Install every module's dependencies
-        run: node scripts/setup.mjs
+          cache: false
+      # First, since setup installs a Python module's dependencies with the pinned uv.
       - name: Install the tools local checks use
         run: node scripts/tools.mjs install --local
+      - name: Install every module's dependencies
+        run: node scripts/setup.mjs

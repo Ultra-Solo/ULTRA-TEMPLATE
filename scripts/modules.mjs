@@ -4,12 +4,13 @@
  *
  * A module is a directory holding a `module.json` (MANIFEST): it names the module, its toolchain, the
  * checks it runs, and what else it takes part in (the task API contract, the task facts, a container
- * image). Nothing lists the modules anywhere else. Adding one is adding a directory with its manifest;
- * deleting the directory removes it from setup, verify and CI with nothing else to edit (ADR-0014).
+ * image). No script lists the modules. Adding one is adding a directory with its manifest, a verify.yml
+ * job and a Dependabot entry; deleting it removes it from setup and verify, and check-hygiene rule 13
+ * names the job and the entry that must go with it (ADR-0014).
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -59,7 +60,7 @@ export const REQUIREMENTS = {
  * The facts a module may say it repeats. Each is stated in one file, and scripts/check-facts.mjs compares
  * a module's copy with it; test/check-facts.test.mjs holds this list to the facts those files state.
  */
-export const FACTS = ["statuses", "transitions", "maxTitleLength", "apiDefaultPort"];
+export const FACTS = ["statuses", "transitions", "maxTitleLength", "titleWhitespace", "apiDefaultPort"];
 /**
  * How a module's container image is probed in CI (scripts/probe-image.mjs): "http" serves the task API
  * and is held to the contract, or {"run": command} probes the image with the module's own command.
@@ -221,6 +222,18 @@ export function run(command, args, { cwd = ROOT, capture = false } = {}) {
 }
 
 export const available = (command, args = ["version"]) => run(command, args, { capture: true }).status === 0;
+
+/** Where `node scripts/tools.mjs install --local` puts the pinned tools. */
+export const TOOLS_BIN = join(ROOT, ".tools", "bin");
+
+/**
+ * PATH with `bin` first when it exists, so a pinned tool installed here wins over any other copy for
+ * every command verify and setup start; a shell nobody configured still runs what CI runs.
+ */
+export function withToolsBin(path, bin = TOOLS_BIN, exists = existsSync) {
+  if (!exists(bin)) return path;
+  return [bin, ...(path ?? "").split(delimiter).filter((entry) => entry !== "" && entry !== bin)].join(delimiter);
+}
 
 /**
  * Why the running Node is not the one `.node-version` pins, or null when it is. Only the major version

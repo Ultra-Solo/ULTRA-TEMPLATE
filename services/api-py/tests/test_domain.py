@@ -60,3 +60,12 @@ def test_tasks_are_immutable() -> None:
     task = create_task("t1", "Write the README", NOW)
     with pytest.raises(AttributeError):
         task.status = "done"  # type: ignore[misc]
+
+
+def test_create_trims_the_unicode_white_space_property_and_nothing_else() -> None:
+    # Built from code points: the formatter writes these escapes back as the invisible characters.
+    nel, ideographic_space, paragraph_separator, nbsp, bom = (chr(cp) for cp in (0x85, 0x3000, 0x2029, 0xA0, 0xFEFF))
+    # str.strip() would also take U+001C to U+001F, which are not White_Space.
+    assert create_task("t1", f"{nel}{ideographic_space}a{paragraph_separator}", NOW).title == "a"
+    assert create_task("t1", f"\x1fa{bom}", NOW).title == f"\x1fa{bom}"
+    assert code(lambda: create_task("t1", f"{nel}{nbsp}", NOW)) == "EMPTY_TITLE"

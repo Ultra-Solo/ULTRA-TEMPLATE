@@ -1,6 +1,6 @@
 # ADR-0007: Expose the domain to assistants through an MCP adapter, not a second service
 
-**Status:** Accepted · **Date:** 2026-09-17
+**Status:** Accepted · Amended by [ADR-0010](0010-one-statement-of-the-task-rules.md) · **Date:** 2026-09-17
 
 ## Context
 

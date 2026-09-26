@@ -31,9 +31,9 @@ A value it cannot use stops the process with exit code 2 rather than falling bac
 |---|---|
 | `GET /healthz` | `200` The service is up |
 | `GET /api/tasks` | `200` Every task |
-| `POST /api/tasks` `{"title"}` | `201` The task, created · `400` The body is not one JSON object of the documented fields, or is over the size limit · `422` The title is empty once trimmed, or longer than the rules allow |
+| `POST /api/tasks` `{"title"}` | `201` The task, created · `400` The body is not one UTF-8 JSON object of the documented fields, spelled exactly and of the documented types, or is over the size limit · `422` The title is empty once trimmed, or longer than the rules allow |
 | `GET /api/tasks/{id}` | `200` The task · `400` The id is not a valid path segment, such as a malformed percent-escape · `404` No task has this id |
-| `PATCH /api/tasks/{id}/status` `{"status"}` | `200` The task, moved · `400` The body is not one JSON object of the documented fields, or is over the size limit · `404` No task has this id · `409` The rules do not allow this move from the task's status, staying put included · `422` The status is missing, null, or not one of the statuses |
+| `PATCH /api/tasks/{id}/status` `{"status"}` | `200` The task, moved · `400` The body is not one UTF-8 JSON object of the documented fields, spelled exactly and of the documented types, or is over the size limit · `404` No task has this id · `409` The rules do not allow this move from the task's status, staying put included · `422` The status is missing, null, or not one of the statuses |
 <!-- /generated -->
 
 Bodies are capped at <!-- generated:contract limits.maxBodyBytes bytes -->1 MiB<!-- /generated --> and unknown fields are rejected with `400`. `HEAD` is answered wherever `GET` is. A missing or `null` title reads as empty (`422`); a title of another type, an empty body and a malformed path are refused as malformed (`400`). Every error is JSON, `{"error": "…"}`. The cases in [`scripts/contract/tasks-api.json`](../../scripts/contract/tasks-api.json) are the contract every task service keeps, and `node scripts/check-contract.mjs` holds this one to them.
@@ -44,16 +44,20 @@ One difference worth knowing: WSGI decodes `PATH_INFO` before a route sees it, s
 
 ## Check
 
+<!-- generated:checks services/api-py -->
 ```bash
-uv run ruff check . && uv run ruff format --check .
-uv run mypy
-uv run pytest
-uv run python scripts/check_boundaries.py
+uv lock --check
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen mypy
+uv run --frozen pytest
+uv run --frozen python scripts/check_boundaries.py
 ```
+<!-- /generated -->
 
-`node scripts/verify.mjs py-service` runs all four, after checking that `uv.lock` still matches `pyproject.toml`, and then the contract; CI runs the same. uv's own version is pinned once, in `scripts/tools/tools.json`; `[tool.uv] required-version` is the range this project accepts, and check-hygiene holds the pin inside it.
+`node scripts/verify.mjs py-service` runs these, then the contract; CI runs the same. `uv lock --check` comes first and the rest run `--frozen`, so a `uv.lock` that no longer matches `pyproject.toml` fails instead of being rewritten. uv's own version is pinned once, in `scripts/tools/tools.json`; `[tool.uv] required-version` is the range this project accepts, and check-hygiene holds the pin inside it.
 
-To add a store, write a class with the `TaskRepository` shape in `src/api_py/adapters` and choose it in `main.py`. Its test passes a function that returns a fresh, empty store to `check_task_repository` from `tests/task_repository_conformance.py` and expects no problems, as `tests/test_memory_task_repository.py` does: that suite is the behaviour the service relies on from a store.
+To add a store, write a class with the `TaskRepository` shape in `src/api_py/adapters` and choose it in `main.py`. Its test passes a function that returns a fresh, empty store to `check_task_repository` from `tests/task_repository_conformance.py` and expects no problems, as `tests/test_memory_task_repository.py` does: that suite is the behaviour the service relies on from a store. Its `replace` stores a task only while the stored one is still the task the caller read, which in a database is one conditional `UPDATE … WHERE` the old values: it is what keeps two moves at once from both being made ([ADR-0019](../../docs/adr/0019-moves-are-compare-and-set-on-the-store.md)).
 
 ## Container
 

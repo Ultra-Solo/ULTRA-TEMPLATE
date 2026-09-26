@@ -7,9 +7,6 @@ export interface Task {
   readonly status: Status;
 }
 
-/** The longest title the API accepts, in characters. */
-export const MAX_TITLE_LENGTH = 200;
-
 export const LABELS: Readonly<Record<Status, string>> = {
   todo: "To do",
   in_progress: "In progress",

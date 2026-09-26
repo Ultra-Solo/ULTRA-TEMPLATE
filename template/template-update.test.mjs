@@ -160,7 +160,7 @@ test("it refuses to start without what it needs", () => {
   git(template, "checkout", "-q", FROM);
   const dir = project("refusals");
   git(template, "checkout", "-q", "-");
-  assert.throws(() => run(dir, { to: "latest" }), UpdateError);
+  assert.throws(() => run(dir, { to: "newest" }), UpdateError);
   writeFileSync(join(dir, "README.md"), "uncommitted\n");
   assert.throws(() => run(dir), /uncommitted changes/);
 });
@@ -298,4 +298,61 @@ test("the selection is read from the newest line that names one, and the first o
   assert.deepEqual(origin.features, ["web", "release"]);
   assert.match(recordUpdate("## [Unreleased]\n", url, "v1.3.0", []), /v1\.3\.0\) with no features\./);
   assert.doesNotMatch(recordUpdate("## [Unreleased]\n", url, "v1.3.0"), / with /);
+});
+
+test("--name stands in for a name package.json no longer gives", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("unnamed");
+  git(template, "checkout", "-q", "-");
+  rmSync(join(dir, "package.json"));
+  commit(dir, "chore: no root package.json");
+  assert.throws(() => run(dir), /Cannot tell this project's name/);
+  assert.equal(run(dir, { name: "demo-app" }).status, "applied");
+});
+
+test("each release is named with the commit its tag points at, before its init runs", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("named-commits");
+  git(template, "checkout", "-q", "-");
+  const lines = [];
+  run(dir, { log: (line) => lines.push(line) });
+  for (const tag of [FROM, TO]) {
+    const sha = git(template, "rev-parse", `${tag}^{commit}`).trim();
+    assert.ok(lines.some((line) => line.includes(`${tag} is commit ${sha}`)), `${tag} ${sha} not in:\n${lines.join("\n")}`);
+  }
+});
+
+test("run from a subdirectory, it updates the whole project", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("from-below");
+  git(template, "checkout", "-q", "-");
+  const below = join(dir, "docs");
+  const result = spawnSync(process.execPath, [join(dir, "scripts/template-update.mjs"), "--to", TO, "--template", template, "--owner", "octo-org", "--repo", "demo-app"], { cwd: below, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(readFileSync(join(dir, "SECURITY.md"), "utf8"), new RegExp(NOTE));
+});
+
+test("a file the release adds that the project already has, byte for byte, is not in the way; --to latest takes the newest release", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("already-has-it");
+  git(template, "checkout", "-q", "-");
+  // A later release that adds a file, which this project happened to add itself, identically.
+  const LATEST = `v${major}.${minor + 2}.0`;
+  const added = "## Support\n\nAsk in the discussions.\n";
+  writeFileSync(join(template, "SUPPORT.md"), added);
+  const manifest = join(template, "template/features.json");
+  writeFileSync(manifest, readFileSync(manifest, "utf8").replace(`"version": "${TO.slice(1)}"`, `"version": "${LATEST.slice(1)}"`));
+  git(template, "add", "-A");
+  commit(template, "a release that adds a file");
+  git(template, "tag", LATEST);
+  writeFileSync(join(dir, "SUPPORT.md"), added);
+  git(dir, "add", "-A");
+  commit(dir, "docs: support");
+
+  const result = run(dir, { to: "latest" });
+
+  assert.deepEqual(result.conflicts, []);
+  assert.equal(result.to, LATEST);
+  assert.ok(!result.changed.some((line) => line.endsWith(" SUPPORT.md")), `SUPPORT.md is not a change: ${result.changed.join(", ")}`);
+  assert.match(readFileSync(join(dir, "CHANGELOG.md"), "utf8"), new RegExp(`Updated to \\[[^\\]]+ ${LATEST.replaceAll(".", "\\.")}\\]`));
 });

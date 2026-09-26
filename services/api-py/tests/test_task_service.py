@@ -1,3 +1,6 @@
+import contextlib
+import threading
+
 import pytest
 
 from api_py.adapters.memory_task_repository import MemoryTaskRepository
@@ -83,3 +86,42 @@ def test_save_replaces_and_the_store_is_not_shared_by_reference() -> None:
     # The earlier listing is a snapshot: a later write must not reach through it.
     assert [item.title for item in listed] == ["One"]
     assert [item.title for item in repository.list()] == ["Two"]
+
+
+class RacingRepository(MemoryTaskRepository):
+    """While gated, the first two reads wait for each other: two moves at once both read, then both write."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.gate: threading.Barrier | None = None
+
+    def get(self, task_id: str) -> Task | None:
+        task = super().get(task_id)
+        gate = self.gate
+        if gate is not None:
+            with contextlib.suppress(threading.BrokenBarrierError):
+                gate.wait(timeout=5)
+        return task
+
+
+def test_of_two_moves_at_once_exactly_one_is_made() -> None:
+    repository = RacingRepository()
+    svc = service(repository)
+    task = svc.create("Ship it")
+    svc.transition(task.id, "in_progress")
+    repository.gate = threading.Barrier(2, action=lambda: setattr(repository, "gate", None))
+    outcomes: list[str] = []
+
+    def move() -> None:
+        try:
+            svc.transition(task.id, "done")
+            outcomes.append("made")
+        except DomainError as err:
+            outcomes.append(err.code)
+
+    threads = [threading.Thread(target=move) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert sorted(outcomes) == ["INVALID_TRANSITION", "made"]

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { ACTIONS_APP_ID, isRepo, plan, REQUIRED_CHECK, RULESET } from "../scripts/configure-github.mjs";
+import { ACTIONS_APP_ID, deploymentEnvironments, isRepo, plan, REQUIRED_CHECK, RULESET, TAG_RULESET } from "../scripts/configure-github.mjs";
 
 test("the required check is a job that verify.yml actually defines", () => {
   // A ruleset naming a check no workflow reports would block every pull request forever.
@@ -44,4 +44,34 @@ test("merging is squash-only with the pull request title as the commit title", (
 test("the repository argument is validated before any request", () => {
   assert.equal(isRepo("octo-org/demo.app_1"), true);
   for (const bad of ["octo", "octo/app/extra", "../x", "octo/app?x=1", "", undefined]) assert.equal(isRepo(bad), false, String(bad));
+});
+
+test("release tags can be created but never moved or deleted, by anyone", () => {
+  assert.equal(TAG_RULESET.target, "tag");
+  assert.deepEqual(TAG_RULESET.conditions.ref_name.include, ["refs/tags/v*"]);
+  assert.deepEqual(TAG_RULESET.rules.map((r) => r.type).sort(), ["deletion", "non_fast_forward", "update"]);
+  assert.equal(TAG_RULESET.rules.some((r) => r.type === "creation"), false, "releasing creates them");
+  assert.deepEqual(TAG_RULESET.bypass_actors, []);
+  assert.ok(plan("octo/app", { release: false }).some((s) => s.upsertRuleset === TAG_RULESET));
+});
+
+test("each deployment environment a workflow names is limited to the default branch", () => {
+  const workflows = {
+    "release.yml": "jobs:\n  publish:\n    environment: npm\n    runs-on: ubuntu-latest\n",
+    "mcp.yml": "jobs:\n  publish:\n    environment: 'mcp-registry'\n",
+    "pages.yml": "jobs:\n  deploy:\n    environment:\n      name: github-pages\n",
+    "other.yml": "jobs:\n  a:\n    # environment: commented\n    runs-on: x\n",
+  };
+  assert.deepEqual(deploymentEnvironments(workflows), ["mcp-registry", "npm"], "Pages manages its own environment");
+  const steps = plan("octo/app", { release: true, environments: ["npm"], defaultBranch: "trunk" }).filter((s) => s.upsertEnvironment);
+  assert.deepEqual(steps.map((s) => s.upsertEnvironment), [{ name: "npm", branch: "trunk" }]);
+  // GitHub refuses branch policies on a private repository without a paid plan; that is reported, not a failure.
+  assert.equal(steps[0].optional, true);
+  assert.equal(plan("octo/app", { release: false }).some((s) => s.upsertEnvironment), false);
+});
+
+test("the ruleset needs Actions to open pull requests only for release-please, and approves none", () => {
+  const step = plan("octo/app", { release: true }).find((s) => s.path?.endsWith("/actions/permissions/workflow"));
+  assert.deepEqual(step.body, { default_workflow_permissions: "read", can_approve_pull_request_reviews: true });
+  assert.equal(RULESET.rules.find((r) => r.type === "pull_request").parameters.required_approving_review_count, 0);
 });

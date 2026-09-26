@@ -3,6 +3,8 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,6 +30,21 @@ func newFakeRepo() *fakeRepo {
 func (r *fakeRepo) Save(_ context.Context, task entity.Task) error {
 	if r.saveErr != nil {
 		return r.saveErr
+	}
+
+	r.saves++
+	r.tasks[task.ID] = task
+
+	return nil
+}
+
+func (r *fakeRepo) Replace(_ context.Context, task, prev entity.Task) error {
+	if r.saveErr != nil {
+		return r.saveErr
+	}
+
+	if r.tasks[prev.ID] != prev {
+		return usecase.ErrStale
 	}
 
 	r.saves++
@@ -128,5 +145,103 @@ func TestTransitionStoresOnlyAllowedMoves(t *testing.T) {
 	moved, err := tasks.Transition(ctx, "id-1", entity.StatusInProgress)
 	if err != nil || moved.Status != entity.StatusInProgress || repo.tasks["id-1"] != moved {
 		t.Fatalf("todo to in_progress: %+v, %v", moved, err)
+	}
+}
+
+// racingRepo lets the first `readers` reads of a task happen before any of them returns, which is how
+// two moves at once interleave on a real server: both read the task, then both write.
+type racingRepo struct {
+	mu      sync.Mutex
+	tasks   map[string]entity.Task
+	arrived sync.WaitGroup
+	gated   atomic.Int32
+}
+
+func newRacingRepo() *racingRepo {
+	return &racingRepo{tasks: map[string]entity.Task{}}
+}
+
+func (r *racingRepo) Save(_ context.Context, task entity.Task) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tasks[task.ID] = task
+
+	return nil
+}
+
+func (r *racingRepo) Replace(_ context.Context, task, prev entity.Task) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.tasks[prev.ID] != prev {
+		return usecase.ErrStale
+	}
+
+	r.tasks[task.ID] = task
+
+	return nil
+}
+
+func (r *racingRepo) Get(_ context.Context, id string) (entity.Task, error) {
+	r.mu.Lock()
+	task, ok := r.tasks[id]
+	r.mu.Unlock()
+
+	if r.gated.Add(-1) >= 0 {
+		r.arrived.Done()
+		r.arrived.Wait()
+	}
+
+	if !ok {
+		return entity.Task{}, entity.ErrNotFound
+	}
+
+	return task, nil
+}
+
+func (r *racingRepo) List(context.Context) ([]entity.Task, error) { return nil, nil }
+
+// Two moves that both read the task before either writes: only one may be made, and the other is
+// judged against the task as the first left it.
+func TestOfTwoMovesAtOnceExactlyOneIsMade(t *testing.T) {
+	t.Parallel()
+
+	repo := newRacingRepo()
+	tasks := usecase.NewTasks(repo, func() time.Time { return clock }, func() string { return "id-1" })
+	ctx := context.Background()
+
+	if _, err := tasks.Create(ctx, "ship it"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := tasks.Transition(ctx, "id-1", entity.StatusInProgress); err != nil {
+		t.Fatal(err)
+	}
+
+	repo.arrived.Add(2)
+	repo.gated.Store(2)
+
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := tasks.Transition(ctx, "id-1", entity.StatusDone)
+			errs <- err
+		}()
+	}
+
+	var made, refused int
+	for range 2 {
+		switch err := <-errs; {
+		case err == nil:
+			made++
+		case errors.Is(err, entity.ErrInvalidTransition):
+			refused++
+		default:
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+
+	if made != 1 || refused != 1 {
+		t.Fatalf("%d moves made and %d refused, want 1 and 1", made, refused)
 	}
 }

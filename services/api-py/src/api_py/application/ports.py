@@ -20,6 +20,13 @@ class TaskRepository(Protocol):
 
     def list(self) -> tuple[Task, ...]: ...
 
+    def replace(self, task: Task, prev: Task) -> bool:
+        """Stores ``task`` in place of ``prev`` only while the stored task is still ``prev``, field for
+        field, and says whether it did: False when another change came first or there is no such task.
+        In a database it is one conditional UPDATE. It is what makes a move safe when two arrive at
+        once (ADR-0019)."""
+        ...
+
 
 class Clock(Protocol):
     """The clock is a port: a service that read the wall clock itself could not be tested exactly."""

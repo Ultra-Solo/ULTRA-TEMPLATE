@@ -134,6 +134,12 @@ func TestRequestsAreValidatedAtTheBoundary(t *testing.T) {
 		{"unknown status", http.MethodPatch, "/api/tasks/id-1/status", `{"status":"DONE"}`, http.StatusUnprocessableEntity},
 		{"missing task", http.MethodGet, "/api/tasks/nope", "", http.StatusNotFound},
 		{"wrong method", http.MethodDelete, "/api/tasks", "", http.StatusMethodNotAllowed},
+		// Field names match exactly, where encoding/json alone would take "Title" for "title".
+		{"title with capitals", http.MethodPost, "/api/tasks", `{"Title":"x"}`, http.StatusBadRequest},
+		{"status with capitals", http.MethodPatch, "/api/tasks/id-1/status", `{"Status":"done"}`, http.StatusBadRequest},
+		// JSON is UTF-8 (RFC 8259, section 8.1); encoding/json alone would read the byte as U+FFFD.
+		{"not UTF-8", http.MethodPost, "/api/tasks", "{\"title\":\"\xff\"}", http.StatusBadRequest},
+		{"status not a string", http.MethodPatch, "/api/tasks/id-1/status", `{"status":7}`, http.StatusBadRequest},
 	}
 
 	for _, tt := range tests {
@@ -144,5 +150,64 @@ func TestRequestsAreValidatedAtTheBoundary(t *testing.T) {
 				t.Fatalf("status = %d %s, want %d", status, body, tt.want)
 			}
 		})
+	}
+}
+
+// A 405 must say what the path does allow (RFC 9110, section 15.5.6), HEAD wherever GET is.
+func TestAWrongMethodNamesTheMethodsThePathAllows(t *testing.T) {
+	t.Parallel()
+
+	server := newServer(t)
+
+	tests := []struct{ method, path, allow string }{
+		{http.MethodPost, "/healthz", "GET, HEAD"},
+		{http.MethodDelete, "/api/tasks", "GET, HEAD, POST"},
+		{http.MethodPut, "/api/tasks/id-1", "GET, HEAD"},
+		{http.MethodGet, "/api/tasks/id-1/status", "PATCH"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequestWithContext(t.Context(), tt.method, server.URL+tt.path, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res, err := server.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = res.Body.Close()
+			if res.StatusCode != http.StatusMethodNotAllowed || res.Header.Get("Allow") != tt.allow {
+				t.Fatalf("%d with Allow %q, want 405 with %q", res.StatusCode, res.Header.Get("Allow"), tt.allow)
+			}
+		})
+	}
+}
+
+// Every task service writes a time in UTC to the millisecond, whatever the clock's precision and zone:
+// encoding/json alone writes nanoseconds and drops trailing zeros, so a whole second has no fraction.
+func TestTimesAreUTCToTheMillisecond(t *testing.T) {
+	t.Parallel()
+
+	for _, at := range []time.Time{
+		time.Date(2026, 1, 2, 3, 4, 5, 678901234, time.FixedZone("CET", 3600)),
+		time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	} {
+		tasks := usecase.NewTasks(memory.NewTaskRepository(), func() time.Time { return at }, func() string { return "id-1" })
+		server := httptest.NewServer(httpapi.NewRouter(tasks, slog.New(slog.DiscardHandler)))
+		t.Cleanup(server.Close)
+
+		_, body := do(t, server, http.MethodPost, "/api/tasks", `{"title":"x"}`)
+
+		var task struct{ CreatedAt, UpdatedAt string }
+		if err := json.Unmarshal([]byte(body), &task); err != nil {
+			t.Fatal(err)
+		}
+		want := at.UTC().Format("2006-01-02T15:04:05.000Z")
+		if task.CreatedAt != want || task.UpdatedAt != want {
+			t.Fatalf("createdAt %q, updatedAt %q, want %q", task.CreatedAt, task.UpdatedAt, want)
+		}
 	}
 }

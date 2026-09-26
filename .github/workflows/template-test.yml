@@ -1,7 +1,7 @@
 # Template-only: init deletes this workflow.
 #
 # The template is only as good as what it generates, so this generates a project from every preset
-# and runs that project's own setup, verify and actionlint. A marker in the wrong place, a feature that silently
+# and runs that project's own setup and verify, which lints its workflows too. A marker in the wrong place, a feature that silently
 # depends on another, or a workflow that stops parsing once a block is removed fails here, before
 # anyone creates a repository from it.
 name: template-test
@@ -75,18 +75,13 @@ jobs:
         id: needs
         run: |
           node scripts/modules.mjs toolchains --github-output
-          echo "uv=$(node scripts/tools.mjs version uv)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: steps.needs.outputs.go == 'true'
         with:
           go-version-file: ${{ steps.needs.outputs.go-version-file }}
           cache: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        if: steps.needs.outputs.python == 'true'
-        with:
-          version: ${{ steps.needs.outputs.uv }}
       # Every pinned tool the project's checks run, as a contributor installs them: the chassis's
-      # (actionlint, zizmor) and its toolchains' (golangci-lint with Go). verify fails in CI on a check
+      # (actionlint, zizmor) and its toolchains' (golangci-lint with Go, uv with Python). verify fails in CI on a check
       # it would skip for want of one, so a tool missing here would fail the preset, not pass it unchecked.
       - name: The pinned tools this project runs
         run: node scripts/tools.mjs install --local
@@ -95,5 +90,3 @@ jobs:
         run: |
           node scripts/setup.mjs
           node scripts/verify.mjs
-          actionlint -color
-          zizmor --offline .

@@ -5,7 +5,7 @@
 1. For a large or structural change, open an issue first and agree on the approach there. A pull request is a poor place to discover that the design was not wanted.
 2. Branch from `main`.
 3. Make the change, with a test for any behaviour it adds or fixes.
-4. Run `node scripts/verify.mjs`. It runs each module's checks as CI does, so red here means red there; the workflow, image and security checks run on the pull request.
+4. Run `node scripts/verify.mjs`. It runs each module's checks as CI does, so red here means red there, and lints the workflows with the pinned tools (`node scripts/tools.mjs install --local`); the image builds, the online workflow audit and the security scans run on the pull request.
 5. Open a pull request whose **title** follows [Conventional Commits](https://www.conventionalcommits.org/): `feat: add task search`, `fix(tasks): reject empty titles`. Pull requests are squash-merged, so the title becomes the commit message on `main`.
 <!-- ultra:begin release -->
 6. The title's type sets the next version: `fix` makes a patch release, `feat` a minor release, and `!` or a `BREAKING CHANGE:` footer a major release.

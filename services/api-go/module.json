@@ -14,7 +14,7 @@
     },
     { "name": "golangci-lint", "run": ["golangci-lint", "run"], "tool": "golangci-lint" }
   ],
-  "coverage": { "run": [["go", "test", "-race", "-coverprofile=coverage/coverage.out", "./..."]], "report": "coverage/coverage.out" },
+  "coverage": { "run": [["go", "test", "-coverprofile=coverage/coverage.out", "./..."]], "report": "coverage/coverage.out" },
   "taskApi": {
     "build": ["go", "build", "-o", "{scratch}/api{exe}", "./cmd/api"],
     "run": ["{scratch}/api{exe}"]

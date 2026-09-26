@@ -1,9 +1,10 @@
 {
   "name": "ultra-template",
-  // A general base image; each toolchain is a Dev Container Feature at the version its own file
-  // declares (.node-version, go.mod, .python-version), which check-hygiene rule 17 holds them to.
-  // Dependabot's devcontainers updater keeps the features themselves current.
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  // A general base image, pinned by digest in the Dockerfile; each toolchain is a Dev Container Feature
+  // at the version its own file declares (.node-version, go.mod, .python-version), which check-hygiene
+  // rule 17 holds them to. Dependabot's devcontainers updater keeps the features themselves current,
+  // and its docker updater the base image's digest.
+  "build": { "dockerfile": "Dockerfile" },
   "features": {
     // ultra:begin go-service
     // The go feature always installs golangci-lint, so it is told the version scripts/tools/tools.json pins.

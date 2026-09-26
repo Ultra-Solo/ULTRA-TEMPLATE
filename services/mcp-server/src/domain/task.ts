@@ -3,7 +3,7 @@
  * from outside this directory — not even a validation library, which is why `parseTask` is written
  * out. scripts/check-boundaries.mjs fails the build otherwise.
  *
- * The status rules are the same rules api-go and api-ts enforce. They are repeated here rather than
+ * The status rules are the same rules every task service enforces. They are repeated here rather than
  * imported across modules ([ADR-0004](../../../../docs/adr/0004-independent-modules.md)) so this
  * service can be deleted, or kept alone, without touching anything else. What they buy: a tool can
  * tell a model which moves are legal instead of letting it discover a 409 by trying.
@@ -50,9 +50,16 @@ export function parseStatus(value: unknown): Status {
   throw new DomainError("UNKNOWN_STATUS", `status must be one of ${STATUSES.join(", ")}`);
 }
 
+/**
+ * The Unicode property a title is trimmed of at both ends (scripts/rules/task-rules.json), as every task
+ * service trims it. Not String.prototype.trim, which keeps U+0085 and takes U+FEFF.
+ */
+export const TITLE_WHITESPACE = "White_Space";
+const TITLE_EDGES = new RegExp(`^\\p{${TITLE_WHITESPACE}}+|\\p{${TITLE_WHITESPACE}}+$`, "gu");
+
 /** Refuses a title the API would refuse, so a bad one costs no request and gets a usable message. */
 export function validateTitle(title: string): string {
-  const trimmed = title.trim();
+  const trimmed = title.replace(TITLE_EDGES, "");
   if (trimmed === "") throw new DomainError("EMPTY_TITLE", "title must not be empty");
   // Counted in code points, not UTF-16 units, so the limit means the same as in api-go.
   if ([...trimmed].length > MAX_TITLE_LENGTH) {

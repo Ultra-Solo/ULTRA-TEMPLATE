@@ -89,3 +89,10 @@ test("a response is validated before anything reads it", () => {
     "MALFORMED_TASK",
   );
 });
+
+test("a title is trimmed of the Unicode White_Space property, as the task services trim it", () => {
+  // Built from code points: a formatter writes these escapes back as the invisible characters themselves.
+  const [nel, bom] = [0x85, 0xfeff].map((cp) => String.fromCodePoint(cp));
+  assert.equal(validateTitle(`${nel}a${nel}`), "a");
+  assert.equal(validateTitle(`a${bom}`), `a${bom}`);
+});

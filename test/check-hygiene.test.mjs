@@ -13,6 +13,8 @@ import {
   checkGate,
   checkModules,
   checkPins,
+  checkActionPins,
+  checkDevcontainerImage,
   checkRepoHygiene,
   checkVersions,
   checkWorkflow,
@@ -345,6 +347,23 @@ test("a module present without its CI job or its Dependabot entry fails; wiring 
   assert.deepEqual(checkModules(module, untouched), []);
 });
 
+test("rule 13 in the other direction: a verify.yml job for a module that is not here fails", () => {
+  const api = nodeModule("ts-service");
+  const job = (id) => `  ${id}:\n    timeout-minutes: 15\n    steps:\n      - uses: actions/checkout@${SHA}\n      - uses: ./.github/actions/module\n        with:\n          id: ${id}\n`;
+  const files = {
+    "services/api-ts/module.json": api.manifest,
+    "services/api-ts/package.json": api.pkg,
+    ".github/workflows/verify.yml": `jobs:\n  chassis:\n    timeout-minutes: 5\n${job("ts-service")}${job("go-service")}`,
+  };
+  const tracked = ["services/api-ts/module.json", "services/api-ts/package.json", "services/api-ts/package-lock.json", ".github/workflows/verify.yml"];
+  const found = checkModules(tracked, (path) => files[path]).join("\n");
+  assert.match(found, /`verify\.yml` job `go-service` runs module `go-service`, which no module\.json here declares/);
+  assert.doesNotMatch(found, /job `ts-service`/, "a job for a module that is here is fine");
+  // A manifest that fails validation still declares its id: it is reported once, for what is wrong with it.
+  const broken = { ...files, "services/api-ts/module.json": JSON.stringify({ id: "ts-service", toolchain: "cobol" }) };
+  assert.doesNotMatch(checkModules(tracked, (path) => broken[path]).join("\n"), /job `ts-service` runs module/);
+});
+
 test("jobIds lists the jobs of a two-space workflow and nothing nested below them", () => {
   const text = ["on: push", "jobs:", "  a:", "    steps:", "      - run: x", "  b-c:", "    needs:", "      - a", "other: 1", "  d:"].join("\n");
   assert.deepEqual(jobIds(text), ["a", "b-c"]);
@@ -564,4 +583,57 @@ test("rule 17's readers: versions, PEP 440 ranges, TOML tables and JSON with com
 test("rule 17 runs over the whole repository", (t) => {
   const root = fixture(t, { ".node-version": "26\n", "package.json": JSON.stringify({ engines: { node: ">=24" } }) });
   assert.match(failures(root), /`package\.json` requires Node `>=24`, but `\.node-version` declares Node 26/);
+});
+
+test("rule 16: an action that would install a pinned tool outside its pin fails, wherever it is pinned", () => {
+  const tools = { uv: { version: "0.12.18", actions: ["astral-sh/setup-uv"] }, zizmor: { version: "1.0.0" } };
+  const workflow = [
+    "steps:",
+    "  - uses: astral-sh/setup-uv@0000000000000000000000000000000000000000 # v10.1.0",
+    "  - uses: Astral-SH/setup-uv/sub@0000000000000000000000000000000000000000 # v10.1.0",
+    "  # - uses: astral-sh/setup-uv@0000000000000000000000000000000000000000 # v10.1.0",
+    "  - uses: astral-sh/other@0000000000000000000000000000000000000000 # v1.0.0",
+    "  - uses: ./.github/actions/tool",
+  ].join("\n");
+  const found = checkPins("ci.yml", workflow, tools);
+  assert.deepEqual(found.map((f) => f.split(" ")[0]), ["ci.yml:2", "ci.yml:3"]);
+  assert.match(found[0], /installs uv outside its pin in scripts\/tools\/tools\.json/);
+  assert.deepEqual(checkPins("ci.yml", workflow), [], "with no manifest, no action is a tool's");
+});
+
+// Rule 19: one SHA per action, and every directory holding an action is one Dependabot updates.
+const SHA_A = "a".repeat(40);
+const SHA_B = "b".repeat(40);
+const ACTIONS_ENTRY = (dirs) => `version: 2\nupdates:\n  - package-ecosystem: github-actions\n    directories: [${dirs.map((d) => `"${d}"`).join(", ")}]\n  - package-ecosystem: npm\n    directory: /.github/actions/tool\n`;
+
+test("rule 19: an action pinned at two SHAs fails, naming both places; sub-paths of one action are one action", () => {
+  const files = {
+    ".github/workflows/a.yml": `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n  - uses: github/codeql-action/init@${SHA_A} # v4\n`,
+    ".github/workflows/b.yml": `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n  - uses: github/codeql-action/analyze@${SHA_A} # v4\n`,
+    ".github/actions/tool/action.yml": `runs:\n  steps:\n    - uses: Actions/Checkout@${SHA_B} # v7.0.0\n`,
+  };
+  const found = checkActionPins(files, ACTIONS_ENTRY(["/", "/.github/actions/tool"]));
+  assert.equal(found.length, 1, found.join("\n"));
+  assert.match(found[0], /actions\/checkout is pinned at 2 SHAs/);
+  assert.match(found[0], /\.github\/workflows\/a\.yml:2/);
+  assert.match(found[0], /\.github\/actions\/tool\/action\.yml:3/);
+});
+
+test("rule 19: a directory holding an action that Dependabot's github-actions entry does not list fails", () => {
+  const files = { ".github/workflows/a.yml": "on: push\n", ".github/actions/tool/action.yml": "runs:\n", ".github/actions/module/action.yml": "runs:\n" };
+  const found = checkActionPins(files, ACTIONS_ENTRY(["/", "/.github/actions/module"]));
+  assert.equal(found.length, 1, found.join("\n"));
+  assert.match(found[0], /does not list `\/\.github\/actions\/tool`/, "another ecosystem's entry for the directory does not count");
+  assert.match(checkActionPins(files, "version: 2\nupdates:\n  - package-ecosystem: github-actions\n    directory: /\n").join("\n"), /\/\.github\/actions\/module/);
+  assert.match(checkActionPins(files, "version: 2\nupdates: []\n").join("\n"), /has no github-actions entry/);
+  assert.deepEqual(checkActionPins(files, null), [], "a project without Dependabot has nothing to keep in step");
+});
+
+test("rule 14: a Dev Container image named by tag alone fails, and one with a digest or a Dockerfile passes", () => {
+  const digest = `@sha256:${"a".repeat(64)}`;
+  const found = checkDevcontainerImage(".devcontainer/devcontainer.json", '{\n  // a comment\n  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04"\n}');
+  assert.equal(found.length, 1);
+  assert.match(found[0], /^\.devcontainer\/devcontainer\.json:3 names image `mcr\.microsoft\.com\/devcontainers\/base:ubuntu-24\.04` by tag alone/);
+  assert.deepEqual(checkDevcontainerImage("d.json", `{ "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04${digest}" }`), []);
+  assert.deepEqual(checkDevcontainerImage("d.json", '{ "build": { "dockerfile": "Dockerfile" } }'), []);
 });

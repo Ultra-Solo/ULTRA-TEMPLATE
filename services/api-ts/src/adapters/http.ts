@@ -19,7 +19,7 @@ export type Log = (entry: Record<string, unknown>) => void;
 
 /**
  * The HTTP transport: decode the request, call a use case, map the outcome to a response. It holds
- * no business rules, and the API it serves matches api-go's route for route.
+ * no business rules, and the API it serves matches every other task service's route for route.
  */
 export function createHandler(service: TaskService, log: Log) {
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -45,7 +45,7 @@ async function route(service: TaskService, req: IncomingMessage, res: ServerResp
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
 
   if (path === "/healthz") {
-    return method === "GET" ? send(res, 200, { status: "ok" }) : notAllowed(res);
+    return method === "GET" ? send(res, 200, { status: "ok" }) : notAllowed(res, "GET, HEAD");
   }
   if (path === "/api/tasks") {
     if (method === "GET") return send(res, 200, await service.list());
@@ -53,18 +53,18 @@ async function route(service: TaskService, req: IncomingMessage, res: ServerResp
       const body = await readObject(req, ["title"]);
       return send(res, 201, await service.create(optionalString(body, "title")));
     }
-    return notAllowed(res);
+    return notAllowed(res, "GET, HEAD, POST");
   }
 
   const match = /^\/api\/tasks\/([^/]+)(\/status)?$/.exec(path);
   if (match?.[1] === undefined) return send(res, 404, { error: "not found" });
   const id = decodeSegment(match[1]);
   if (match[2] === undefined) {
-    return method === "GET" ? send(res, 200, await service.get(id)) : notAllowed(res);
+    return method === "GET" ? send(res, 200, await service.get(id)) : notAllowed(res, "GET, HEAD");
   }
-  if (method !== "PATCH") return notAllowed(res);
+  if (method !== "PATCH") return notAllowed(res, "PATCH");
   const body = await readObject(req, ["status"]);
-  return send(res, 200, await service.transition(id, parseStatus(body["status"])));
+  return send(res, 200, await service.transition(id, parseStatus(optionalString(body, "status"))));
 }
 
 /** Reads a size-bounded JSON object and refuses fields the endpoint does not document. */
@@ -81,7 +81,9 @@ async function readObject(req: IncomingMessage, allowed: readonly string[]): Pro
   if (size > MAX_BODY_BYTES) throw invalid;
   let body: unknown;
   try {
-    body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    // JSON is UTF-8 (RFC 8259, section 8.1). `fatal` refuses a bad byte that toString would read as
+    // U+FFFD, and `ignoreBOM` keeps a byte-order mark in the text, where JSON.parse refuses it.
+    body = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(Buffer.concat(chunks)));
   } catch {
     throw invalid;
   }
@@ -106,7 +108,9 @@ function decodeSegment(segment: string): string {
   }
 }
 
-function notAllowed(res: ServerResponse): void {
+/** A 405 names what the path does allow, HEAD wherever GET is, as HTTP requires of it. */
+function notAllowed(res: ServerResponse, allow: string): void {
+  res.setHeader("allow", allow);
   send(res, 405, { error: "method not allowed" });
 }
 

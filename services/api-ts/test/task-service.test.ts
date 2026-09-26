@@ -19,6 +19,10 @@ function setup() {
     },
     get: (id) => store.get(id),
     list: () => store.list(),
+    replace: (task: Task, prev: Task) => {
+      saves++;
+      return store.replace(task, prev);
+    },
   };
   const service = new TaskService({ repository, clock: { now: () => NOW }, ids: { next: () => "id-1" } });
   return { service, store, saves: () => saves };
@@ -60,4 +64,40 @@ test("the memory repository keeps insertion order when a task is replaced", asyn
     (await store.list()).map((t) => t.title),
     ["first, renamed", "second"],
   );
+});
+
+test("of two moves at once, exactly one is made, and the other is judged against the task it left", async () => {
+  const store = new MemoryTaskRepository();
+  // While gated, both moves read the task before either writes, as two requests interleave at each await.
+  let gated = false;
+  let waiting = 0;
+  let release: () => void = () => {};
+  const bothRead = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const racing: TaskRepository = {
+    save: (task) => store.save(task),
+    list: () => store.list(),
+    replace: (task, prev) => store.replace(task, prev),
+    get: async (id) => {
+      const task = await store.get(id);
+      if (gated) {
+        waiting++;
+        if (waiting === 2) release();
+        await bothRead;
+      }
+      return task;
+    },
+  };
+  const service = new TaskService({ repository: racing, clock: { now: () => NOW }, ids: { next: () => "id-1" } });
+  await service.create("ship it");
+  await service.transition("id-1", "in_progress");
+  gated = true;
+  const moves = [service.transition("id-1", "done"), service.transition("id-1", "done")];
+  await bothRead;
+  gated = false;
+  const outcomes = await Promise.allSettled(moves);
+  assert.equal(outcomes.filter((o) => o.status === "fulfilled").length, 1, JSON.stringify(outcomes));
+  const refused = outcomes.find((o) => o.status === "rejected");
+  assert.ok(refused?.status === "rejected" && isCode("INVALID_TRANSITION")(refused.reason));
 });

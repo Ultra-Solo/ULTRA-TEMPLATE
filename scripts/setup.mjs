@@ -14,7 +14,9 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { checkNodeVersion, ModuleError, presentModules, ROOT, run, TOOLCHAINS } from "./modules.mjs";
+import { checkNodeVersion, ModuleError, presentModules, ROOT, run, TOOLCHAINS, withToolsBin } from "./modules.mjs";
+
+process.env.PATH = withToolsBin(process.env.PATH);
 
 // Installing under another Node major than CI's gives a working tree that verifies differently.
 const wrongNode = checkNodeVersion();

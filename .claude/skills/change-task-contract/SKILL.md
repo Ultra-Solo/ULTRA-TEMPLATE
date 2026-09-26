@@ -1,6 +1,6 @@
 ---
 name: change-task-contract
-description: Change a task rule (a status, a legal move, the longest title), a limit, a configuration variable or a route of the task API in every module at once. Use when a task changes what the task services accept or answer, or what the modules that repeat the rules hold of them.
+description: Change a task rule (a status, a legal move, the longest title, the whitespace a title is trimmed of), a limit, a configuration variable or a route of the task API in every module at once. Use when a task changes what the task services accept or answer, or what the modules that repeat the rules hold of them.
 ---
 
 # Change the task contract
@@ -9,14 +9,17 @@ Every fact below is stated once and held everywhere else by a check, so the orde
 first, then the check that fails, then each module until it passes. Never change one module alone.
 
 1. **State the change once.**
-   - A status, a legal move or the longest title: `scripts/rules/task-rules.json`.
+   - A status, a legal move, the longest title or the whitespace a title is trimmed of: `scripts/rules/task-rules.json`.
 <!-- ultra:begin go-service|ts-service|py-service|mcp-server|web -->
    - A limit (body size, request id), a configuration variable (its default, the values it must take or
      refuse), the startup and refusal lines, a route or a status code: `scripts/contract/tasks-api.json`.
      A case refers to a limit or rule as `{ "ref": "limits.maxBodyBytes", "plus": 1 }`; never write the
      number. Test a bound at its value and one past it.
    - A route, a field or a status code also goes in `scripts/contract/openapi.json`, which is held to the
-     cases in both directions.
+     cases in both directions, and every JSON answer is held to the schema it gives for its status.
+   - A body whose bytes matter is written as `bodyHex`; a title built from the rules' whitespace as
+     `{ "whitespace": "rules.titleWhitespace", "around": "a" }`; a race as `concurrent`, with the status
+     exactly one copy gets and `othersStatus` for the rest ([ADR-0018](../../../docs/adr/0018-every-task-service-reads-and-answers-alike.md)).
 <!-- ultra:end go-service|ts-service|py-service|mcp-server|web -->
 2. **See it fail.** That is the change reproduced.
 <!-- ultra:begin go-service|ts-service|py-service -->

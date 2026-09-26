@@ -1,47 +1,62 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { createTask, listTasks, moveTask } from "../api.ts";
-import { LABELS, MAX_TITLE_LENGTH, nextStatuses, type Status, type Task } from "../model.ts";
+import { LABELS, nextStatuses, type Status, type Task } from "../model.ts";
 
 export function TaskBoard() {
   const [tasks, setTasks] = useState<readonly Task[]>([]);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  // Read and set in the same event, where state would still hold the previous render's value: a second
+  // submit before the first re-renders must see the first.
+  const busy = useRef(false);
+  // Each load is numbered, and only the newest may set the list: an older answer that arrives late
+  // would show the board as it was before a move.
+  const latest = useRef(0);
 
-  function run(action: () => Promise<void>): void {
-    setError(null);
-    action().catch((err: unknown) => setError(message(err)));
-  }
-
-  async function refresh(): Promise<void> {
-    setTasks(await listTasks());
-  }
-
-  // The first load depends on nothing that changes between renders, so it runs once. An answer that
-  // arrives after the board is gone is dropped rather than set on an unmounted component.
-  useEffect(() => {
-    let current = true;
-    listTasks()
-      .then((loaded) => current && setTasks(loaded))
-      .catch((err: unknown) => current && setError(message(err)));
-    return () => {
-      current = false;
-    };
+  const reload = useCallback(async (): Promise<void> => {
+    const load = ++latest.current;
+    try {
+      const loaded = await listTasks();
+      if (load === latest.current) setTasks(loaded);
+    } catch (err: unknown) {
+      if (load === latest.current) setError(message(err));
+    }
   }, []);
+
+  useEffect(() => {
+    void reload();
+    // A load still out when the board goes is no longer the newest, so its answer is dropped.
+    return () => {
+      latest.current++;
+    };
+  }, [reload]);
+
+  /** One change at a time; the list is reloaded after it whether it worked or not, since either way it may be out of date. */
+  function change(action: () => Promise<void>): void {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(true);
+    setError(null);
+    action()
+      .catch((err: unknown) => setError(message(err)))
+      .finally(() => {
+        busy.current = false;
+        setPending(false);
+        void reload();
+      });
+  }
 
   function create(event: FormEvent): void {
     event.preventDefault();
-    run(async () => {
+    change(async () => {
       await createTask(title);
       setTitle("");
-      await refresh();
     });
   }
 
   function move(task: Task, status: Status): void {
-    run(async () => {
-      await moveTask(task.id, status);
-      await refresh();
-    });
+    change(() => moveTask(task.id, status));
   }
 
   return (
@@ -49,14 +64,16 @@ export function TaskBoard() {
       <form onSubmit={create}>
         <input
           aria-label="Task title"
-          // The browser counts UTF-16 units and the API code points, so this can only refuse early,
-          // never let through a title the API would refuse.
-          maxLength={MAX_TITLE_LENGTH}
+          disabled={pending}
+          // No maxLength: the browser counts UTF-16 units, so it would refuse a title of astral characters
+          // the API takes. The API checks the length and the board shows its reason.
           onChange={(event) => setTitle(event.target.value)}
           placeholder="What needs doing?"
           value={title}
         />
-        <button type="submit">Add</button>
+        <button disabled={pending} type="submit">
+          Add
+        </button>
       </form>
       {error !== null && <p role="alert">{error}</p>}
       <ul>
@@ -65,7 +82,7 @@ export function TaskBoard() {
             <span>{task.title}</span>
             <em>{LABELS[task.status]}</em>
             {nextStatuses(task.status).map((status) => (
-              <button key={status} onClick={() => move(task, status)} type="button">
+              <button disabled={pending} key={status} onClick={() => move(task, status)} type="button">
                 {LABELS[status]}
               </button>
             ))}

@@ -3,7 +3,7 @@
   "info": {
     "title": "Task API",
     "version": "1.0.0",
-    "description": "The task API every task service in this repository serves. It is held to the contract cases beside it, scripts/contract/tasks-api.json, and to the task rules in scripts/rules/task-rules.json, by checkSpec in scripts/check-contract.mjs: every response documented here is exercised by a case, every case on a documented operation answers with a status documented here, and the schemas state the same fields, statuses and title length. A method a path does not list is answered 405, and a path not listed here 404, both with an Error body. Every response carries the RequestId header, and every request is logged once as one JSON line; the contract check reads both."
+    "description": "The task API every task service in this repository serves. It is held to the contract cases beside it, scripts/contract/tasks-api.json, and to the task rules in scripts/rules/task-rules.json, by checkSpec in scripts/check-contract.mjs: every response documented here is exercised by a case, every case on a documented operation answers with a status documented here, and the schemas state the same fields, statuses and title length. A method a path does not list is answered 405 with an Allow header naming the methods it does list (HEAD wherever GET is), and a path not listed here 404, both with an Error body. Every response carries the RequestId header, and every request is logged once as one JSON line; the contract check reads both."
   },
   "paths": {
     "/healthz": {
@@ -73,7 +73,7 @@
       }
     },
     "responses": {
-      "BadRequest": { "description": "The body is not one JSON object of the documented fields, or is over the size limit", "x-maxBodyBytes": 1048576, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "BadRequest": { "description": "The body is not one UTF-8 JSON object of the documented fields, spelled exactly and of the documented types, or is over the size limit", "x-maxBodyBytes": 1048576, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
       "NotFound": { "description": "No task has this id", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
     },
     "schemas": {
@@ -90,23 +90,24 @@
           "id": { "type": "string" },
           "title": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Trimmed; the length is counted in characters (code points), not bytes" },
           "status": { "$ref": "#/components/schemas/Status" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "createdAt": { "$ref": "#/components/schemas/Timestamp" },
+          "updatedAt": { "$ref": "#/components/schemas/Timestamp" }
         },
         "additionalProperties": false
       },
       "Status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+      "Timestamp": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$", "description": "UTC, to the millisecond, as every task service writes it" },
       "CreateTask": {
         "type": "object",
         "properties": {
-          "title": { "type": ["string", "null"], "maxLength": 200, "description": "Trimmed before it is checked; a missing or null title reads as empty, and is refused with 422" }
+          "title": { "type": ["string", "null"], "maxLength": 200, "description": "Trimmed before it is checked; a missing or null title reads as empty, and is refused with 422, and a value that is not a string with 400" }
         },
         "additionalProperties": false
       },
       "MoveTask": {
         "type": "object",
         "properties": {
-          "status": { "description": "One of the statuses; anything else, null or a missing status is refused with 422" }
+          "status": { "type": ["string", "null"], "description": "One of the statuses; any other string, null or a missing status is refused with 422, and a value that is not a string with 400" }
         },
         "additionalProperties": false
       },

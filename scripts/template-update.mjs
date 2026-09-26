@@ -11,6 +11,7 @@
  * merge conflict, for a person to resolve.
  *
  *   node scripts/template-update.mjs --to vX.Y.Z              # apply, then review with git diff
+ *   node scripts/template-update.mjs --to latest              # the newest release
  *   node scripts/template-update.mjs --to vX.Y.Z --dry-run    # list what would change
  *   node scripts/template-update.mjs --add web                 # take a feature, at the current release
  *   node scripts/template-update.mjs --remove py-service       # give one up
@@ -19,9 +20,11 @@
  * and change the selection by the same means: the "after" side is generated with the new selection.
  * The new selection is recorded in CHANGELOG.md beside the release, where the next update reads it.
  *
- * Needs git, network access to the template repository, and a clean working tree. Owner and repository
- * are read from the `origin` remote; --owner and --repo override them, and --template points at another
- * copy of the template (a path or URL).
+ * Needs git, network access to the template repository, and a clean working tree; it works on the
+ * repository it is run in, from any directory of it. The name is read from package.json and owner and
+ * repository from the `origin` remote; --name, --owner and --repo override them, and --template points at
+ * another copy of the template (a path or URL). Each release's tag is printed with the commit it names
+ * before that release's init runs, since that init is code this runs.
  *
  * Exit 0 applied cleanly or nothing to do · 1 applied with conflicts · 2 cannot run.
  */
@@ -106,16 +109,31 @@ function commitTree(repo, from, message) {
   return git(repo, ["rev-parse", "HEAD"]).trim();
 }
 
-export function update({ project, to, add = [], remove = [], dryRun = false, template, owner, repo, log = console.log }) {
+/** The highest release tag at `source`, a path or URL. */
+function latestRelease(source) {
+  let listed;
+  try {
+    listed = execFileSync("git", ["ls-remote", "--tags", "--refs", source], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (err) {
+    throw new UpdateError(`cannot list the releases of ${source}: ${firstLine(err)}`);
+  }
+  const tags = listed.split("\n").map((line) => line.split("refs/tags/")[1]).filter((tag) => VERSION.test(tag ?? ""));
+  if (tags.length === 0) throw new UpdateError(`${source} has no release tag such as v1.10.0.`);
+  return tags.reduce((best, tag) => (compareVersions(tag, best) > 0 ? tag : best));
+}
+
+export function update({ project, to, add = [], remove = [], dryRun = false, template, owner, repo, name, log = console.log }) {
   const changesSelection = add.length > 0 || remove.length > 0;
   if (to === undefined && !changesSelection) throw new UpdateError("Nothing to do: pass --to with a release, or --add or --remove with features.");
-  if (to !== undefined && !VERSION.test(to)) throw new UpdateError(`--to must be a release tag such as v1.10.0, got "${to}".`);
+  if (to !== undefined && to !== "latest" && !VERSION.test(to)) throw new UpdateError(`--to must be a release tag such as v1.10.0, or latest, got "${to}".`);
   if (git(project, ["status", "--porcelain"]).trim() !== "") throw new UpdateError("The working tree has uncommitted changes. Commit or stash them first, so the update can be reviewed and undone on its own.");
 
   const changelogPath = join(project, "CHANGELOG.md");
   if (!existsSync(changelogPath)) throw new UpdateError("CHANGELOG.md is missing; it records which template release this project came from.");
   const changelog = readFileSync(changelogPath, "utf8");
   const origin = readOrigin(changelog);
+  const source = template ?? `${origin.url}.git`;
+  if (to === "latest") to = latestRelease(source);
   // Without --to, a selection change happens at the release the project is already on.
   to ??= origin.version;
   for (const id of add) if (origin.features.includes(id)) throw new UpdateError(`${id} is already one of this project's features: ${origin.features.join(", ")}.`);
@@ -131,7 +149,7 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
   }
 
   const packageJson = join(project, "package.json");
-  const name = existsSync(packageJson) ? JSON.parse(readFileSync(packageJson, "utf8")).name : undefined;
+  name ??= existsSync(packageJson) ? JSON.parse(readFileSync(packageJson, "utf8")).name : undefined;
   let fromRemote = null;
   try {
     fromRemote = remoteIdentity(git(project, ["remote", "get-url", "origin"]));
@@ -140,12 +158,11 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
   }
   const identity = { name, owner: owner ?? fromRemote?.owner, repo: repo ?? fromRemote?.repo };
   if (!identity.name || !identity.owner || !identity.repo) {
-    throw new UpdateError("Cannot tell this project's name, owner and repository. The name comes from package.json; pass --owner and --repo when there is no GitHub origin remote.");
+    throw new UpdateError("Cannot tell this project's name, owner and repository. The name comes from package.json, and owner and repository from a GitHub origin remote; pass --name, --owner or --repo for what is missing.");
   }
 
   const work = mkdtempSync(join(tmpdir(), "template-update-"));
   try {
-    const source = template ?? `${origin.url}.git`;
     log(`template-update: ${origin.version} → ${to} from ${source}, features: ${origin.features.join(", ") || "none"}`);
     try {
       git(work, ["clone", "--quiet", "--no-checkout", source, "template"]);
@@ -155,11 +172,14 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     const clone = join(work, "template");
     const versions = [...new Set([origin.version, to])];
     for (const version of versions) {
+      let sha;
       try {
-        git(clone, ["rev-parse", "--verify", "--quiet", `refs/tags/${version}^{commit}`]);
+        sha = git(clone, ["rev-parse", "--verify", "--quiet", `refs/tags/${version}^{commit}`]).trim();
       } catch {
         throw new UpdateError(`There is no release ${version} in ${source}.`);
       }
+      // Its init runs next: say exactly which code that is.
+      log(`template-update: ${version} is commit ${sha}`);
     }
     // Feature ids are the target release's to define: a feature added later exists only from then on.
     const manifestAt = (version) => JSON.parse(git(clone, ["show", `${version}:template/features.json`]));
@@ -191,14 +211,18 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     const parsed = entries.map((e) => [e.slice(0, e.indexOf("\t")), e.slice(e.indexOf("\t") + 1)]);
     const skipped = parsed.filter(([kind, path]) => kind !== "A" && !existsSync(join(project, path))).map(([, path]) => path);
     scope = [...scope, ...skipped.map((path) => `:(exclude)${path}`)];
-    const files = parsed.filter(([, path]) => !skipped.includes(path)).map(([kind, path]) => `${kind} ${path}`);
+    let files = parsed.filter(([, path]) => !skipped.includes(path)).map(([kind, path]) => `${kind} ${path}`);
     if (skipped.length > 0) log(`template-update: skipped ${skipped.length} file(s) this project removed: ${skipped.join(", ")}`);
 
     // git apply --3way cannot merge a deletion with an edit, or an addition with a file already there:
     // it stops with the rest of the patch half applied. So both are refused, by path, before anything is.
     const generated = (path) => readFileSync(join(work, "gen-before", path));
     const edited = parsed.filter(([kind, path]) => kind === "D" && existsSync(join(project, path)) && !readFileSync(join(project, path)).equals(generated(path)));
-    const occupied = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)));
+    // A file the project already has exactly as the release adds it needs nothing, and is left out of the patch.
+    const same = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)) && readFileSync(join(project, path)).equals(readFileSync(join(work, "gen-after", path))));
+    const occupied = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)) && !same.some(([, p]) => p === path));
+    scope = [...scope, ...same.map(([, path]) => `:(exclude)${path}`)];
+    files = files.filter((line) => !same.some(([, path]) => line === `A ${path}`));
     // A file of the project's own inside a feature being removed would be left behind in a directory the
     // feature no longer owns, so it is named as well rather than kept or deleted silently.
     const removedPaths = remove.flatMap((id) => manifestAt(origin.version).features[id]?.paths ?? []);
@@ -220,7 +244,7 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     if (files.length === 0) {
       log(`template-update: nothing in ${to} changes a file this project has.`);
       if (!dryRun) writeFileSync(changelogPath, record());
-      return { status: dryRun ? "dry-run" : "applied", conflicts: [], changed: [], skipped, features };
+      return { status: dryRun ? "dry-run" : "applied", conflicts: [], changed: [], skipped, features, to };
     }
     if (dryRun) {
       log(`template-update: ${files.length} file(s) would change:\n  ${files.join("\n  ")}`);
@@ -249,7 +273,7 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     writeFileSync(changelogPath, record());
     log(`template-update: ${files.length} file(s) changed.${conflicts.length ? ` Resolve ${conflicts.length} conflict(s): ${conflicts.join(", ")}` : ""}`);
     log("Next: git diff to review, node scripts/setup.mjs, node scripts/verify.mjs, then commit.");
-    return { status: "applied", conflicts, changed: files, skipped, features };
+    return { status: "applied", conflicts, changed: files, skipped, features, to };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -265,12 +289,15 @@ function main() {
       template: { type: "string" },
       owner: { type: "string" },
       repo: { type: "string" },
+      name: { type: "string" },
     },
   });
   const ids = (list) => (list ?? "").split(",").map((id) => id.trim()).filter(Boolean);
   try {
+    // The repository this runs in, from wherever in it: its CHANGELOG and package.json are at the root.
+    const project = git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
     const result = update({
-      project: process.cwd(),
+      project,
       to: values.to,
       add: ids(values.add),
       remove: ids(values.remove),
@@ -278,6 +305,7 @@ function main() {
       template: values.template,
       owner: values.owner,
       repo: values.repo,
+      name: values.name,
     });
     return result.conflicts?.length ? 1 : 0;
   } catch (err) {

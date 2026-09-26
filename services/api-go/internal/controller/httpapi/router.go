@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hynix666/ultra-template/services/api-go/internal/entity"
 )
@@ -40,9 +41,15 @@ func NewRouter(tasks TaskService, log *slog.Logger) http.Handler {
 
 	// Left to itself the mux answers a wrong method or an unknown path in plain text, while every
 	// other error this API returns is JSON. A pattern with a method wins over the same pattern
-	// without one, so these catch only what the routes above do not.
-	for _, path := range []string{"/healthz", "/api/tasks", "/api/tasks/{id}", "/api/tasks/{id}/status"} {
-		mux.HandleFunc(path, methodNotAllowed)
+	// without one, so these catch only what the routes above do not. Each names what its path allows,
+	// HEAD wherever GET is, as a 405 must; a new route adds its method here too.
+	for path, allow := range map[string]string{
+		"/healthz":               "GET, HEAD",
+		"/api/tasks":             "GET, HEAD, POST",
+		"/api/tasks/{id}":        "GET, HEAD",
+		"/api/tasks/{id}/status": "PATCH",
+	} {
+		mux.HandleFunc(path, methodNotAllowed(allow))
 	}
 	mux.HandleFunc("/", notFound)
 
@@ -55,11 +62,19 @@ type handler struct {
 }
 
 type taskResponse struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// timeLayout is how every task service writes a time: UTC, to the millisecond, with a Z. encoding/json
+// alone would write the clock's zone and nanoseconds, and drop the fraction of a whole second.
+const timeLayout = "2006-01-02T15:04:05.000Z"
+
+func formatTime(t time.Time) string {
+	return t.UTC().Format(timeLayout)
 }
 
 type errorResponse struct {
@@ -71,8 +86,8 @@ func toResponse(task entity.Task) taskResponse {
 		ID:        task.ID,
 		Title:     task.Title,
 		Status:    string(task.Status),
-		CreatedAt: task.CreatedAt,
-		UpdatedAt: task.UpdatedAt,
+		CreatedAt: formatTime(task.CreatedAt),
+		UpdatedAt: formatTime(task.UpdatedAt),
 	}
 }
 
@@ -154,7 +169,7 @@ func (h handler) transition(w http.ResponseWriter, r *http.Request) {
 
 // errNotOneObject rejects bodies that are valid JSON but not exactly one object: `null`, which decodes
 // into a struct without error, and anything after the object, which a Decoder never reads. api-ts
-// refuses both, and the two services must answer alike.
+// and api-py refuse both, and every task service must answer alike.
 var errNotOneObject = errors.New("request body must be exactly one JSON object")
 
 // decode reads a size-bounded JSON object, rejecting unknown fields, and writes the error response
@@ -174,9 +189,17 @@ func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
+// errNotUTF8 rejects a body that is not UTF-8, which JSON must be (RFC 8259, section 8.1): encoding/json
+// alone would read each bad byte as U+FFFD and store a title nobody sent.
+var errNotUTF8 = errors.New("request body must be UTF-8")
+
 func decodeObject(raw []byte, dst any) error {
 	if trimmed := bytes.TrimSpace(raw); len(trimmed) == 0 || trimmed[0] != '{' {
 		return errNotOneObject
+	}
+
+	if !utf8.Valid(raw) {
+		return errNotUTF8
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -188,6 +211,34 @@ func decodeObject(raw []byte, dst any) error {
 
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
 		return errNotOneObject
+	}
+
+	return exactFieldNames(raw, dst)
+}
+
+// exactFieldNames refuses a field whose name matches one of dst's only when case is ignored, as
+// encoding/json matches them: "Title" is not "title" in any other task service. It learns dst's names by
+// encoding it, so a request struct's fields must not be omitempty, or an empty one would go unlisted.
+func exactFieldNames(raw []byte, dst any) error {
+	var sent map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &sent); err != nil {
+		return fmt.Errorf("decode request body: %w", err)
+	}
+
+	encoded, err := json.Marshal(dst)
+	if err != nil {
+		return fmt.Errorf("encode request fields: %w", err)
+	}
+
+	var known map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &known); err != nil {
+		return fmt.Errorf("decode request fields: %w", err)
+	}
+
+	for name := range sent {
+		if _, ok := known[name]; !ok {
+			return fmt.Errorf("unknown field %q", name)
+		}
 	}
 
 	return nil
@@ -209,8 +260,11 @@ func (h handler) fail(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
-func methodNotAllowed(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method not allowed"})
+func methodNotAllowed(allow string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", allow)
+		writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method not allowed"})
+	}
 }
 
 func notFound(w http.ResponseWriter, _ *http.Request) {

@@ -92,6 +92,17 @@ test("verify runs a client's end-to-end check when a task service is present", a
   }
 });
 
+test("the tools this checkout installs come first on PATH for everything verify and setup start", async () => {
+  const { delimiter } = await import("node:path");
+  const { withToolsBin } = await import("../scripts/modules.mjs");
+  const bin = "/repo/.tools/bin";
+  assert.equal(withToolsBin(`/usr/bin${delimiter}/bin`, bin, () => true), `${bin}${delimiter}/usr/bin${delimiter}/bin`);
+  assert.equal(withToolsBin("/usr/bin", bin, () => false), "/usr/bin", "nothing installed, nothing added");
+  assert.equal(withToolsBin(`${bin}${delimiter}/usr/bin`, bin, () => true), `${bin}${delimiter}/usr/bin`, "already first");
+  assert.equal(withToolsBin(`/usr/bin${delimiter}${bin}`, bin, () => true), `${bin}${delimiter}/usr/bin`, "moved first, not listed twice");
+  assert.equal(withToolsBin(undefined, bin, () => true), bin);
+});
+
 test("a declared skip is a failure in GitHub Actions, where the module's job has what it needs", async () => {
   const { skipOutcome } = await import("../scripts/modules.mjs");
   assert.equal(skipOutcome({}), "skipped");
@@ -118,4 +129,36 @@ test("a module's CI job sets up and installs what its checks and its end-to-end 
   assert.equal(needs(client, [go, ts, client]).modules, "client ts", "a partner on its own toolchain first");
   assert.equal(needs(client, [go, client]).toolchains, "node,go", "and the partner's toolchain when it is another");
   assert.equal(needs(client, [client]).modules, "client");
+});
+
+test("verify holds a module check's pinned tool to its pin, running the check only at that version", async (t) => {
+  const { spawnSync } = await import("node:child_process");
+  const { chmodSync, cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { delimiter, join } = await import("node:path");
+  const { ROOT } = await import("../scripts/modules.mjs");
+  if (process.platform === "win32") return t.skip("the fake tool is a shell script");
+  const dir = mkdtempSync(join(tmpdir(), "verify-tool-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  cpSync(join(ROOT, "scripts"), join(dir, "scripts"), { recursive: true });
+  writeFileSync(join(dir, "scripts/tools/tools.json"), JSON.stringify({ tools: { faketool: { version: "1.0.0", for: "node", versionCommand: ["faketool", "--version"] } } }));
+  mkdirSync(join(dir, "mod/node_modules"), { recursive: true });
+  writeFileSync(join(dir, "mod/module.json"), JSON.stringify({ id: "mod", toolchain: "node", checks: [{ name: "fake", run: ["faketool", "run"], tool: "faketool" }] }));
+  const bin = join(dir, "bin");
+  mkdirSync(bin);
+  const verify = (version) => {
+    writeFileSync(join(bin, "faketool"), `#!/bin/sh\n[ "$1" = --version ] && echo faketool ${version}\nexit 0\n`);
+    chmodSync(join(bin, "faketool"), 0o755);
+    return spawnSync(process.execPath, ["scripts/verify.mjs", "--no-chassis"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, GITHUB_ACTIONS: "", PATH: [bin, ...(process.env.PATH ?? "").split(delimiter)].join(delimiter) },
+    });
+  };
+  const pinned = verify("1.0.0");
+  assert.equal(pinned.status, 0, pinned.stderr + pinned.stdout);
+  assert.match(pinned.stdout, /✔ mod: fake/);
+  const other = verify("0.9.0");
+  assert.equal(other.status, 1, other.stderr);
+  assert.match(other.stdout, /✘ mod: fake {2}\(faketool 0\.9\.0 is on PATH, but scripts\/tools\/tools\.json pins 1\.0\.0/);
 });

@@ -9,7 +9,7 @@ import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { createServer } from "../src/adapters/mcp.ts";
 import { GatewayError } from "../src/application/ports.ts";
 import type { TaskGateway } from "../src/application/ports.ts";
-import { nextStatuses, STATUSES } from "../src/domain/task.ts";
+import { MAX_TITLE_LENGTH, nextStatuses, STATUSES } from "../src/domain/task.ts";
 import { fakeGateway, task } from "./fake-gateway.ts";
 
 const VERSION = "1.2.3-test";
@@ -168,4 +168,12 @@ test("the descriptions state the rules as the domain does: every legal move, and
   const legal = STATUSES.flatMap((from) => nextStatuses(from).map((to) => `${from} → ${to}`)).sort();
   assert.deepEqual(named, legal);
   assert.match(tools.find((tool) => tool.name === "create_task")?.description ?? "", new RegExp(`starts in the ${STATUSES[0]} status`));
+});
+
+test("the longest title is taken in any script, however many UTF-16 units it is", async (t) => {
+  const client = await connect(t, fakeGateway());
+  // 200 astral characters are 400 UTF-16 units, where a schema's maxLength counts; the rules count code points.
+  const longest = "🙂".repeat(MAX_TITLE_LENGTH);
+  const created = await client.callTool({ name: "create_task", arguments: { title: ` ${longest} ` } });
+  assert.equal(failed(created), false, said(created));
 });

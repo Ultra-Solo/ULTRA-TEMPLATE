@@ -3,7 +3,7 @@
   "toolchain": "node",
   "checks": [{ "name": "npm run verify", "run": ["npm", "run", "verify"] }],
   "coverage": { "run": [["npm", "run", "--silent", "coverage"]], "report": "coverage/lcov.info" },
-  "facts": { "run": ["npm", "run", "--silent", "facts"], "keys": ["statuses", "transitions", "maxTitleLength", "apiDefaultPort"] },
+  "facts": { "run": ["npm", "run", "--silent", "facts"], "keys": ["statuses", "transitions", "maxTitleLength", "titleWhitespace", "apiDefaultPort"] },
   "e2e": { "run": ["npm", "run", "--silent", "e2e", "--", "{taskApi}"] },
   "image": { "run": ["npm", "run", "--silent", "probe", "--", "{version}", "--", "docker", "run", "--rm", "-i", "{image}"] }
 }

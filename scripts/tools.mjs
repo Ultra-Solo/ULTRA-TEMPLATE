@@ -66,6 +66,9 @@ export function validateTools(tools) {
       const covered = Object.keys(tool.platforms ?? {}).every((key) => key in (tools[helper].platforms ?? {}));
       if (tools[helper].for !== tool.for || !covered) say(`\`uses\` ${helper}, which this manifest pins, so it needs \`for\` "${tool.for}" and an asset for every platform ${name} has`);
     }
+    if ("actions" in tool && (!Array.isArray(tool.actions) || !tool.actions.every((a) => typeof a === "string" && /^[\w.-]+\/[\w.-]+$/.test(a)))) {
+      say("`actions` lists the OWNER/REPO of each setup action that would install this tool outside its pin");
+    }
     for (const [feature, option] of Object.entries(tool.devcontainer ?? {})) {
       if (typeof option !== "string" || option === "") say(`\`devcontainer.${feature}\` names the Dev Container feature option that sets this tool's version`);
     }
@@ -155,6 +158,46 @@ export function helperProblems(tool, { tools = loadTools(), found = (name) => in
 /** `names`, each followed by the commands its check `uses` that this manifest pins: a tool is installed with what CI runs it with. */
 export const withHelpers = (names, tools = loadTools()) => [...new Set(names.flatMap((name) => [name, ...(tools[name]?.uses ?? []).filter((helper) => helper in tools)]))];
 
+/**
+ * What verify does about each chassis tool with a `check`: run it, or record why not. A tool, or a pinned
+ * helper, at another version than its pin fails rather than passing by rules CI does not apply. A missing
+ * tool is recorded as `missing` (the caller's skip outcome, which fails in CI) when this platform has an
+ * asset to install, and as a named skip when it has none, since nothing here could install it.
+ */
+export function chassisToolPlan(tools, { found = (name) => installedVersion(name, tools), on = platform(), missing = "skipped", helpers = (tool) => helperProblems(tool, { tools }) } = {}) {
+  const plan = [];
+  for (const [name, tool] of Object.entries(tools)) {
+    if (tool.for !== "chassis" || !tool.check) continue;
+    const label = `chassis: ${name}`;
+    const version = found(name);
+    if (version === null) {
+      plan.push(
+        tool.platforms?.[on]
+          ? { name: label, status: missing, note: "not on PATH; node scripts/tools.mjs install --local installs it" }
+          : { name: label, status: "skipped", note: `no pinned asset for ${on} in scripts/tools/tools.json, so nothing here can install it` },
+      );
+      continue;
+    }
+    const wrong = versionProblem(name, version, tools);
+    if (wrong) {
+      plan.push({ name: label, status: "fail", note: wrong });
+      continue;
+    }
+    const problems = helpers(tool);
+    if (!problems.some((problem) => problem.wrong)) plan.push({ name: label, run: tool.check });
+    for (const problem of problems) {
+      const fix = problem.helper in tools ? `, and node scripts/tools.mjs install ${name} installs ${problem.helper} here` : "";
+      const where = missing === "fail" ? "this CI job must run them" : `CI runs them${fix}`;
+      plan.push(
+        problem.missing
+          ? { name: `${label} with ${problem.helper}`, status: missing, note: `${problem.helper} is not on PATH, so ${name} ran without the rules that need it; ${where}` }
+          : { name: `${label} with ${problem.helper}`, status: "fail", note: problem.wrong },
+      );
+    }
+  }
+  return plan;
+}
+
 /** The version a tool on PATH reports, or null when it is not on PATH. Reads the first X.Y.Z it prints. */
 export function installedVersion(name, tools = loadTools()) {
   const tool = need(tools, name);
@@ -236,7 +279,7 @@ export async function latest(name, { tools = loadTools(), fetch = globalThis.fet
 }
 
 /** The SHA-256 a release publishes for one asset, from where the manifest says the release publishes it. */
-async function publishedChecksum(tool, asset, { fetch, token }) {
+export async function publishedChecksum(tool, asset, { fetch = globalThis.fetch, token } = {}) {
   const url = fill(asset.url, tool);
   const file = basename(new URL(url).pathname);
   const text = async (address) => {

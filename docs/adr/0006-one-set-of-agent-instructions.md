@@ -1,6 +1,6 @@
 # ADR-0006: Keep one set of agent instructions, and point every assistant at it
 
-**Status:** Accepted · **Date:** 2026-09-17
+**Status:** Accepted · Amended by [ADR-0009](0009-where-agent-adapters-and-skills-live.md) · **Date:** 2026-09-17
 
 ## Context
 

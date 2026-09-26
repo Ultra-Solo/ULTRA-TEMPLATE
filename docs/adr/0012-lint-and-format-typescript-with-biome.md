@@ -1,6 +1,6 @@
 # ADR-0012: Lint and format the Node modules with Biome
 
-**Status:** Accepted · **Date:** 2026-09-24
+**Status:** Accepted · Amended by [ADR-0013](0013-declare-each-fact-once.md) · **Date:** 2026-09-24
 
 ## Context
 

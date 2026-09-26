@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
-import { checkDocs, frontmatter, hookProblems, IMPORT_TEXT, indexStatus, linksTo, markdownLinks, MAX_POINTER_LINES, MAX_SKILL_DESCRIPTION, recordStatus } from "../scripts/check-docs.mjs";
+import { checkDocs, frontmatter, hookProblems, IMPORT_TEXT, indexStatus, linksTo, markdownLinks, MAX_POINTER_LINES, MAX_SKILL_DESCRIPTION, recordStatus, statusRelations } from "../scripts/check-docs.mjs";
 
 const skill = (name, description = "When to use it.") => `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
 
@@ -100,23 +100,26 @@ test("the ADR index states each record's status as its record does", (t) => {
   const record = (status) => `# A decision\n\n**Status:** ${status} · **Date:** 2026-01-01\n`;
   const index = (...rows) => ["# Decisions", "", "| ADR | Decision | Status |", "|---|---|---|", ...rows, ""].join("\n");
   const first = "| [0001](0001-first.md) | First | Accepted |";
-  const second = (status, row, link = "[0002](0002-second.md)") => ({
+  const second = (status, row, link = "[0002](0002-second.md)", [firstStatus, firstRow] = ["Accepted", "Accepted"]) => ({
+    "docs/adr/0001-first.md": record(firstStatus),
     "docs/adr/0002-second.md": record(status),
-    "docs/adr/README.md": index(first, `| ${link} | Second | ${row} |`),
+    "docs/adr/README.md": index(`| [0001](0001-first.md) | First | ${firstRow} |`, `| ${link} | Second | ${row} |`),
   });
-  // Each way a record writes its status passes when its row says the same in the index's short form.
-  for (const [status, row] of [
+  // Each way a record writes its status passes when its row says the same in the index's short form
+  // (and, for rule 12, when the record it amends says so back).
+  const amended = ["Accepted · Amended by [ADR-0002](0002-second.md)", "Accepted, amended by 0002"];
+  for (const [status, row, back] of [
     ["Accepted", "Accepted"],
-    ["Accepted · Amends [ADR-0001](0001-first.md)", "Accepted, amends 0001"],
-    ["Accepted, amends [ADR-0001](0001-first.md)", "Accepted, amends 0001"],
+    ["Accepted · Amends [ADR-0001](0001-first.md)", "Accepted, amends 0001", amended],
+    ["Accepted, amends [ADR-0001](0001-first.md)", "Accepted, amends 0001", amended],
   ]) {
-    const result = checkDocs(fixture(t, second(status, row)));
+    const result = checkDocs(fixture(t, second(status, row, undefined, back)));
     assert.equal(result.ok, true, `${status}: ${result.failures?.join("\n")}`);
   }
   const superseded = {
     "docs/adr/0001-first.md": record("Superseded by [ADR-0002](0002-second.md)"),
-    "docs/adr/0002-second.md": record("Accepted"),
-    "docs/adr/README.md": index("| [0001](0001-first.md) | First | Superseded by 0002 |", "| [0002](0002-second.md) | Second | Accepted |"),
+    "docs/adr/0002-second.md": record("Accepted · Supersedes [ADR-0001](0001-first.md)"),
+    "docs/adr/README.md": index("| [0001](0001-first.md) | First | Superseded by 0002 |", "| [0002](0002-second.md) | Second | Accepted, supersedes 0001 |"),
   };
   assert.equal(checkDocs(fixture(t, superseded)).ok, true, "a superseded record's row names what superseded it");
 
@@ -128,6 +131,48 @@ test("the ADR index states each record's status as its record does", (t) => {
   assert.match(failures(t, { ...second("Accepted", "Accepted"), "docs/adr/0002-second.md": "# Second\n" }), /`docs\/adr\/0002-second\.md` has no `\*\*Status:\*\*` line/);
   assert.match(failures(t, second("Accepted", "Accepted", "[0003](0002-second.md)")), /links `0002-second\.md` as 0003/);
   assert.match(failures(t, second("Accepted · Amends [ADR-0003](0001-first.md)", "Accepted, amends 0003")), /status names ADR-0003 but links `0001-first\.md`/);
+});
+
+test("rule 12: a record another amends or supersedes says so, and the other says it back", (t) => {
+  const record = (status) => `# A decision\n\n**Status:** ${status} · **Date:** 2026-01-01\n`;
+  const pair = (first, second) => ({
+    "docs/adr/0001-first.md": record(first),
+    "docs/adr/0002-second.md": record(second),
+    "docs/adr/README.md": ["# Decisions", "", "| ADR | Decision | Status |", "|---|---|---|", `| [0001](0001-first.md) | First | ${indexStatus(first)} |`, `| [0002](0002-second.md) | Second | ${indexStatus(second)} |`, ""].join("\n"),
+  });
+  for (const [first, second] of [
+    ["Accepted · Amended by [ADR-0002](0002-second.md)", "Accepted · Amends [ADR-0001](0001-first.md)"],
+    ["Superseded by [ADR-0002](0002-second.md)", "Accepted · Supersedes [ADR-0001](0001-first.md)"],
+  ]) {
+    const result = checkDocs(fixture(t, pair(first, second)));
+    assert.equal(result.ok, true, `${first} / ${second}: ${result.failures?.join("\n")}`);
+  }
+  assert.match(
+    failures(t, pair("Accepted", "Accepted · Amends [ADR-0001](0001-first.md)")),
+    /`docs\/adr\/0001-first\.md` must say "Amended by \[ADR-0002\]\(0002-second\.md\)" on its status line: ADR-0002 says it amends ADR-0001/,
+  );
+  assert.match(
+    failures(t, pair("Accepted · Amended by [ADR-0002](0002-second.md)", "Accepted")),
+    /`docs\/adr\/0002-second\.md` must say "Amends \[ADR-0001\]\(0001-first\.md\)" on its status line: ADR-0001 says it is amended by ADR-0002/,
+  );
+  assert.match(failures(t, pair("Superseded by [ADR-0002](0002-second.md)", "Accepted")), /must say "Supersedes \[ADR-0001\]\(0001-first\.md\)"/);
+  assert.match(
+    failures(t, pair("Accepted · Amends [ADR-0002](0002-second.md)", "Accepted · Amended by [ADR-0001](0001-first.md)")),
+    /`docs\/adr\/0001-first\.md` says it amends ADR-0002, a later record: a record amends or supersedes only the records before it/,
+  );
+  assert.match(failures(t, pair("Accepted", "Accepted · Amends [ADR-0009](0009-gone.md)")), /`docs\/adr\/0002-second\.md` says it amends ADR-0009, which is not a record here/);
+});
+
+test("a status names the records it amends or supersedes, and the ones that amend or supersede it", () => {
+  assert.deepEqual(statusRelations("Accepted"), { amends: [], supersedes: [], "amended by": [], "superseded by": [] });
+  assert.deepEqual(statusRelations("Accepted · Amends [ADR-0005](a.md), [ADR-0007](b.md) and [ADR-0008](c.md) · Amended by [ADR-0013](d.md)"), {
+    amends: ["0005", "0007", "0008"],
+    supersedes: [],
+    "amended by": ["0013"],
+    "superseded by": [],
+  });
+  assert.deepEqual(statusRelations("Accepted, amends [ADR-0004](a.md) and [ADR-0010](b.md)").amends, ["0004", "0010"]);
+  assert.deepEqual(statusRelations("Superseded by [ADR-0017](0017-a.md)")["superseded by"], ["0017"]);
 });
 
 test("a record's status is read from its status line and written short, as the index writes it", () => {

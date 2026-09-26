@@ -1,5 +1,5 @@
 {
-  "$comment": "Every tool this repository runs at a version it pins by hand, because Dependabot cannot see it: one place for the version, the release it comes from and, for a downloaded binary, the SHA-256 taken from that release. scripts/tools.mjs installs, runs and bumps them from here, the workflows and the agent environment read them from here, and check-hygiene rule 16 fails on a pin written anywhere else. `for` says where a tool is needed: `chassis` everywhere, a toolchain name wherever a module of that toolchain is present, and `ci` only in CI. `check` is how scripts/verify.mjs runs a chassis tool when it is installed, and `uses` lists the commands that check runs when they are on PATH and quietly goes without otherwise: verify reports each one missing as skipped by name and holds one pinned here to its pin, and installing the tool installs it. `devcontainer` names the Dev Container feature option that installs a tool, which check-hygiene rule 17 holds to the version here. docs/toolchain-updates.md says how to move one.",
+  "$comment": "Every tool this repository runs at a version it pins by hand, because Dependabot cannot see it: one place for the version, the release it comes from and, for a downloaded binary, the SHA-256 taken from that release. scripts/tools.mjs installs, runs and bumps them from here, the workflows and the agent environment read them from here, and check-hygiene rule 16 fails on a pin written anywhere else. `for` says where a tool is needed: `chassis` everywhere, a toolchain name wherever a module of that toolchain is present, and `ci` only in CI. `check` is how scripts/verify.mjs runs a chassis tool when it is installed, `actions` lists the setup actions that would install a tool outside its pin, which check-hygiene rule 16 fails in a workflow, and `uses` lists the commands that check runs when they are on PATH and quietly goes without otherwise: verify reports each one missing as skipped by name and holds one pinned here to its pin, and installing the tool installs it. `devcontainer` names the Dev Container feature option that installs a tool, which check-hygiene rule 17 holds to the version here. docs/toolchain-updates.md says how to move one.",
   "tools": {
     "actionlint": {
       "version": "1.7.12",
@@ -95,6 +95,20 @@
           "files": [
             "zizmor"
           ]
+        },
+        "linux-arm64": {
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-unknown-linux-gnu.tar.gz",
+          "sha256": "7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540",
+          "files": [
+            "zizmor"
+          ]
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-apple-darwin.tar.gz",
+          "sha256": "e28d22b087f9ebb8d99da6e740d348c930f559961c7c3f12badda54f882195a2",
+          "files": [
+            "zizmor"
+          ]
         }
       },
       "checksums": {
@@ -113,6 +127,9 @@
     "golangci-lint": {
       "version": "2.13.2",
       "for": "go",
+      "actions": [
+        "golangci/golangci-lint-action"
+      ],
       "releases": {
         "github": "golangci/golangci-lint"
       },
@@ -153,6 +170,9 @@
     "uv": {
       "version": "0.12.18",
       "for": "python",
+      "actions": [
+        "astral-sh/setup-uv"
+      ],
       "releases": {
         "github": "astral-sh/uv",
         "tag": "{version}"
@@ -194,6 +214,9 @@
     "gitleaks": {
       "version": "8.30.1",
       "for": "ci",
+      "actions": [
+        "gitleaks/gitleaks-action"
+      ],
       "releases": {
         "github": "gitleaks/gitleaks"
       },
@@ -213,6 +236,10 @@
     "trivy": {
       "version": "0.74.0",
       "for": "ci",
+      "actions": [
+        "aquasecurity/trivy-action",
+        "aquasecurity/setup-trivy"
+      ],
       "releases": {
         "github": "aquasecurity/trivy"
       },

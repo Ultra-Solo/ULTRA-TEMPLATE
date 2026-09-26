@@ -111,10 +111,19 @@ export function resolveSelection(manifest, { preset, features }) {
   return new Set(ids);
 }
 
-export function validateIdentity({ name, owner, repo }) {
+/**
+ * `nameFrom` is the repository name `name` was derived from, when no --name was given: a name that does
+ * not fit is then the repository's, and the message says so rather than blaming a flag nobody passed.
+ */
+export function validateIdentity({ name, owner, repo }, { nameFrom } = {}) {
   const problems = [];
+  const rule = "2-64 characters of lowercase letters, digits and hyphens, starting with a letter";
   if (name === undefined || !NAME_RE.test(name)) {
-    problems.push("--name must be 2-64 characters of lowercase letters, digits and hyphens, starting with a letter.");
+    problems.push(
+      nameFrom === undefined
+        ? `--name must be ${rule}.`
+        : `The project name ${JSON.stringify(name)}, made from the repository name ${JSON.stringify(nameFrom)}, must be ${rule}; pass --name to name the project yourself.`,
+    );
   }
   if (owner === undefined || !OWNER_RE.test(owner)) {
     problems.push("--owner must be a GitHub user or organization name.");
@@ -429,6 +438,7 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   const origin = originDefaults(manifest, readOrigin(root));
   values.owner ??= origin?.owner;
   values.repo ??= origin?.repo;
+  const nameFrom = values.name === undefined ? values.repo : undefined;
   values.name ??= values.repo === undefined ? undefined : toProjectName(values.repo);
 
   const interactive = process.stdin.isTTY && process.stdout.isTTY &&
@@ -436,7 +446,7 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   const confirm = interactive ? await ask(manifest, values) : null;
 
   const selected = resolveSelection(manifest, values);
-  const identity = validateIdentity(values);
+  const identity = validateIdentity(values, { nameFrom });
   const description = values.description === undefined
     ? { sentence: describeProject(manifest, selected), generated: true }
     : { sentence: validateDescription(values.description), generated: false };

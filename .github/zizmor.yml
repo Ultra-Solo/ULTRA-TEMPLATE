@@ -1,11 +1,7 @@
-# zizmor configuration: the `zizmor` job in verify.yml reads it. Every audit runs except the two below;
+# zizmor configuration: the `zizmor` job in verify.yml reads it. Every audit runs except the one below;
 # disabling one is a decision, so each says why.
 rules:
-  # Dependabot proposes a new version as soon as it is published, by choice: no cooldown delays routine
-  # updates. Security updates are unaffected either way.
-  dependabot-cooldown:
-    disable: true
   # GitHub's `uses: $/...` form for local actions and workflows (July 2026) is newer than the pinned
-  # actionlint (1.7.12, March 2026), so `./` stays. Revisit when an actionlint release supports `$/`.
+  # actionlint (scripts/tools/tools.json), so `./` stays. Revisit when an actionlint release supports `$/`.
   self-repository:
     disable: true

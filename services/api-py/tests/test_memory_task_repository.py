@@ -14,7 +14,8 @@ SHARED: list[Task] = []
 
 
 class BrokenRepository:
-    """A store with the mistakes a new adapter makes: newest first, and one list every instance shares."""
+    """A store with the mistakes a new adapter makes: newest first, one list every instance shares, and a
+    replace that does not check the task is still the one the caller read."""
 
     def save(self, task: Task) -> None:
         SHARED.insert(0, task)
@@ -25,8 +26,18 @@ class BrokenRepository:
     def list(self) -> tuple[Task, ...]:
         return tuple(SHARED)
 
+    def replace(self, task: Task, _prev: Task) -> bool:
+        SHARED.insert(0, task)
+        return True
+
 
 def test_the_suite_fails_a_broken_store_naming_each_way_it_breaks_the_contract() -> None:
     problems = "\n".join(check_task_repository(BrokenRepository))
-    for expected in ("listed oldest first", "two stores share nothing", "an empty store lists nothing"):
+    for expected in (
+        "listed oldest first",
+        "two stores share nothing",
+        "an empty store lists nothing",
+        "a replace from a task that is out of date is refused",
+        "a replace of a task never saved is refused",
+    ):
         assert expected in problems, problems

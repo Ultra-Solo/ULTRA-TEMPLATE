@@ -10,10 +10,13 @@ nextStatuses(parseStatus(response.status)); // ["todo", "done"] for "in_progress
 
 ## Check
 
+After `npm install`:
+
+<!-- generated:checks packages/ts-library -->
 ```bash
-npm install
-npm run verify   # typecheck, tests, build, and the package checks below
+npm run verify   # lint, typecheck, test, build, check:package, check:install
 ```
+<!-- /generated -->
 
 - **`tsc`** type-checks sources and tests.
 - **Tests** run the TypeScript sources directly under Node, which strips the types.

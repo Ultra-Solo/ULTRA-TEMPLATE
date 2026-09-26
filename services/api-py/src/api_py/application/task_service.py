@@ -29,7 +29,11 @@ class TaskService:
         return self.repository.list()
 
     def transition(self, task_id: str, nxt: Status) -> Task:
-        """Stores nothing when the domain refuses the move."""
-        moved = transition(self.get(task_id), nxt, self.clock.now())
-        self.repository.save(moved)
-        return moved
+        """Stores nothing when the domain refuses the move. The move replaces the task it was judged
+        against, or nothing: when another change came first it is judged again against the task as
+        that change left it."""
+        while True:
+            current = self.get(task_id)
+            moved = transition(current, nxt, self.clock.now())
+            if self.repository.replace(moved, current):
+                return moved

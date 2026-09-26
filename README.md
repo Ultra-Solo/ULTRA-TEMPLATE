@@ -10,7 +10,7 @@
 It is for anyone starting a service, a web app, a library or an MCP server who wants those checks in place from the first commit, not added after something breaks.
 
 - **One gate.** `node scripts/verify.mjs` runs every module's checks as CI does, and CI reports a single required check, `verify`.
-- **A pinned supply chain the build enforces.** Actions pinned to commit SHAs, checksum-verified downloads, digest-pinned images, and npm installs that run no dependency's install scripts, with every package's registry signature verified. Every hand-pinned tool is written once, with its checksum, and every copy of a toolchain version is held to the file that declares it. A weekly report names the hand-pinned tools that have a newer release, and the published MCP image carries a build provenance attestation.
+- **A pinned supply chain the build enforces.** Actions pinned to commit SHAs, checksum-verified downloads, digest-pinned images, and npm installs that run no dependency's install scripts, with every package's registry signature verified. Every hand-pinned tool is written once, with its checksum, and every copy of a toolchain version is held to the file that declares it. Every platform's pinned checksum is compared with its release on each change to a pin, a weekly report names the hand-pinned tools that have a newer release, the commits each change adds are scanned for secrets before it can merge, and the published MCP image carries a build provenance attestation.
 - **Repository hygiene checks.** A tracked `.env`, a vendored `node_modules`, a truncated `.gitignore`, a file over 4 MB, a module missing its lockfile, a CI job left out of the gate, an invisible character hiding text from reviewers, or a path into someone's home directory each fail the build.
 - **Clean Architecture services whose layer rules are tests**, in Go, TypeScript and Python — the same structure proved in three toolchains, with nothing below the composition root reading the clock, randomness or the environment, one storage suite a replacement store must pass, and the same API proved by one contract every service is started and checked against: every move between statuses, every limit at its bound, every configuration value it must take or refuse, a request id and one log line per request, and an OpenAPI description held to the same cases.
 - **One statement of the rules.** The statuses and legal moves are written once, and every module that repeats them, the MCP server, the web app and the library included, is checked against that statement.
@@ -164,7 +164,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 
 ## Continuous integration
 
-- **`verify.yml`** — on every pull request, every push to `main`, and in a merge queue: repository hygiene, chassis tests on Linux and on Windows, actionlint, a security audit of the workflows with [zizmor](https://docs.zizmor.sh), the agent environment run from the oldest Node it supports, and one job per module, which runs what the module's `module.json` names through the same `verify.mjs` a contributor runs — its checks, the API contract, its facts, its end-to-end check — then writes its test coverage to the job summary, reported and never gated, and starts its container image and holds it to the contract's defaults and clean shutdown. All of them feed the aggregate **`verify`** job, the only required check ([ADR-0002](docs/adr/0002-one-required-check.md), [ADR-0011](docs/adr/0011-what-local-verify-guarantees.md), [ADR-0014](docs/adr/0014-modules-describe-themselves.md)).
+- **`verify.yml`** — on every pull request, every push to `main`, and in a merge queue: repository hygiene, chassis tests on Linux and on Windows, the pinned actionlint and zizmor run through `verify.mjs`, zizmor's online audit of the workflows ([zizmor](https://docs.zizmor.sh)), a blocking gitleaks scan of the commits the change adds, the agent environment run from the oldest Node it supports, and one job per module, which runs what the module's `module.json` names through the same `verify.mjs` a contributor runs — its checks, the API contract, its facts, its end-to-end check — then writes its test coverage to the job summary, reported and never gated, and starts its container image and holds it to the contract's defaults and clean shutdown. All of them feed the aggregate **`verify`** job, the only required check ([ADR-0002](docs/adr/0002-one-required-check.md), [ADR-0011](docs/adr/0011-what-local-verify-guarantees.md), [ADR-0014](docs/adr/0014-modules-describe-themselves.md)).
 - **`pr-title.yml`** — pull request titles follow Conventional Commits.
 - **`copilot-setup-steps.yml`** — the environment GitHub's Copilot coding agent prepares before it works here: every toolchain the selected features need, then `node scripts/setup.mjs`. It runs on its own only when it changes.
 - **`security.yml`** — report-only scans that fail only when a scan could not run: gitleaks over new commits and weekly over history, `npm audit` for every npm lockfile, and a Trivy scan of every container image the repository builds, for fixable high and critical vulnerabilities in its operating-system and language packages.
@@ -174,7 +174,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 <!-- ultra:begin py-service -->
 - **`security.yml`, Python** — pip-audit over the Python service's lockfile.
 <!-- ultra:end py-service -->
-- **`pins.yml`** — weekly, report-only: which tools pinned by hand in `scripts/tools/tools.json` have a newer release. It never moves a pin; [docs/toolchain-updates.md](docs/toolchain-updates.md) says how.
+- **`pins.yml`** — weekly, report-only: which tools pinned by hand in `scripts/tools/tools.json` have a newer release. It never moves a pin; [docs/toolchain-updates.md](docs/toolchain-updates.md) says how. Its `checksums` job, weekly and on every pull request that changes a pin, fails when a pinned SHA-256, for any platform, differs from the one its release publishes.
 - **`codeql.yml`** — CodeQL analysis; enable it by setting the repository variable `CODEQL_ENABLED=true` (needs a public repository or GitHub Advanced Security).
 - **`scorecard.yml`** — [OpenSSF Scorecard](https://scorecard.dev): an outside measurement of the practices this repository claims, published and uploaded to code scanning; enable it with `SCORECARD_ENABLED=true` on a public repository. Some checks measure the project rather than the workflows, and a new or single-maintainer repository scores low on them: Code-Review and Branch-Protection while pull requests merge without a second person's review, Maintained for its first 90 days, SAST until CodeQL has run on recent pull requests, and CII-Best-Practices until the project registers for the badge.
 <!-- ultra:begin mcp-server -->
@@ -190,10 +190,10 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 - **`architecture.yml`** — publishes the architecture model to GitHub Pages once `PAGES_ENABLED=true` is set.
 <!-- ultra:end architecture -->
 <!-- ultra:begin template -->
-- **`template-test.yml`** — template only: generates a project from every preset and runs its setup, verify and actionlint.
+- **`template-test.yml`** — template only: generates a project from every preset and runs its setup and verify.
 <!-- ultra:end template -->
 
-Dependabot proposes grouped updates weekly for every ecosystem present, SHA-pinned actions included.
+Dependabot proposes grouped updates weekly for every ecosystem present, SHA-pinned actions and the local actions under `.github/actions/` included, each release seven days after it is published.
 
 ## Taking template updates
 
@@ -202,9 +202,10 @@ This project was generated from a repository template, and `CHANGELOG.md` record
 ```bash
 node scripts/template-update.mjs --to vX.Y.Z --dry-run   # what would change
 node scripts/template-update.mjs --to vX.Y.Z             # apply, then review, verify and commit
+node scripts/template-update.mjs --to latest             # the newest release
 ```
 
-Updates only move forward: a release older than the one the project is on is refused.
+Updates only move forward: a release older than the one the project is on is refused. It works on the whole repository from any directory in it, and prints each release's tag with the commit it names before running that release's code.
 
 The same script changes which features the project has, by the same means: the "after" side is generated with the new selection. Without `--to` it stays on the release the project is on; with it, the release and the selection move in one change. The new selection is recorded in `CHANGELOG.md`, where the next update reads it.
 

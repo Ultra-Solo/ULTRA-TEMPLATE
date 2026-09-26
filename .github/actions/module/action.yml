@@ -23,18 +23,13 @@ runs:
       shell: bash
       env:
         ID: ${{ inputs.id }}
-      run: |
-        node scripts/modules.mjs job "$ID" --github-output
-        echo "uv=$(node scripts/tools.mjs version uv)" >> "$GITHUB_OUTPUT"
+      run: node scripts/modules.mjs job "$ID" --github-output
     - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       if: steps.needs.outputs.go == 'true'
       with:
         go-version-file: ${{ steps.needs.outputs.go-version-file }}
         cache-dependency-path: ${{ steps.needs.outputs.go-version-file }}
-    - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-      if: steps.needs.outputs.python == 'true'
-      with:
-        version: ${{ steps.needs.outputs.uv }}
+    # uv among them for a Python module, checked against its release's checksum like every pinned tool.
     - name: The pinned tools its checks run
       shell: bash
       env:

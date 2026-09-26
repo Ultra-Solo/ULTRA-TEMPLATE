@@ -5,7 +5,8 @@
 # ignore it. A job DOES fail when its scan could not run, because a scanner that errored must not
 # read as "nothing found". Findings are written to the job summary.
 #
-# GitHub secret scanning and push protection are the blocking layer (SECURITY.md); this is the
+# The blocking layers for secrets are verify.yml's `secrets` job, which scans the commits each change
+# adds, and GitHub's secret scanning and push protection where available (SECURITY.md); this is the
 # second opinion that also reads history.
 name: security
 
@@ -124,7 +125,10 @@ jobs:
           failed=0
           for dockerfile in "${dockerfiles[@]}"; do
             dir="$(dirname "$dockerfile")"
-            image="scan-$(basename "$dir" | tr '[:upper:]' '[:lower:]'):ci"
+            # An image name takes lowercase letters, digits and separators, and cannot start with a
+            # separator: `.devcontainer` is tagged scan-devcontainer.
+            name="$(basename "$dir" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^-*//')"
+            image="scan-${name}:ci"
             if ! docker build --quiet --tag "$image" "$dir" > /dev/null; then
               echo "### image scan could not build ${dir}" | tee -a "$GITHUB_STEP_SUMMARY"
               failed=1
@@ -203,11 +207,7 @@ jobs:
         with:
           node-version-file: .node-version
       - name: The pinned uv
-        id: uv
-        run: echo "version=$(node ../../scripts/tools.mjs version uv)" >> "$GITHUB_OUTPUT"
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          version: ${{ steps.uv.outputs.version }}
+        run: node ../../scripts/tools.mjs install uv
       - name: pip-audit (report-only)
         run: |
           uv export --frozen --format requirements-txt --no-emit-project --output-file "$RUNNER_TEMP/requirements.txt" --quiet

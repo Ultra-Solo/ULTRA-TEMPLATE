@@ -1,6 +1,10 @@
 # Weekly dependency updates, grouped: one pull request per ecosystem per week rather than one per
 # package.
 #
+# Every entry waits seven days after a release before proposing it (`cooldown`): a compromised release
+# is usually found and pulled within days, and a routine update loses nothing by waiting. Security
+# updates are not delayed.
+#
 # Commit prefixes are types pr-title.yml accepts; any other prefix would open every update with a
 # failing check. Actions are pinned to commit SHAs (verify.yml says why) and Dependabot bumps the
 # SHA and its version comment together — read the upstream release before merging, because a pin
@@ -8,10 +12,14 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    # The workflows, and each local action: Dependabot reads only the directories it is given, and
+    # check-hygiene rule 19 fails one that holds an action.yml and is not listed.
+    directories: ["/", "/.github/actions/module", "/.github/actions/tool"]
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: ci
     groups:
@@ -24,6 +32,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -36,6 +46,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -52,6 +64,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -69,6 +83,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -84,6 +100,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -100,6 +118,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -115,6 +135,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -127,6 +149,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -142,6 +166,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -160,6 +186,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -177,6 +205,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -191,6 +221,18 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
   # ultra:end devcontainer

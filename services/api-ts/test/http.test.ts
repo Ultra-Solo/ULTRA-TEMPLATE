@@ -57,3 +57,31 @@ test("requests are validated at the boundary, with the same status codes as api-
     assert.equal((await call(base, method, path, body)).status, want, name);
   }
 });
+
+test("a wrong method is answered 405 with the methods the path allows, HEAD wherever GET is", async (t) => {
+  const base = await start(t);
+  const cases: [string, string, string][] = [
+    ["POST", "/healthz", "GET, HEAD"],
+    ["DELETE", "/api/tasks", "GET, HEAD, POST"],
+    ["PUT", "/api/tasks/id-1", "GET, HEAD"],
+    ["GET", "/api/tasks/id-1/status", "PATCH"],
+  ];
+  for (const [method, path, allow] of cases) {
+    const res = await fetch(base + path, { method });
+    assert.deepEqual([res.status, res.headers.get("allow")], [405, allow], `${method} ${path}`);
+  }
+});
+
+test("a body is read as UTF-8 JSON with exactly the documented field names and types", async (t) => {
+  const base = await start(t);
+  const post = (path: string, method: string, body: Uint8Array | string) => fetch(base + path, { method, body });
+  await post("/api/tasks", "POST", '{"title":"x"}');
+  const cases: [string, string, string, Uint8Array | string][] = [
+    // Invalid UTF-8 would otherwise be read as U+FFFD, a title nobody sent.
+    ["not UTF-8", "POST", "/api/tasks", Buffer.from("7b227469746c65223a22ff227d", "hex")],
+    ["a byte-order mark", "POST", "/api/tasks", Buffer.from("efbbbf7b227469746c65223a2261227d", "hex")],
+    ["a status that is not a string", "PATCH", "/api/tasks/id-1/status", '{"status":7}'],
+    ["a title spelled with capitals", "POST", "/api/tasks", '{"Title":"x"}'],
+  ];
+  for (const [name, method, path, body] of cases) assert.equal((await post(path, method, body)).status, 400, name);
+});
