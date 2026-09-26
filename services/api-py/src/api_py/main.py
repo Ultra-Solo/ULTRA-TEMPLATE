@@ -14,6 +14,7 @@ import os
 import secrets
 import signal
 import socketserver
+import sys
 import threading
 import time
 from datetime import UTC, datetime
@@ -27,10 +28,19 @@ from api_py.adapters.request_log import with_request_log
 from api_py.application.task_service import TaskService
 from api_py.config import Config, ConfigError, load_config
 
+_log_lock = threading.Lock()
+
 
 def log(entry: dict[str, object]) -> None:
-    """One JSON object per line, on stdout, with the time first, like api-go's slog handler."""
-    print(json.dumps({"time": SystemClock().now(), **entry}), flush=True)
+    """One JSON object per line, on stdout, with the time first, like api-go's slog handler.
+
+    One write per line, under a lock: print writes the text and its newline separately, so lines from
+    request threads at once interleaved into lines that were not JSON.
+    """
+    line = json.dumps({"time": SystemClock().now(), **entry}) + "\n"
+    with _log_lock:
+        sys.stdout.write(line)
+        sys.stdout.flush()
 
 
 class SystemClock:

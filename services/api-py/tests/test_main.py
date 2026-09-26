@@ -1,6 +1,10 @@
 import json
+import os
 import re
+import subprocess
+import sys
 import threading
+from pathlib import Path
 from wsgiref.simple_server import WSGIRequestHandler
 
 import pytest
@@ -41,3 +45,28 @@ def test_shutdown_waits_for_requests_in_flight_until_the_timeout_and_no_longer()
         server.server_close()
     # Daemon threads: one still blocked on a body that never arrives does not keep the process alive.
     assert ThreadingWSGIServer.daemon_threads is True
+
+
+def test_log_lines_from_threads_at_once_are_whole_lines() -> None:
+    # Through a real pipe, as the service's stdout is: pytest's captured stdout hides the interleaving.
+    script = """
+import threading
+from api_py.main import log
+
+def write():
+    for n in range(200):
+        log({"level": "info", "msg": "request", "n": n, "pad": "x" * 64})
+
+threads = [threading.Thread(target=write) for _ in range(16)]
+for thread in threads:
+    thread.start()
+for thread in threads:
+    thread.join()
+"""
+    src = str(Path(__file__).resolve().parents[1] / "src")
+    env = {**os.environ, "PYTHONPATH": src}
+    out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True, env=env).stdout  # noqa: S603 - this test's own script
+    lines = out.splitlines()
+    assert len(lines) == 16 * 200
+    for line in lines:
+        json.loads(line)
