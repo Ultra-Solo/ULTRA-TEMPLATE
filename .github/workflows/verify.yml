@@ -109,6 +109,41 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+  # No secret in the commits this change adds. It blocks, unlike the history scan in security.yml: a
+  # token committed to a public repository is harvested within minutes, and GitHub's own secret scanning
+  # blocks a push only on a public repository or with GitHub Advanced Security. A false positive goes in
+  # .gitleaksignore by fingerprint, with the reason (SECURITY.md).
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/tool
+        with:
+          names: gitleaks
+      - name: Scan this change's commits
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
+          QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="${PR_BASE}..${PR_HEAD}" ;;
+            merge_group) range="${QUEUE_BASE}..${QUEUE_HEAD}" ;;
+            # A push names what was there before it; a new branch or a manual run has no before, so
+            # the commit itself is the change.
+            *) if [[ "$BEFORE" =~ ^[0-9a-f]{40}$ && ! "$BEFORE" =~ ^0+$ ]]; then range="${BEFORE}..${SHA}"; else range="-1 ${SHA}"; fi ;;
+          esac
+          echo "Scanning ${range}"
+          gitleaks git --no-banner --redact --exit-code 1 "--log-opts=${range}" .
+
   # ultra:begin go-service
   go-service:
     runs-on: ubuntu-latest
@@ -207,6 +242,7 @@ jobs:
       - chassis-windows
       - agent-env
       - zizmor
+      - secrets
       # ultra:begin go-service
       - go-service
       # ultra:end go-service

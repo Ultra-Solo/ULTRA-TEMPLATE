@@ -5,7 +5,8 @@
 # ignore it. A job DOES fail when its scan could not run, because a scanner that errored must not
 # read as "nothing found". Findings are written to the job summary.
 #
-# GitHub secret scanning and push protection are the blocking layer (SECURITY.md); this is the
+# The blocking layers for secrets are verify.yml's `secrets` job, which scans the commits each change
+# adds, and GitHub's secret scanning and push protection where available (SECURITY.md); this is the
 # second opinion that also reads history.
 name: security
 

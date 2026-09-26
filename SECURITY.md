@@ -28,7 +28,10 @@ List every secret the project uses, what it grants, and how to rotate it:
 
 ## What guards against leaks
 
-- **GitHub secret scanning and push protection** are the blocking layer. `scripts/configure-github.mjs` enables both where the repository's plan allows.
-- **`.github/workflows/security.yml`** scans new commits with gitleaks. It is report-only, and fails only when the scan could not run.
+- **The `secrets` job in `.github/workflows/verify.yml`** runs gitleaks over the commits each pull request, merge queue entry or push adds, and fails the required check on a finding. It works on every plan, private repositories included.
+- **GitHub secret scanning and push protection** block a push before it lands, where the repository's plan allows them. `scripts/configure-github.mjs` enables both.
+- **`.github/workflows/security.yml`** scans the whole history with gitleaks each week. It is report-only, and fails only when the scan could not run.
+
+A finding that is not a secret (a test fixture shaped like a token, say) is silenced in `.gitleaksignore`, one fingerprint per line as gitleaks prints it with `--redact` off, with a `#` comment above saying why. Never silence a real secret there: revoke it, as above.
 - **`.gitignore`** keeps `.env` and `.env.*` out, and **`scripts/check-hygiene.mjs`** fails the build if one is tracked anyway.
 - **Dependabot** proposes dependency and SHA-pinned action updates every week.
