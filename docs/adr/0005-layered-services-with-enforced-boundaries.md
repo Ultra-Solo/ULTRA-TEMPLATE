@@ -1,6 +1,6 @@
 # ADR-0005: Layered services with enforced boundaries
 
-**Status:** Accepted · **Date:** 2026-09-15
+**Status:** Accepted · Amended by [ADR-0010](0010-one-statement-of-the-task-rules.md) · **Date:** 2026-09-15
 
 ## Context
 

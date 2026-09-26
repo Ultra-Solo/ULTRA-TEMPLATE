@@ -1,6 +1,6 @@
 # ADR-0014: Modules describe themselves in `module.json`
 
-**Status:** Accepted, amends [ADR-0008](0008-a-third-language-and-what-a-module-must-prove.md) and [ADR-0011](0011-what-local-verify-guarantees.md) · **Date:** 2026-09-24
+**Status:** Accepted, amends [ADR-0004](0004-independent-modules.md), [ADR-0008](0008-a-third-language-and-what-a-module-must-prove.md) and [ADR-0011](0011-what-local-verify-guarantees.md) · **Date:** 2026-09-24
 
 ## Context
 

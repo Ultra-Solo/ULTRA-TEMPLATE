@@ -29,6 +29,9 @@
  *      "Accepted · Amends [ADR-0006](…)" is "Accepted, amends 0006" — and each number it shows, in a
  *      row or a status, is the number of the record it links. The record states its status; the
  *      index's copy goes stale the day a record is amended or superseded, unless it is compared.
+ *  12. A record that a later one amends or supersedes says so on its own status line ("Amended by",
+ *      "Superseded by"), and every such pointer is answered by the later record. Records are amended,
+ *      not rewritten: without the pointer, the old record reads as current to anyone who opens it.
  *
  *   node scripts/check-docs.mjs
  *
@@ -72,6 +75,47 @@ export function indexStatus(status) {
     .replace(/\s*·\s*/g, ", ")
     .replace(/, ([A-Z])/g, (_, letter) => `, ${letter.toLowerCase()}`)
     .trim();
+}
+
+const RELATIONS = ["amends", "supersedes", "amended by", "superseded by"];
+const INVERSE = { amends: "amended by", supersedes: "superseded by", "amended by": "amends", "superseded by": "supersedes" };
+
+/** The records a status names under each relation, as their numbers: "Amends [ADR-0006](…)" gives amends ["0006"]. */
+export function statusRelations(status) {
+  const relations = Object.fromEntries(RELATIONS.map((word) => [word, []]));
+  const clause = /\b(amends|supersedes|amended by|superseded by)\s+((?:\[ADR-\d{4}\]\([^)]*\)(?:\s*,\s*|\s+and\s+)?)+)/gi;
+  for (const [, word, list] of status.matchAll(clause)) {
+    relations[word.toLowerCase()].push(...[...list.matchAll(/\[ADR-(\d{4})\]/g)].map((match) => match[1]));
+  }
+  return relations;
+}
+
+/** Rule 12: amendments and supersessions are stated at both ends, and only a later record makes one. */
+function checkAdrRelations(root, tracked, failures) {
+  const records = new Map();
+  for (const path of tracked.filter((p) => p.startsWith(`${ADR_DIR}/`) && /^\d{4}-[^/]+\.md$/.test(p.slice(ADR_DIR.length + 1)))) {
+    const file = basename(path);
+    const status = recordStatus(readFileSync(join(root, path), "utf8"));
+    if (status !== null) records.set(file.slice(0, 4), { file, relations: statusRelations(status) });
+  }
+  const says = (word, number) => `says it ${word.endsWith(" by") ? "is " : ""}${word} ADR-${number}`;
+  for (const [number, { file, relations }] of records) {
+    for (const word of RELATIONS) {
+      for (const other of relations[word]) {
+        const target = records.get(other);
+        if (target === undefined) {
+          failures.push(`\`${ADR_DIR}/${file}\` ${says(word, other)}, which is not a record here.`);
+        } else if (word.endsWith(" by") ? other <= number : other >= number) {
+          failures.push(
+            `\`${ADR_DIR}/${file}\` ${says(word, other)}, ${word.endsWith(" by") ? "an earlier" : "a later"} record: a record amends or supersedes only the records before it.`,
+          );
+        } else if (!target.relations[INVERSE[word]].includes(number)) {
+          const answer = INVERSE[word][0].toUpperCase() + INVERSE[word].slice(1);
+          failures.push(`\`${ADR_DIR}/${target.file}\` must say "${answer} [ADR-${number}](${file})" on its status line: ADR-${number} ${says(word, other)}.`);
+        }
+      }
+    }
+  }
 }
 
 /** Rule 11: every row of the ADR index shows its record's number and the status its record states. */
@@ -368,6 +412,7 @@ export function checkDocs(root = process.cwd()) {
   checkVendorFiles(root, tracked, failures);
   checkGenerated(root, tracked, failures);
   checkAdrIndex(root, tracked, failures);
+  checkAdrRelations(root, tracked, failures);
   if (tracked.includes(CLAUDE_SETTINGS)) {
     try {
       failures.push(...hookProblems(JSON.parse(read(CLAUDE_SETTINGS)), tracked).map((problem) => `\`${CLAUDE_SETTINGS}\` ${problem}.`));

@@ -1,6 +1,6 @@
 # ADR-0013: Declare each fact once, then derive it or check every copy
 
-**Status:** Accepted, amends [ADR-0004](0004-independent-modules.md) and [ADR-0010](0010-one-statement-of-the-task-rules.md) · **Date:** 2026-09-24
+**Status:** Accepted, amends [ADR-0004](0004-independent-modules.md), [ADR-0010](0010-one-statement-of-the-task-rules.md) and [ADR-0012](0012-lint-and-format-typescript-with-biome.md) · **Date:** 2026-09-24
 
 ## Context
 

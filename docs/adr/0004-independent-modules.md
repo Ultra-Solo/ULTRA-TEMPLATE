@@ -1,6 +1,6 @@
 # ADR-0004: Modules are independent and removable
 
-**Status:** Accepted · **Date:** 2026-09-15
+**Status:** Accepted · Amended by [ADR-0013](0013-declare-each-fact-once.md) and [ADR-0014](0014-modules-describe-themselves.md) · **Date:** 2026-09-15
 
 ## Context
 

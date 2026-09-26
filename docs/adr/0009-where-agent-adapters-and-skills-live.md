@@ -1,6 +1,6 @@
 # ADR-0009: Keep skills as real files in `.claude/skills/`, and govern every agent adapter
 
-**Status:** Accepted · Amends [ADR-0006](0006-one-set-of-agent-instructions.md) · **Date:** 2026-09-18
+**Status:** Accepted · Amends [ADR-0006](0006-one-set-of-agent-instructions.md) · Amended by [ADR-0016](0016-cloud-agents-get-the-same-toolchains.md) · **Date:** 2026-09-18
 
 ## Context
 

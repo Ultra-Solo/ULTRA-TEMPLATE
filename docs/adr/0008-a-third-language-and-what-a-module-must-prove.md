@@ -1,6 +1,6 @@
 # ADR-0008: Add a third language, and state what any module must prove
 
-**Status:** Accepted · **Date:** 2026-09-18
+**Status:** Accepted · Amended by [ADR-0010](0010-one-statement-of-the-task-rules.md) and [ADR-0014](0014-modules-describe-themselves.md) · **Date:** 2026-09-18
 
 ## Context
 
