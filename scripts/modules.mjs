@@ -4,8 +4,9 @@
  *
  * A module is a directory holding a `module.json` (MANIFEST): it names the module, its toolchain, the
  * checks it runs, and what else it takes part in (the task API contract, the task facts, a container
- * image). Nothing lists the modules anywhere else. Adding one is adding a directory with its manifest;
- * deleting the directory removes it from setup, verify and CI with nothing else to edit (ADR-0014).
+ * image). No script lists the modules. Adding one is adding a directory with its manifest, a verify.yml
+ * job and a Dependabot entry; deleting it removes it from setup and verify, and check-hygiene rule 13
+ * names the job and the entry that must go with it (ADR-0014).
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";

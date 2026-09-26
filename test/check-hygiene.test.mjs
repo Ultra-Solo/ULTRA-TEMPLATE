@@ -345,6 +345,23 @@ test("a module present without its CI job or its Dependabot entry fails; wiring 
   assert.deepEqual(checkModules(module, untouched), []);
 });
 
+test("rule 13 in the other direction: a verify.yml job for a module that is not here fails", () => {
+  const api = nodeModule("ts-service");
+  const job = (id) => `  ${id}:\n    timeout-minutes: 15\n    steps:\n      - uses: actions/checkout@${SHA}\n      - uses: ./.github/actions/module\n        with:\n          id: ${id}\n`;
+  const files = {
+    "services/api-ts/module.json": api.manifest,
+    "services/api-ts/package.json": api.pkg,
+    ".github/workflows/verify.yml": `jobs:\n  chassis:\n    timeout-minutes: 5\n${job("ts-service")}${job("go-service")}`,
+  };
+  const tracked = ["services/api-ts/module.json", "services/api-ts/package.json", "services/api-ts/package-lock.json", ".github/workflows/verify.yml"];
+  const found = checkModules(tracked, (path) => files[path]).join("\n");
+  assert.match(found, /`verify\.yml` job `go-service` runs module `go-service`, which no module\.json here declares/);
+  assert.doesNotMatch(found, /job `ts-service`/, "a job for a module that is here is fine");
+  // A manifest that fails validation still declares its id: it is reported once, for what is wrong with it.
+  const broken = { ...files, "services/api-ts/module.json": JSON.stringify({ id: "ts-service", toolchain: "cobol" }) };
+  assert.doesNotMatch(checkModules(tracked, (path) => broken[path]).join("\n"), /job `ts-service` runs module/);
+});
+
 test("jobIds lists the jobs of a two-space workflow and nothing nested below them", () => {
   const text = ["on: push", "jobs:", "  a:", "    steps:", "      - run: x", "  b-c:", "    needs:", "      - a", "other: 1", "  d:"].join("\n");
   assert.deepEqual(jobIds(text), ["a", "b-c"]);

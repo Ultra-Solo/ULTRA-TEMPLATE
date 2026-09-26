@@ -29,6 +29,8 @@
  *      toolchain installs from, has every `npm run` script its module.json names, a verify.yml job
  *      named after it, and a dependabot.yml entry for its directory. Deleting the job or the entry
  *      leaves everything green while CI stops checking the module and its dependencies stop moving.
+ *      The other way round, a verify.yml job that runs the module action for a module no module.json
+ *      declares fails too: deleting a module leaves its job behind, which fails only once CI runs it.
  *      A toolchain manifest (package.json, go.mod, pyproject.toml) below the root with no module.json
  *      beside it or above it fails too: nothing would install or verify it.
  *  14. Every Dockerfile `FROM` names its base image by digest. A tag can be repointed at a different
@@ -117,6 +119,7 @@ export function checkModules(tracked, read) {
   const manifests = tracked.filter((path) => path.endsWith(`/${MANIFEST}`));
   const dirs = manifests.map((path) => path.slice(0, -MANIFEST.length - 1));
   const ids = new Map();
+  const declared = new Set();
   for (const [i, path] of manifests.entries()) {
     const dir = dirs[i];
     let module;
@@ -126,6 +129,8 @@ export function checkModules(tracked, read) {
     } catch {
       continue;
     }
+    // A manifest that fails validation still names its module; it is reported for what is wrong with it.
+    if (typeof module?.id === "string") declared.add(module.id);
     const problems = validateManifest(module, path);
     if (problems.length > 0) {
       failures.push(...problems.map((problem) => `${problem}.`));
@@ -156,6 +161,11 @@ export function checkModules(tracked, read) {
       if (!(script in scripts)) failures.push(`\`${path}\` runs \`npm run ${script}\`, which \`${dir}/package.json\` does not define.`);
     }
   }
+  if (jobs !== null) {
+    for (const { job, id } of moduleJobs(read(GATE)).filter(({ id }) => !declared.has(id))) {
+      failures.push(`\`verify.yml\` job \`${job}\` runs module \`${id}\`, which no module.json here declares; delete the job, and its \`needs\` entry, with the module.`);
+    }
+  }
   // A module nothing declares is a module nothing installs or verifies, while it looks like part of the build.
   const manifestNames = new Set(Object.values(TOOLCHAINS).map((t) => t.manifest));
   for (const path of tracked) {
@@ -167,6 +177,26 @@ export function checkModules(tracked, read) {
     }
   }
   return failures;
+}
+
+/** Each verify.yml job that runs `./.github/actions/module`, and the module `id` it passes. Same layout as jobIds. */
+export function moduleJobs(text) {
+  const found = [];
+  let job = null;
+  let inModuleStep = false;
+  for (const line of text.split(/\r?\n/)) {
+    const opened = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(line);
+    if (opened) {
+      job = opened[1];
+      inModuleStep = false;
+    } else if (/^\s*- /.test(line)) {
+      inModuleStep = /^\s*- uses:\s*\.\/\.github\/actions\/module\s*$/.test(line);
+    } else if (inModuleStep && job !== null) {
+      const id = /^\s+id:\s*["']?([A-Za-z0-9_-]+)/.exec(line)?.[1];
+      if (id !== undefined) found.push({ job, id });
+    }
+  }
+  return found;
 }
 
 /** The npm scripts a module's manifest runs, from its checks, coverage and facts commands. */
