@@ -66,6 +66,9 @@ export function validateTools(tools) {
       const covered = Object.keys(tool.platforms ?? {}).every((key) => key in (tools[helper].platforms ?? {}));
       if (tools[helper].for !== tool.for || !covered) say(`\`uses\` ${helper}, which this manifest pins, so it needs \`for\` "${tool.for}" and an asset for every platform ${name} has`);
     }
+    if ("actions" in tool && (!Array.isArray(tool.actions) || !tool.actions.every((a) => typeof a === "string" && /^[\w.-]+\/[\w.-]+$/.test(a)))) {
+      say("`actions` lists the OWNER/REPO of each setup action that would install this tool outside its pin");
+    }
     for (const [feature, option] of Object.entries(tool.devcontainer ?? {})) {
       if (typeof option !== "string" || option === "") say(`\`devcontainer.${feature}\` names the Dev Container feature option that sets this tool's version`);
     }

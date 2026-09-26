@@ -41,7 +41,8 @@
  *  16. No workflow or local action writes a version of its own: a tool version (`X_VERSION:`, `@vX.Y.Z`,
  *      `==X.Y.Z`, a release download, `version: vX`) belongs in scripts/tools/tools.json, and a toolchain
  *      version (`node-version: 24`) in the file its setup action reads. A pin written anywhere else is
- *      one the pin report and the installer cannot see.
+ *      one the pin report and the installer cannot see. Nor does one use a setup action a tool there lists
+ *      under `actions`, which would install that tool at a version and from a download nothing checks.
  *  17. Every copy of a toolchain version agrees with the file that declares it: `.node-version` for
  *      `engines`, the `@types/node` major, `node` base images and the Dev Container's node feature;
  *      `go.mod` for `golang` base images and the go feature; `.python-version` for `python` base images
@@ -318,11 +319,18 @@ const PIN_SHAPED = [
   [/^\s+(?:node|go|python|java|ruby|dotnet)-version:\s*["']?\d/, "a toolchain version"],
 ];
 
-/** Rule 16, for one workflow or action file. */
-export function checkPins(path, text) {
+/** Rule 16, for one workflow or action file, and the tools `tools.json` pins. */
+export function checkPins(path, text, tools = {}) {
   const problems = [];
+  // A setup action installs its tool at whatever version it is given, outside the checksum tools.mjs checks.
+  const owner = new Map(Object.entries(tools).flatMap(([name, tool]) => (tool.actions ?? []).map((action) => [action.toLowerCase(), name])));
   text.split(/\r?\n/).forEach((line, i) => {
-    if (/^\s*#/.test(line) || /^\s*-?\s*uses:/.test(line)) return;
+    if (/^\s*#/.test(line)) return;
+    const action = /^\s*-?\s*uses:\s*["']?([^/@\s"']+\/[^/@\s"']+)/.exec(line)?.[1]?.toLowerCase();
+    if (action && owner.has(action)) {
+      problems.push(`${path}:${i + 1} installs ${owner.get(action)} outside its pin in ${TOOLS_PATH} (\`${line.trim()}\`). Install it with scripts/tools.mjs, as \`install --for\` and \`./.github/actions/tool\` do.`);
+    }
+    if (/^\s*-?\s*uses:/.test(line)) return;
     const found = PIN_SHAPED.find(([shape]) => shape.test(line));
     if (found) {
       problems.push(`${path}:${i + 1} writes ${found[1]} (\`${line.trim()}\`). Pin a tool in scripts/tools/tools.json and read it with scripts/tools.mjs; read a toolchain version from its file (node-version-file, go-version-file).`);
@@ -864,8 +872,9 @@ export function checkRepoHygiene(root = process.cwd()) {
     if (leftovers.length > 0) failures.push(`template marker line(s) survived initialization: ${leftovers.join(", ")}.`);
   }
 
+  const pinned = tracked.includes(TOOLS_PATH) ? (JSON.parse(read(TOOLS_PATH)).tools ?? {}) : {};
   for (const path of present.filter((p) => WORKFLOW.test(p))) {
-    failures.push(...checkDownloads(path, read(path)), ...checkPins(path, read(path)), ...checkWorkflow(path, read(path)));
+    failures.push(...checkDownloads(path, read(path)), ...checkPins(path, read(path), pinned), ...checkWorkflow(path, read(path)));
   }
   const workflows = present.filter((p) => WORKFLOW.test(p) && p.includes("/workflows/"));
   failures.push(...checkCalledPermissions(Object.fromEntries(workflows.map((p) => [p, read(p)]))));

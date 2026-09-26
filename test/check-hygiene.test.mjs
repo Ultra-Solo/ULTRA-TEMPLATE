@@ -582,3 +582,19 @@ test("rule 17 runs over the whole repository", (t) => {
   const root = fixture(t, { ".node-version": "26\n", "package.json": JSON.stringify({ engines: { node: ">=24" } }) });
   assert.match(failures(root), /`package\.json` requires Node `>=24`, but `\.node-version` declares Node 26/);
 });
+
+test("rule 16: an action that would install a pinned tool outside its pin fails, wherever it is pinned", () => {
+  const tools = { uv: { version: "0.12.18", actions: ["astral-sh/setup-uv"] }, zizmor: { version: "1.0.0" } };
+  const workflow = [
+    "steps:",
+    "  - uses: astral-sh/setup-uv@0000000000000000000000000000000000000000 # v10.1.0",
+    "  - uses: Astral-SH/setup-uv/sub@0000000000000000000000000000000000000000 # v10.1.0",
+    "  # - uses: astral-sh/setup-uv@0000000000000000000000000000000000000000 # v10.1.0",
+    "  - uses: astral-sh/other@0000000000000000000000000000000000000000 # v1.0.0",
+    "  - uses: ./.github/actions/tool",
+  ].join("\n");
+  const found = checkPins("ci.yml", workflow, tools);
+  assert.deepEqual(found.map((f) => f.split(" ")[0]), ["ci.yml:2", "ci.yml:3"]);
+  assert.match(found[0], /installs uv outside its pin in scripts\/tools\/tools\.json/);
+  assert.deepEqual(checkPins("ci.yml", workflow), [], "with no manifest, no action is a tool's");
+});

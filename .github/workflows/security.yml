@@ -203,11 +203,7 @@ jobs:
         with:
           node-version-file: .node-version
       - name: The pinned uv
-        id: uv
-        run: echo "version=$(node ../../scripts/tools.mjs version uv)" >> "$GITHUB_OUTPUT"
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          version: ${{ steps.uv.outputs.version }}
+        run: node ../../scripts/tools.mjs install uv
       - name: pip-audit (report-only)
         run: |
           uv export --frozen --format requirements-txt --no-emit-project --output-file "$RUNNER_TEMP/requirements.txt" --quiet

@@ -183,3 +183,11 @@ test("a module's CI job installs the tools of its toolchains, and neither the ch
   assert.deepEqual(toolsFor([], tools), []);
   assert.deepEqual(toolsFor(["chassis", "ci"], tools).filter((name) => !tools[name].platforms), []);
 });
+
+test("a tool's setup actions are named OWNER/REPO, so rule 16 can match them", () => {
+  const url = "https://example.test/x.tar.gz";
+  assert.deepEqual(validateTools(tool(url, "a".repeat(64), { actions: ["astral-sh/setup-uv"] })), []);
+  for (const actions of ["astral-sh/setup-uv", ["setup-uv"], ["astral-sh/setup-uv@v1"]]) {
+    assert.match(validateTools(tool(url, "a".repeat(64), { actions })).join("\n"), /`actions` lists the OWNER\/REPO/, JSON.stringify(actions));
+  }
+});
