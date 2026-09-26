@@ -13,6 +13,7 @@ import {
   checkGate,
   checkModules,
   checkPins,
+  checkActionPins,
   checkRepoHygiene,
   checkVersions,
   checkWorkflow,
@@ -597,4 +598,32 @@ test("rule 16: an action that would install a pinned tool outside its pin fails,
   assert.deepEqual(found.map((f) => f.split(" ")[0]), ["ci.yml:2", "ci.yml:3"]);
   assert.match(found[0], /installs uv outside its pin in scripts\/tools\/tools\.json/);
   assert.deepEqual(checkPins("ci.yml", workflow), [], "with no manifest, no action is a tool's");
+});
+
+// Rule 19: one SHA per action, and every directory holding an action is one Dependabot updates.
+const SHA_A = "a".repeat(40);
+const SHA_B = "b".repeat(40);
+const ACTIONS_ENTRY = (dirs) => `version: 2\nupdates:\n  - package-ecosystem: github-actions\n    directories: [${dirs.map((d) => `"${d}"`).join(", ")}]\n  - package-ecosystem: npm\n    directory: /.github/actions/tool\n`;
+
+test("rule 19: an action pinned at two SHAs fails, naming both places; sub-paths of one action are one action", () => {
+  const files = {
+    ".github/workflows/a.yml": `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n  - uses: github/codeql-action/init@${SHA_A} # v4\n`,
+    ".github/workflows/b.yml": `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n  - uses: github/codeql-action/analyze@${SHA_A} # v4\n`,
+    ".github/actions/tool/action.yml": `runs:\n  steps:\n    - uses: Actions/Checkout@${SHA_B} # v7.0.0\n`,
+  };
+  const found = checkActionPins(files, ACTIONS_ENTRY(["/", "/.github/actions/tool"]));
+  assert.equal(found.length, 1, found.join("\n"));
+  assert.match(found[0], /actions\/checkout is pinned at 2 SHAs/);
+  assert.match(found[0], /\.github\/workflows\/a\.yml:2/);
+  assert.match(found[0], /\.github\/actions\/tool\/action\.yml:3/);
+});
+
+test("rule 19: a directory holding an action that Dependabot's github-actions entry does not list fails", () => {
+  const files = { ".github/workflows/a.yml": "on: push\n", ".github/actions/tool/action.yml": "runs:\n", ".github/actions/module/action.yml": "runs:\n" };
+  const found = checkActionPins(files, ACTIONS_ENTRY(["/", "/.github/actions/module"]));
+  assert.equal(found.length, 1, found.join("\n"));
+  assert.match(found[0], /does not list `\/\.github\/actions\/tool`/, "another ecosystem's entry for the directory does not count");
+  assert.match(checkActionPins(files, "version: 2\nupdates:\n  - package-ecosystem: github-actions\n    directory: /\n").join("\n"), /\/\.github\/actions\/module/);
+  assert.match(checkActionPins(files, "version: 2\nupdates: []\n").join("\n"), /has no github-actions entry/);
+  assert.deepEqual(checkActionPins(files, null), [], "a project without Dependabot has nothing to keep in step");
 });

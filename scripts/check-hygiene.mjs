@@ -53,6 +53,10 @@
  *  18. A job that calls a workflow in this repository grants at least every permission that workflow's
  *      jobs ask for. GitHub refuses to start a run whose call grants less, before any `if:` is read, so
  *      the caller fails on every push while nothing on the pull request can see it.
+ *  19. Each third-party action is pinned at one SHA in every workflow and local action, and Dependabot's
+ *      github-actions entry lists every directory that holds an `action.yml`. Dependabot reads only the
+ *      directories it is given, so a pin in a local action is one it never proposes to move, and the
+ *      same action then runs at two versions.
  *
  *   node scripts/check-hygiene.mjs
  *
@@ -217,6 +221,56 @@ function dependabotDirectories(text) {
     if (entry) found.push(entry[1].length > 1 ? entry[1].replace(/\/$/, "") : entry[1]);
   }
   return found;
+}
+
+/** Each dependabot.yml entry: its ecosystem and the directories it updates. */
+function dependabotEntries(text) {
+  const entries = [];
+  for (const line of text.split(/\r?\n/)) {
+    const opened = /^\s*-\s*package-ecosystem:\s*["']?([\w-]+)/.exec(line);
+    if (opened) entries.push({ ecosystem: opened[1], text: "" });
+    else if (entries.length > 0) entries.at(-1).text += `${line}\n`;
+  }
+  return entries.map(({ ecosystem, text }) => ({
+    ecosystem,
+    directories: [...dependabotDirectories(text), ...[...text.matchAll(/directories:\s*\[([^\]]*)\]/g)].flatMap((m) => m[1].split(",").map((d) => d.trim().replace(/^["']|["']$/g, "").replace(/(.)\/$/, "$1")).filter(Boolean))],
+  }));
+}
+
+/**
+ * Rule 19, over every workflow and local action (`files`, path to text) and dependabot.yml's text, or
+ * null when the project has none.
+ */
+export function checkActionPins(files, dependabot) {
+  const problems = [];
+  const pins = new Map();
+  for (const [path, text] of Object.entries(files)) {
+    text.split(/\r?\n/).forEach((line, i) => {
+      if (/^\s*#/.test(line)) return;
+      const used = /^\s*-?\s*uses:\s*["']?([^/@\s"'.][^/@\s"']*\/[^/@\s"']+)[^@\s"']*@([0-9a-f]{40})/i.exec(line);
+      if (!used) return;
+      const action = used[1].toLowerCase();
+      if (!pins.has(action)) pins.set(action, new Map());
+      const shas = pins.get(action);
+      if (!shas.has(used[2])) shas.set(used[2], `${path}:${i + 1}`);
+    });
+  }
+  for (const [action, shas] of pins) {
+    if (shas.size > 1) {
+      problems.push(`${action} is pinned at ${shas.size} SHAs: ${[...shas].map(([sha, at]) => `${sha.slice(0, 12)} at ${at}`).join(", ")}. Pin one release everywhere, so every job runs the code that was reviewed.`);
+    }
+  }
+  if (dependabot === null) return problems;
+  const entry = dependabotEntries(dependabot).find((e) => e.ecosystem === "github-actions");
+  const dirs = [...new Set(Object.keys(files).filter((p) => /(^|\/)action\.ya?ml$/.test(p)).map((p) => `/${p.replace(/\/?action\.ya?ml$/, "")}`))];
+  if (!entry) {
+    problems.push(`\`${DEPENDABOT}\` has no github-actions entry, so no action pin is ever proposed for update.`);
+    return problems;
+  }
+  for (const dir of dirs.filter((d) => !entry.directories.includes(d))) {
+    problems.push(`\`${DEPENDABOT}\`'s github-actions entry does not list \`${dir}\`, so the pins in its action.yml are never proposed for update. Add it to \`directories\`.`);
+  }
+  return problems;
 }
 
 /** The job ids of a workflow, in the two-space layout this repository writes. */
@@ -877,6 +931,7 @@ export function checkRepoHygiene(root = process.cwd()) {
     failures.push(...checkDownloads(path, read(path)), ...checkPins(path, read(path), pinned), ...checkWorkflow(path, read(path)));
   }
   const workflows = present.filter((p) => WORKFLOW.test(p) && p.includes("/workflows/"));
+  failures.push(...checkActionPins(Object.fromEntries(present.filter((p) => WORKFLOW.test(p)).map((p) => [p, read(p)])), tracked.includes(DEPENDABOT) ? read(DEPENDABOT) : null));
   failures.push(...checkCalledPermissions(Object.fromEntries(workflows.map((p) => [p, read(p)]))));
   for (const path of present.filter((p) => /(^|\/)Dockerfile$/.test(p))) failures.push(...checkDigests(path, read(path)), ...checkInstalls(path, read(path)));
   failures.push(...checkModules(tracked, read));
