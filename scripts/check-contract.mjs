@@ -69,6 +69,63 @@ export const requestIdPattern = ({ requestId }) => new RegExp(`^[${requestId.cha
 /** Follows a local `$ref` such as `#/components/schemas/Task`. */
 const deref = (spec, node) => (node?.$ref ? node.$ref.slice(2).split("/").reduce((at, key) => at?.[key], spec) : node);
 
+const HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
+
+/**
+ * The documented path a request's path falls under, the operation for its method there (undefined when
+ * the path does not list it, HEAD answering as GET), and the methods a 405 must name in `Allow`: the
+ * listed ones, with HEAD wherever GET is. Undefined for a path the document does not describe.
+ */
+export function operationFor(spec, method, path) {
+  const segments = path.split("?")[0].split("/");
+  const template = Object.keys(spec.paths ?? {}).find((t) => {
+    const parts = t.split("/");
+    return parts.length === segments.length && parts.every((part, i) => (/^\{.+\}$/.test(part) ? segments[i] !== "" : part === segments[i]));
+  });
+  if (template === undefined) return undefined;
+  const item = spec.paths[template];
+  const listed = HTTP_METHODS.filter((m) => m in item).map((m) => m.toUpperCase());
+  const allow = [...new Set([...listed, ...(listed.includes("GET") ? ["HEAD"] : [])])].sort();
+  return { template, operation: item[method === "HEAD" ? "get" : method.toLowerCase()], allow };
+}
+
+const kindOf = (value) => (value === null ? "null" : Array.isArray(value) ? "array" : typeof value);
+const isType = (type, value) =>
+  type === "integer" ? Number.isInteger(value) : type === "object" ? kindOf(value) === "object" : kindOf(value) === type;
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * Where `value` breaks `schema`, or an empty list: the subset of JSON Schema the document uses. `$ref`,
+ * `type` (one or a list), `const`, `enum`, `pattern`, `minLength` and `maxLength` counted in code points
+ * as the task rules count a title, `format: date-time` as RFC 3339 writes it, `required`, `properties`,
+ * `additionalProperties: false` and `items`. `at` names the place, as `$.createdAt` or `$[0].id`.
+ */
+export function conforms(spec, schema, value, at = "$") {
+  const node = deref(spec, schema);
+  if (node === undefined || node === null) return [];
+  const types = node.type === undefined ? [] : [node.type].flat();
+  if (types.length > 0 && !types.some((type) => isType(type, value))) return [`${at} is a ${kindOf(value)}, not ${types.join(" or ")}`];
+  const problems = [];
+  if ("const" in node && JSON.stringify(value) !== JSON.stringify(node.const)) problems.push(`${at} is ${JSON.stringify(value)}, not ${JSON.stringify(node.const)}`);
+  if (node.enum && !node.enum.some((option) => JSON.stringify(option) === JSON.stringify(value))) problems.push(`${at} is ${JSON.stringify(value)}, not one of ${JSON.stringify(node.enum)}`);
+  if (typeof value === "string") {
+    const length = [...value].length;
+    if (node.maxLength !== undefined && length > node.maxLength) problems.push(`${at} is ${length} characters, more than ${node.maxLength}`);
+    if (node.minLength !== undefined && length < node.minLength) problems.push(`${at} is ${length} characters, fewer than ${node.minLength}`);
+    if (node.pattern !== undefined && !new RegExp(node.pattern, "u").test(value)) problems.push(`${at} ${JSON.stringify(value).slice(0, 80)} does not match ${node.pattern}`);
+    if (node.format === "date-time" && !(DATE_TIME.test(value) && !Number.isNaN(Date.parse(value)))) problems.push(`${at} is not a date-time: ${JSON.stringify(value).slice(0, 40)}`);
+  }
+  if (kindOf(value) === "object") {
+    for (const key of node.required ?? []) if (!(key in value)) problems.push(`${at} has no ${key}, which is required`);
+    for (const [key, field] of Object.entries(value)) {
+      if (node.properties && key in node.properties) problems.push(...conforms(spec, node.properties[key], field, `${at}.${key}`));
+      else if (node.additionalProperties === false) problems.push(`${at} has ${key}, which the schema does not allow`);
+    }
+  }
+  if (Array.isArray(value) && node.items) value.forEach((item, i) => problems.push(...conforms(spec, node.items, item, `${at}[${i}]`)));
+  return problems;
+}
+
 /**
  * Where the OpenAPI document and the contract disagree, or an empty list. The document is a
  * description of the API that clients can read; the cases are what every service is proved against. So
@@ -82,19 +139,12 @@ export function checkSpec(spec, contract, rules) {
   const { cases, limits } = contract;
   const problems = [];
   const templates = Object.keys(spec.paths ?? {});
-  const template = (path) => {
-    const segments = path.split("?")[0].split("/");
-    return templates.find((t) => {
-      const parts = t.split("/");
-      return parts.length === segments.length && parts.every((part, i) => (/^\{.+\}$/.test(part) ? segments[i] !== "" : part === segments[i]));
-    });
-  };
   const exercised = new Set();
   for (const c of cases) {
-    const path = template(c.path);
-    if (path === undefined) continue; // outside the API: answered 404, which the document says of any path
+    const found = operationFor(spec, c.method, c.path);
+    if (found === undefined) continue; // outside the API: answered 404, which the document says of any path
+    const { template: path, operation } = found;
     const method = c.method === "HEAD" ? "get" : c.method.toLowerCase();
-    const operation = spec.paths[path][method];
     if (operation === undefined) {
       if (c.status !== 405) problems.push(`case "${c.name}" sends ${c.method} to ${path}, which the document does not list, and expects ${c.status} rather than 405`);
     } else if (!(String(c.status) in operation.responses)) {
@@ -145,9 +195,10 @@ export function encodeBody(body, facts, padTo) {
 /** A case's headers, with `{ repeat, times }` values expanded as in a body. */
 const encodeHeaders = (headers, facts) => Object.fromEntries(Object.entries(headers ?? {}).map(([key, value]) => [key, expand(value, facts)]));
 
-function send(base, { method, path, body, padTo, headers: extra, contentType = "application/json" }, facts) {
+function send(base, { method, path, body, bodyHex, padTo, headers: extra, contentType = "application/json" }, facts) {
   const url = new URL(base);
-  const payload = encodeBody(body, facts, padTo);
+  // `bodyHex` is for a body whose bytes are the point: a byte-order mark, UTF-16, bytes that are not UTF-8.
+  const payload = bodyHex === undefined ? encodeBody(body, facts, padTo) : Buffer.from(bodyHex, "hex");
   const headers = { ...encodeHeaders(extra, facts), ...(payload === undefined ? {} : { "content-type": contentType, "content-length": Buffer.byteLength(payload) }) };
   return new Promise((resolve, reject) => {
     // node:http rather than fetch: fetch refuses a body on some methods and normalizes the path.
@@ -159,6 +210,7 @@ function send(base, { method, path, body, padTo, headers: extra, contentType = "
           status: res.statusCode,
           type: String(res.headers["content-type"] ?? ""),
           requestId: res.headers["x-request-id"],
+          allow: res.headers.allow,
           text: Buffer.concat(chunks).toString("utf8"),
         }),
       );
@@ -177,8 +229,11 @@ const parse = (text) => {
   }
 };
 
-/** What is wrong with one answer, or an empty list. */
-export function judge(testCase, answer, facts) {
+/**
+ * What is wrong with one answer, or an empty list. With the OpenAPI document, a JSON answer must also
+ * fit the schema it documents for that status, and a 405 must name in `Allow` the methods it lists.
+ */
+export function judge(testCase, answer, facts, spec) {
   const problems = [];
   if (answer.status !== testCase.status) problems.push(`status ${answer.status}, expected ${testCase.status}`);
   const body = parse(answer.text);
@@ -202,6 +257,15 @@ export function judge(testCase, answer, facts) {
     problems.push(`X-Request-Id ${JSON.stringify(answer.requestId)?.slice(0, 80)}, expected the ${JSON.stringify(sent).slice(0, 80)} that was sent`);
   }
   if (testCase.requestId === "replaced" && answer.requestId === sent) problems.push(`X-Request-Id echoes ${JSON.stringify(sent).slice(0, 80)}, which is not a usable id`);
+  const found = spec === undefined ? undefined : operationFor(spec, testCase.method, testCase.path);
+  if (found && answer.status === 405) {
+    const allow = String(answer.allow ?? "").split(",").map((m) => m.trim().toUpperCase()).filter(Boolean).sort();
+    if (allow.join() !== found.allow.join()) problems.push(`Allow ${JSON.stringify(answer.allow ?? "")}, expected ${JSON.stringify(found.allow.join(", "))}`);
+  }
+  if (found?.operation && testCase.method !== "HEAD" && body !== undefined) {
+    const schema = deref(spec, found.operation.responses?.[String(answer.status)])?.content?.["application/json"]?.schema;
+    if (schema) problems.push(...conforms(spec, schema, body).slice(0, 5));
+  }
   return problems;
 }
 
@@ -251,7 +315,7 @@ export function checkLogs(exchanges, stdout) {
  * itself and the case is not sent: a service that cannot reach a state has not answered the question
  * asked from it.
  */
-export async function runCases(base, cases, { exchanges = [], facts = loadFacts() } = {}) {
+export async function runCases(base, cases, { exchanges = [], facts = loadFacts(), spec } = {}) {
   const failures = [];
   // Every request a case sends, the ones that stage it included, is recorded for checkLogs.
   const exchange = async (request) => {
@@ -284,17 +348,35 @@ export async function runCases(base, cases, { exchanges = [], facts = loadFacts(
       }
     }
     if (!staged) continue;
+    const created = [];
+    for (const n of testCase.oldestFirst ? [1, 2, 3] : []) {
+      created.push(parse((await exchange({ method: "POST", path: "/api/tasks", body: `{"title":"oldest first ${n}"}` })).text)?.id);
+    }
     const path = resolve(testCase.path);
-    let answer;
+    let answers;
     try {
-      answer = await exchange({ ...testCase, path });
+      // The same request sent at once, `concurrent` times: what a store that reads and then writes gets wrong.
+      answers = await Promise.all(Array.from({ length: testCase.concurrent ?? 1 }, () => exchange({ ...testCase, path })));
     } catch (err) {
       // A response the client cannot parse — a body on a HEAD response, say — is a failed case,
       // not a crash of the check.
       failures.push({ name: testCase.name, problems: [`not valid HTTP: ${err.code ?? err.message}`] });
       continue;
     }
-    const problems = judge(testCase, answer, facts);
+    const problems = [];
+    let answer = answers[0];
+    if (testCase.concurrent !== undefined) {
+      const winners = answers.filter((a) => a.status === testCase.status);
+      const others = answers.filter((a) => a.status !== testCase.status && a.status !== testCase.othersStatus).map((a) => a.status);
+      if (winners.length !== 1) problems.push(`${winners.length} of ${answers.length} concurrent requests answered ${testCase.status}, expected exactly 1`);
+      if (others.length > 0) problems.push(`the others answered ${[...new Set(others)].join(", ")}, expected ${testCase.othersStatus}`);
+      answer = winners[0] ?? answer;
+    }
+    problems.push(...judge(testCase, answer, facts, spec));
+    if (testCase.oldestFirst) {
+      const listed = (parse(answer.text) ?? []).map?.((task) => task?.id).filter((id) => created.includes(id)) ?? [];
+      if (listed.join() !== created.join()) problems.push(`lists the tasks it created as ${listed.join(", ")}, not in the order they were created (${created.join(", ")})`);
+    }
     if (problems.length > 0) failures.push({ name: testCase.name, problems });
   }
   return failures;
@@ -546,7 +628,7 @@ async function checkService(module, contract, facts) {
         return { module, fatal: `did not answer ${contract.startup.ready.path} within ${STARTUP_MS / 1000}s. ${running.output.stderr.trim().slice(-400)}` };
       }
       const exchanges = [];
-      failures.push(...(await runCases(base, contract.cases, { exchanges, facts })));
+      failures.push(...(await runCases(base, contract.cases, { exchanges, facts, spec: loadSpec() })));
       // A log line is written after its response, so give the last ones a moment to arrive.
       const deadline = Date.now() + LOG_WAIT_MS;
       while (Date.now() < deadline && checkLogs(exchanges, running.output.stdout).some((p) => p.includes("logged 0 times"))) {

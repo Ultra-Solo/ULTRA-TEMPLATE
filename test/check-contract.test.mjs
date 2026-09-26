@@ -8,6 +8,7 @@ import {
   checkImage,
   checkLogs,
   checkSpec,
+  conforms,
   configCases,
   configEnv,
   encodeBody,
@@ -19,6 +20,7 @@ import {
   loadContract,
   loadFacts,
   loadSpec,
+  operationFor,
   requestIdPattern,
   resolveRef,
   runCases,
@@ -38,20 +40,24 @@ function fakeService(t, mistakes = {}) {
   const server = createServer((req, res) => {
     let raw = "";
     req.on("data", (chunk) => (raw += chunk));
-    req.on("end", () => {
+    req.on("end", async () => {
       const sent = req.headers["x-request-id"];
       const id = mistakes.alwaysGenerate || typeof sent !== "string" || !REQUEST_ID.test(sent) ? `gen-${++generated}` : sent;
-      const send = (status, body) => {
+      const send = (status, body, allow) => {
         const headers = { "content-type": mistakes.textErrors && status >= 400 ? "text/plain" : "application/json" };
+        if (allow && !mistakes.noAllow) headers.allow = allow;
         if (!mistakes.noRequestId) headers["x-request-id"] = id;
         res.writeHead(status, headers);
         res.end(mistakes.textErrors && status >= 400 ? "nope" : JSON.stringify(body));
       };
       if (req.url === "/healthz") return send(200, { status: "ok" });
+      if (req.url === "/api/tasks" && req.method === "GET") return send(200, mistakes.newestFirst ? [...tasks.values()].reverse() : [...tasks.values()]);
+      if (req.url === "/api/tasks" && req.method === "DELETE") return send(405, { error: "method not allowed" }, "GET, HEAD, POST");
       if (req.url === "/api/tasks" && req.method === "POST") {
         const body = JSON.parse(raw || "{}");
         if ((body.title ?? "").trim() === "") return send(mistakes.emptyTitle ?? 422, { error: "title must not be empty" });
-        const task = { id: `t${tasks.size + 1}`, title: body.title.trim(), status: "todo", createdAt: "x", updatedAt: "x" };
+        const at = mistakes.badTimestamp ? "x" : "2026-01-02T03:04:05.678Z";
+        const task = { id: `t${tasks.size + 1}`, title: body.title.trim(), status: "todo", createdAt: at, updatedAt: at };
         tasks.set(task.id, task);
         return send(201, task);
       }
@@ -61,6 +67,8 @@ function fakeService(t, mistakes = {}) {
       if (move && req.method === "PATCH") {
         const task = tasks.get(move[1]);
         if (!task) return send(404, { error: "task not found" });
+        // A read, a pause, and a write from what was read: two moves in the pause both succeed.
+        if (mistakes.racyMoves) await new Promise((resolve) => setTimeout(resolve, 20));
         const next = JSON.parse(raw || "{}").status;
         if (!(mistakes.moves ?? MOVES)[task.status].includes(next)) return send(409, { error: "status transition not allowed" });
         tasks.set(task.id, { ...task, status: next });
@@ -409,3 +417,91 @@ test("the configuration runner starts a real process for each value and catches 
   assert.match(failures[0].problems.join(), /started, reporting .*"msg":"listening".* where it must refuse the value/);
 });
 
+
+// The answers are held to the OpenAPI document as well as to the cases.
+const SPEC = loadSpec();
+
+test("a value is held to its schema: type, enum, pattern, lengths in code points, date-time, fields and items", () => {
+  const spec = { components: { schemas: { S: { type: "string", enum: ["a", "b"] } } } };
+  const schema = {
+    type: "object",
+    required: ["id", "at"],
+    properties: { id: { type: "string", pattern: "^t[0-9]+$", maxLength: 3 }, at: { type: "string", format: "date-time" }, s: { $ref: "#/components/schemas/S" }, n: { type: ["string", "null"] }, list: { type: "array", items: { type: "integer" } } },
+    additionalProperties: false,
+  };
+  assert.deepEqual(conforms(spec, schema, { id: "t1", at: "2026-01-02T03:04:05.678Z", s: "a", n: null, list: [1, 2] }), []);
+  const found = conforms(spec, schema, { id: "t1234", at: "x", s: "c", n: 1, list: [1, "2"], extra: true });
+  for (const problem of [/\$\.id is 5 characters, more than 3/, /\$\.at is not a date-time/, /\$\.s is "c", not one of \["a","b"\]/, /\$\.n is a number, not string or null/, /\$\.list\[1\] is a string, not integer/, /\$ has extra, which the schema does not allow/]) {
+    assert.match(found.join("\n"), problem);
+  }
+  assert.match(conforms(spec, schema, { id: "x" }).join("\n"), /\$ has no at, which is required/);
+  assert.match(conforms(spec, schema, { id: "x1" }).join("\n"), /\$\.id "x1" does not match \^t\[0-9\]\+\$/);
+  assert.deepEqual(conforms(spec, { type: "string", maxLength: 2 }, "🙂🙂"), [], "two code points, four UTF-16 units");
+});
+
+test("an operation is found by its path template, and a method it does not list is named with the ones it does", () => {
+  assert.equal(operationFor(SPEC, "GET", "/api/tasks/t1?x=1").template, "/api/tasks/{id}");
+  assert.deepEqual(operationFor(SPEC, "DELETE", "/api/tasks").allow, ["GET", "HEAD", "POST"]);
+  assert.equal(operationFor(SPEC, "DELETE", "/api/tasks").operation, undefined);
+  assert.equal(operationFor(SPEC, "GET", "/nope"), undefined);
+});
+
+test("an answer that breaks the document's schema fails, list items included", async (t) => {
+  const cases = [...CASES, { name: "list", method: "GET", path: "/api/tasks", status: 200, array: true }];
+  assert.deepEqual(await runCases(await fakeService(t), cases, { spec: SPEC }), []);
+  const failures = await runCases(await fakeService(t, { badTimestamp: true }), cases, { spec: SPEC });
+  assert.deepEqual(failures.map((f) => f.name), ["create", "get", "list"]);
+  assert.match(failures[0].problems.join(), /\$\.createdAt is not a date-time/);
+  assert.match(failures[2].problems.join(), /\$\[0\]\.createdAt is not a date-time/);
+});
+
+test("a list shows the tasks in the order they were created", async (t) => {
+  const cases = [{ name: "oldest first", method: "GET", path: "/api/tasks", status: 200, array: true, oldestFirst: true }];
+  assert.deepEqual(await runCases(await fakeService(t), cases), []);
+  const failures = await runCases(await fakeService(t, { newestFirst: true }), cases);
+  assert.match(failures[0]?.problems.join() ?? "", /lists the tasks it created as t3, t2, t1, not in the order they were created \(t1, t2, t3\)/);
+});
+
+test("a 405 names the methods the document lists for the path, with HEAD beside GET", async (t) => {
+  const cases = [{ name: "list refuses DELETE", method: "DELETE", path: "/api/tasks", status: 405, error: true }];
+  assert.deepEqual(await runCases(await fakeService(t), cases, { spec: SPEC }), []);
+  const failures = await runCases(await fakeService(t, { noAllow: true }), cases, { spec: SPEC });
+  assert.match(failures[0]?.problems.join() ?? "", /Allow "", expected "GET, HEAD, POST"/);
+});
+
+test("a body given as bytes is sent as exactly those bytes", async (t) => {
+  let received;
+  const server = createServer((req, res) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      received = Buffer.concat(chunks);
+      res.writeHead(400, { "content-type": "application/json", "x-request-id": "r1" });
+      res.end('{"error":"x"}');
+    });
+  });
+  const base = await new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${server.address().port}`)));
+  t.after(() => server.close());
+  const cases = [{ name: "bom", method: "POST", path: "/api/tasks", bodyHex: "efbbbf7b7d", status: 400, error: true }];
+  assert.deepEqual(await runCases(base, cases), []);
+  assert.equal(received.toString("hex"), "efbbbf7b7d");
+});
+
+test("of the same request sent at once, exactly one gets the status and the rest the other", async (t) => {
+  const cases = [
+    {
+      name: "one of the moves to done wins",
+      method: "PATCH",
+      path: "/api/tasks/{id}/status",
+      setup: [moveTo("in_progress")],
+      body: '{"status":"done"}',
+      concurrent: 16,
+      status: 200,
+      othersStatus: 409,
+      task: { status: "done" },
+    },
+  ];
+  assert.deepEqual(await runCases(await fakeService(t), cases), []);
+  const failures = await runCases(await fakeService(t, { racyMoves: true }), cases);
+  assert.match(failures[0]?.problems.join() ?? "", /16 of 16 concurrent requests answered 200, expected exactly 1/);
+});
