@@ -67,9 +67,11 @@ A failure the caller can act on — a broken rule, an unreachable API — comes 
 
 ## Check
 
+<!-- generated:checks services/mcp-server -->
 ```bash
-npm run verify    # import boundaries, type-check, tests
+npm run verify   # lint, check:boundaries, typecheck, test
 ```
+<!-- /generated -->
 
 The tests drive the server through a real MCP client over an in-memory transport pair, so a tool that is registered but unreachable — a bad schema, a handler that throws — fails here rather than in someone's editor.
 

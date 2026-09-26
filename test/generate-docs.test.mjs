@@ -62,3 +62,23 @@ test("sizes are written as a reader thinks of them, exactly", () => {
   assert.equal(bytes(1000), "1000 bytes");
   assert.ok(Object.keys(GENERATORS).length >= 10);
 });
+
+test("a module's check list is its module.json, with the steps of an npm script it runs", () => {
+  const local = {
+    ...files,
+    "svc/go/module.json": JSON.stringify({ id: "go", toolchain: "go", checks: [{ name: "vet", run: ["go", "vet", "./..."] }, { name: "lint", run: ["golangci-lint", "run"], tool: "golangci-lint" }] }),
+    "svc/ts/module.json": JSON.stringify({ id: "ts", toolchain: "node", checks: [{ name: "npm run verify", run: ["npm", "run", "verify"] }] }),
+    "svc/ts/package.json": JSON.stringify({ scripts: { verify: "npm run lint && npm run check:boundaries && npm test" } }),
+  };
+  const readLocal = (path) => {
+    if (!(path in local)) throw new DocsError(`${path} is not here`);
+    return local[path];
+  };
+  const block = (dir) => `<!-- generated:checks ${dir} -->\nstale\n<!-- /generated -->`;
+  const go = regenerate(block("svc/go"), readLocal);
+  assert.deepEqual(go.stale, ["checks svc/go"]);
+  assert.equal(go.text, block("svc/go").replace("stale", "```bash\ngo vet ./...\ngolangci-lint run\n```"));
+  assert.equal(regenerate(block("svc/ts"), readLocal).text, block("svc/ts").replace("stale", "```bash\nnpm run verify   # lint, check:boundaries, test\n```"));
+  assert.deepEqual(regenerate(go.text, readLocal).stale, [], "a second pass finds nothing stale");
+  assert.throws(() => regenerate(block("svc/none"), readLocal), /svc\/none\/module\.json is not here/);
+});

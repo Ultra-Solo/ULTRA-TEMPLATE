@@ -55,8 +55,15 @@ Every response carries an `X-Request-Id`: the one the caller sent when it is 1 t
 
 ## Check
 
+<!-- generated:checks services/api-ts -->
 ```bash
-npm run verify        # boundaries, typecheck, tests
+npm run verify   # lint, check:boundaries, typecheck, test
+```
+<!-- /generated -->
+
+`node scripts/verify.mjs ts-service` runs it, then the contract; CI runs the same. The image:
+
+```bash
 docker build -t api-ts .
 ```
 

@@ -44,14 +44,18 @@ One difference worth knowing: WSGI decodes `PATH_INFO` before a route sees it, s
 
 ## Check
 
+<!-- generated:checks services/api-py -->
 ```bash
-uv run ruff check . && uv run ruff format --check .
-uv run mypy
-uv run pytest
-uv run python scripts/check_boundaries.py
+uv lock --check
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen mypy
+uv run --frozen pytest
+uv run --frozen python scripts/check_boundaries.py
 ```
+<!-- /generated -->
 
-`node scripts/verify.mjs py-service` runs all four, after checking that `uv.lock` still matches `pyproject.toml`, and then the contract; CI runs the same. uv's own version is pinned once, in `scripts/tools/tools.json`; `[tool.uv] required-version` is the range this project accepts, and check-hygiene holds the pin inside it.
+`node scripts/verify.mjs py-service` runs these, then the contract; CI runs the same. `uv lock --check` comes first and the rest run `--frozen`, so a `uv.lock` that no longer matches `pyproject.toml` fails instead of being rewritten. uv's own version is pinned once, in `scripts/tools/tools.json`; `[tool.uv] required-version` is the range this project accepts, and check-hygiene holds the pin inside it.
 
 To add a store, write a class with the `TaskRepository` shape in `src/api_py/adapters` and choose it in `main.py`. Its test passes a function that returns a fresh, empty store to `check_task_repository` from `tests/task_repository_conformance.py` and expects no problems, as `tests/test_memory_task_repository.py` does: that suite is the behaviour the service relies on from a store.
 

@@ -167,6 +167,22 @@ export const GENERATORS = {
       ["Feature", "What you get"],
       Object.entries(JSON.parse(read(FEATURES)).features).map(([id, feature]) => [`\`${id}\``, feature.summary]),
     ),
+  /**
+   * A module's checks as its module.json declares them, which verify and its CI job run. An `npm run`
+   * check names the steps of that script, so the list cannot leave one out.
+   */
+  checks: ([dir], read) => {
+    const module = JSON.parse(read(`${dir}/module.json`));
+    const lines = module.checks.map(({ run }) => {
+      const [command, verb, script] = run;
+      if (command !== "npm" || verb !== "run" || run.length !== 3) return run.join(" ");
+      const body = JSON.parse(read(`${dir}/package.json`)).scripts?.[script];
+      if (body === undefined) throw new DocsError(`${dir}/package.json has no script called ${script}`);
+      const steps = body.split("&&").map((part) => part.trim().replace(/^npm (run )?/, ""));
+      return `${run.join(" ")}   # ${steps.join(", ")}`;
+    });
+    return ["```bash", ...lines, "```"].join("\n");
+  },
   /** The environment variables an MCP server.json advertises. */
   "env-table": ([file], read) =>
     table(

@@ -53,8 +53,19 @@ Every response carries an `X-Request-Id`: the one the caller sent when it is 1 t
 
 ## Check
 
+<!-- generated:checks services/api-go -->
 ```bash
-gofmt -l . && go vet ./... && go test -race ./... && golangci-lint run
+gofmt -l .
+go mod tidy -diff
+go vet ./...
+go test -race ./...
+golangci-lint run
+```
+<!-- /generated -->
+
+`node scripts/verify.mjs go-service` runs these, then the contract; CI runs the same. The image:
+
+```bash
 docker build -t api-go .
 ```
 

@@ -26,7 +26,7 @@ Services keep domain, use cases, adapters and a composition root, with dependenc
 <!-- ultra:begin go-service -->
 ### services/api-go
 
-`internal/entity` ← `internal/usecase` ← `internal/repo/*` and `internal/controller/*`, wired only in `internal/app`. `internal/architecture_test.go` enforces the rule. Domain errors are sentinel values in `entity`; the HTTP controller maps them to status codes. Run `gofmt`, `go vet`, `go test -race` and `golangci-lint run` inside the module.
+`internal/entity` ← `internal/usecase` ← `internal/repo/*` and `internal/controller/*`, wired only in `internal/app`. `internal/architecture_test.go` enforces the rule. Domain errors are sentinel values in `entity`; the HTTP controller maps them to status codes. Run `node scripts/verify.mjs go-service`: it runs the checks the module's `module.json` lists, as its CI job does.
 <!-- ultra:end go-service -->
 
 <!-- ultra:begin ts-service -->
@@ -38,7 +38,7 @@ Services keep domain, use cases, adapters and a composition root, with dependenc
 <!-- ultra:begin py-service -->
 ### services/api-py
 
-`src/api_py/domain` is pure: no I/O, no clock, no randomness, and no imports beyond the pure standard-library modules the checker allows. `src/api_py/application` holds the use cases and its ports as `Protocol` classes; `src/api_py/adapters` holds the WSGI transport and the store; `src/api_py/main.py` is the composition root. `scripts/check_boundaries.py` parses every file with `ast` and enforces it. Run `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy` (strict) and `uv run pytest` inside the module, or `node scripts/verify.mjs py-service` from the root. Dependencies are managed by uv: never edit `uv.lock` by hand.
+`src/api_py/domain` is pure: no I/O, no clock, no randomness, and no imports beyond the pure standard-library modules the checker allows. `src/api_py/application` holds the use cases and its ports as `Protocol` classes; `src/api_py/adapters` holds the WSGI transport and the store; `src/api_py/main.py` is the composition root. `scripts/check_boundaries.py` parses every file with `ast` and enforces it. Run `node scripts/verify.mjs py-service` from the root: it runs the checks the module's `module.json` lists (ruff, strict mypy, pytest, the boundary check, and `uv lock --check` first), as its CI job does. Dependencies are managed by uv: never edit `uv.lock` by hand.
 <!-- ultra:end py-service -->
 
 <!-- ultra:begin mcp-server -->
