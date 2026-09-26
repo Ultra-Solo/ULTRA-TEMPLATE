@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/hynix666/ultra-template/services/api-go/internal/entity"
+	"github.com/hynix666/ultra-template/services/api-go/internal/usecase"
 )
 
 // TaskRepository keeps tasks in insertion order behind a read-write mutex.
@@ -34,6 +35,30 @@ func (r *TaskRepository) Save(_ context.Context, task entity.Task) error {
 	r.tasks[task.ID] = task
 
 	return nil
+}
+
+// Replace stores task in place of prev, only while the stored task is still prev.
+func (r *TaskRepository) Replace(_ context.Context, task, prev entity.Task) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	stored, ok := r.tasks[prev.ID]
+	if !ok {
+		return entity.ErrNotFound
+	}
+
+	if !same(stored, prev) {
+		return usecase.ErrStale
+	}
+
+	r.tasks[prev.ID] = task
+
+	return nil
+}
+
+// same compares tasks field for field, times as instants, as a database compares stored values.
+func same(a, b entity.Task) bool {
+	return a.ID == b.ID && a.Title == b.Title && a.Status == b.Status && a.CreatedAt.Equal(b.CreatedAt) && a.UpdatedAt.Equal(b.UpdatedAt)
 }
 
 // Get returns entity.ErrNotFound when no task has the ID.

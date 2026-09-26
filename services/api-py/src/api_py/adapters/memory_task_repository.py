@@ -30,3 +30,10 @@ class MemoryTaskRepository:
     def list(self) -> tuple[Task, ...]:
         with self._lock:
             return tuple(self._tasks.values())
+
+    def replace(self, task: Task, prev: Task) -> bool:
+        with self._lock:
+            if self._tasks.get(prev.id) != prev:
+                return False
+            self._tasks[prev.id] = task
+            return True

@@ -31,10 +31,15 @@ export class TaskService {
     return this.#deps.repository.list();
   }
 
-  /** Stores nothing when the domain refuses the move. */
+  /**
+   * Stores nothing when the domain refuses the move. The move replaces the task it was judged against,
+   * or nothing: when another change came first it is judged again against the task as that change left it.
+   */
   async transition(id: string, next: Status): Promise<Task> {
-    const moved = transition(await this.get(id), next, this.#deps.clock.now());
-    await this.#deps.repository.save(moved);
-    return moved;
+    for (;;) {
+      const current = await this.get(id);
+      const moved = transition(current, next, this.#deps.clock.now());
+      if (await this.#deps.repository.replace(moved, current)) return moved;
+    }
   }
 }

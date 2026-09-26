@@ -52,6 +52,53 @@ const CASES: Case[] = [
     },
   ],
   [
+    "a replace from the stored task stores the new one",
+    async (newRepository) => {
+      const repository = newRepository();
+      const first = task("a", "first");
+      const moved: Task = { ...first, status: "in_progress", updatedAt: "2026-01-02T03:05:05.006Z" };
+      await repository.save(first);
+      if (!(await repository.replace(moved, first))) return "refused a replace from the task as stored";
+      const got = await repository.get("a");
+      return JSON.stringify(got) === JSON.stringify(moved)
+        ? undefined
+        : `got ${JSON.stringify(got)} after replacing it with ${JSON.stringify(moved)}`;
+    },
+  ],
+  [
+    "a replace from a task that is out of date is refused",
+    async (newRepository) => {
+      const repository = newRepository();
+      const first = task("a", "first");
+      const moved: Task = { ...first, status: "in_progress", updatedAt: "2026-01-02T03:05:05.006Z" };
+      await repository.save(first);
+      await repository.replace(moved, first);
+      if (await repository.replace({ ...first, title: "changed meanwhile" }, first))
+        return "replaced a task from a version that had changed since";
+      const got = await repository.get("a");
+      return JSON.stringify(got) === JSON.stringify(moved) ? undefined : `a refused replace changed the task: ${JSON.stringify(got)}`;
+    },
+  ],
+  [
+    "a replace of a task never saved is refused",
+    async (newRepository) => {
+      const missing = task("missing", "never saved");
+      return (await newRepository().replace(missing, missing)) ? "replaced a task that was never saved" : undefined;
+    },
+  ],
+  [
+    "of replaces from one version at once, exactly one is made",
+    async (newRepository) => {
+      const repository = newRepository();
+      const first = task("a", "first");
+      await repository.save(first);
+      const made = (
+        await Promise.all(Array.from({ length: 16 }, (_, n) => repository.replace({ ...first, title: `replace ${n}` }, first)))
+      ).filter(Boolean);
+      return made.length === 1 ? undefined : `${made.length} of 16 replaces from the same version were made, want 1`;
+    },
+  ],
+  [
     "two stores share nothing",
     async (newRepository) => {
       const [first, second] = [newRepository(), newRepository()];

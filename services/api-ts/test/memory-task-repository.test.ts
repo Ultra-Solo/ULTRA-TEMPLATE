@@ -9,7 +9,8 @@ test("the in-memory store keeps the storage port's contract", async () => {
   assert.deepEqual(await checkTaskRepository(() => new MemoryTaskRepository()), []);
 });
 
-// A store with the mistakes a new adapter makes: newest first, and one list every instance shares.
+// A store with the mistakes a new adapter makes: newest first, one list every instance shares, and a
+// replace that does not check the task is still the one the caller read.
 const shared: Task[] = [];
 const broken = (): TaskRepository => ({
   save: async (task) => {
@@ -17,11 +18,21 @@ const broken = (): TaskRepository => ({
   },
   get: async (id) => shared.find((task) => task.id === id),
   list: async () => shared,
+  replace: async (task) => {
+    shared.unshift(task);
+    return true;
+  },
 });
 
 test("the suite fails a broken store, naming each way it breaks the contract", async () => {
   const problems = (await checkTaskRepository(broken)).join("\n");
-  for (const expected of ["listed oldest first", "two stores share nothing", "an empty store lists nothing"]) {
+  for (const expected of [
+    "listed oldest first",
+    "two stores share nothing",
+    "an empty store lists nothing",
+    "a replace from a task that is out of date is refused",
+    "a replace of a task never saved is refused",
+  ]) {
     assert.ok(problems.includes(expected), `not reported: ${expected}\n${problems}`);
   }
 });

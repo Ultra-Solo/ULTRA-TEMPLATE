@@ -19,4 +19,15 @@ export class MemoryTaskRepository implements TaskRepository {
   async list(): Promise<readonly Task[]> {
     return [...this.#tasks.values()];
   }
+
+  // No await between the read and the write, so no other call can run in between.
+  async replace(task: Task, prev: Task): Promise<boolean> {
+    const stored = this.#tasks.get(prev.id);
+    if (stored === undefined || !same(stored, prev)) return false;
+    this.#tasks.set(prev.id, task);
+    return true;
+  }
 }
+
+const same = (a: Task, b: Task): boolean =>
+  a.id === b.id && a.title === b.title && a.status === b.status && a.createdAt === b.createdAt && a.updatedAt === b.updatedAt;

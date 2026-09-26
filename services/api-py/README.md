@@ -57,7 +57,7 @@ uv run --frozen python scripts/check_boundaries.py
 
 `node scripts/verify.mjs py-service` runs these, then the contract; CI runs the same. `uv lock --check` comes first and the rest run `--frozen`, so a `uv.lock` that no longer matches `pyproject.toml` fails instead of being rewritten. uv's own version is pinned once, in `scripts/tools/tools.json`; `[tool.uv] required-version` is the range this project accepts, and check-hygiene holds the pin inside it.
 
-To add a store, write a class with the `TaskRepository` shape in `src/api_py/adapters` and choose it in `main.py`. Its test passes a function that returns a fresh, empty store to `check_task_repository` from `tests/task_repository_conformance.py` and expects no problems, as `tests/test_memory_task_repository.py` does: that suite is the behaviour the service relies on from a store.
+To add a store, write a class with the `TaskRepository` shape in `src/api_py/adapters` and choose it in `main.py`. Its test passes a function that returns a fresh, empty store to `check_task_repository` from `tests/task_repository_conformance.py` and expects no problems, as `tests/test_memory_task_repository.py` does: that suite is the behaviour the service relies on from a store. Its `replace` stores a task only while the stored one is still the task the caller read, which in a database is one conditional `UPDATE … WHERE` the old values: it is what keeps two moves at once from both being made ([ADR-0019](../../docs/adr/0019-moves-are-compare-and-set-on-the-store.md)).
 
 ## Container
 

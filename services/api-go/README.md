@@ -69,4 +69,4 @@ golangci-lint run
 docker build -t api-go .
 ```
 
-To add a store, implement `usecase.TaskRepository` in a new package under `internal/repo/` and choose it in `internal/app`. Its tests call `repotest.Run` with a function that returns a fresh, empty store, as the memory store's tests do: `internal/repo/repotest` is the behaviour the service relies on from a store, and passing it is what makes the new one a replacement rather than a rewrite.
+To add a store, implement `usecase.TaskRepository` in a new package under `internal/repo/` and choose it in `internal/app`. Its tests call `repotest.Run` with a function that returns a fresh, empty store, as the memory store's tests do: `internal/repo/repotest` is the behaviour the service relies on from a store, and passing it is what makes the new one a replacement rather than a rewrite. Its `Replace` stores a task only while the stored one is still the task the caller read, which in a database is one conditional `UPDATE … WHERE` the old values: it is what keeps two moves at once from both being made ([ADR-0019](../../docs/adr/0019-moves-are-compare-and-set-on-the-store.md)).
