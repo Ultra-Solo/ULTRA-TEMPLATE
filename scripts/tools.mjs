@@ -279,7 +279,7 @@ export async function latest(name, { tools = loadTools(), fetch = globalThis.fet
 }
 
 /** The SHA-256 a release publishes for one asset, from where the manifest says the release publishes it. */
-async function publishedChecksum(tool, asset, { fetch, token }) {
+export async function publishedChecksum(tool, asset, { fetch = globalThis.fetch, token } = {}) {
   const url = fill(asset.url, tool);
   const file = basename(new URL(url).pathname);
   const text = async (address) => {
