@@ -177,7 +177,34 @@ export function checkSpec(spec, contract, rules) {
   return problems;
 }
 
-const expand = (value, facts) => (value !== null && typeof value === "object" && "repeat" in value ? value.repeat.repeat(resolveRef(value.times, facts)) : value);
+const withProperty = new Map();
+/** Every code point with the Unicode property `name`, as one string, in code point order. */
+export function codePointsWith(name) {
+  if (!withProperty.has(name)) {
+    const test = new RegExp(`^\\p{${name}}$`, "u");
+    let found = "";
+    for (let cp = 0; cp <= 0x10ffff; cp++) if ((cp < 0xd800 || cp > 0xdfff) && test.test(String.fromCodePoint(cp))) found += String.fromCodePoint(cp);
+    withProperty.set(name, found);
+  }
+  return withProperty.get(name);
+}
+
+/**
+ * A value a case builds rather than writes: `{ repeat, times }` repeats a string, and
+ * `{ whitespace: "rules.titleWhitespace", around }` is every character with the Unicode property the
+ * rules name, on both sides of `around` (or alone), so the cases follow the rule rather than a list.
+ */
+function expand(value, facts) {
+  if (value === null || typeof value !== "object") return value;
+  if ("repeat" in value) return value.repeat.repeat(resolveRef(value.times, facts));
+  if ("whitespace" in value) {
+    const name = value.whitespace.split(".").reduce((at, key) => at?.[key], facts);
+    if (typeof name !== "string") throw new Error(`${value.whitespace} names no Unicode property in the task rules`);
+    const all = codePointsWith(name);
+    return value.around === undefined ? all : `${all}${value.around}${all}`;
+  }
+  return value;
+}
 
 /**
  * A body is a string sent as written, or an object whose `{ repeat, times }` values are expanded first.

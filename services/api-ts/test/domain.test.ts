@@ -67,3 +67,15 @@ test("parseStatus accepts only the known statuses", () => {
       "UNKNOWN_STATUS",
     );
 });
+
+test("createTask trims the Unicode White_Space property, and keeps what JavaScript's trim would also take", () => {
+  // Built from code points: a formatter writes these escapes back as the invisible characters themselves.
+  const [nel, ideographicSpace, paragraphSeparator, nbsp, bom] = [0x85, 0x3000, 0x2029, 0xa0, 0xfeff].map((cp) => String.fromCodePoint(cp));
+  // U+0085 is White_Space but not trimmed by String.prototype.trim; U+FEFF is trimmed by it but is not White_Space.
+  assert.equal(createTask("id-1", `${nel}${ideographicSpace}a${paragraphSeparator}`, NOW).title, "a");
+  assert.equal(createTask("id-1", `\u001fa${bom}`, NOW).title, `\u001fa${bom}`);
+  assert.equal(
+    code(() => createTask("id-1", `${nel}${nbsp}`, NOW)),
+    "EMPTY_TITLE",
+  );
+});

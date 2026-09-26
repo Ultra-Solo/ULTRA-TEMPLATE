@@ -60,7 +60,7 @@ export const REQUIREMENTS = {
  * The facts a module may say it repeats. Each is stated in one file, and scripts/check-facts.mjs compares
  * a module's copy with it; test/check-facts.test.mjs holds this list to the facts those files state.
  */
-export const FACTS = ["statuses", "transitions", "maxTitleLength", "apiDefaultPort"];
+export const FACTS = ["statuses", "transitions", "maxTitleLength", "titleWhitespace", "apiDefaultPort"];
 /**
  * How a module's container image is probed in CI (scripts/probe-image.mjs): "http" serves the task API
  * and is held to the contract, or {"run": command} probes the image with the module's own command.

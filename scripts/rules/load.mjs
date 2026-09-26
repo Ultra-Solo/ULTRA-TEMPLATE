@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 export const RULES_FILE = join(dirname(fileURLToPath(import.meta.url)), "task-rules.json");
 
+/** The rules, without the `$`-keyed notes that explain them. */
 export function loadRules(file = RULES_FILE) {
-  const { $comment, ...rules } = JSON.parse(readFileSync(file, "utf8"));
-  return rules;
+  return Object.fromEntries(Object.entries(JSON.parse(readFileSync(file, "utf8"))).filter(([key]) => !key.startsWith("$")));
 }

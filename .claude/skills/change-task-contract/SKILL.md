@@ -1,6 +1,6 @@
 ---
 name: change-task-contract
-description: Change a task rule (a status, a legal move, the longest title), a limit, a configuration variable or a route of the task API in every module at once. Use when a task changes what the task services accept or answer, or what the modules that repeat the rules hold of them.
+description: Change a task rule (a status, a legal move, the longest title, the whitespace a title is trimmed of), a limit, a configuration variable or a route of the task API in every module at once. Use when a task changes what the task services accept or answer, or what the modules that repeat the rules hold of them.
 ---
 
 # Change the task contract
@@ -9,7 +9,7 @@ Every fact below is stated once and held everywhere else by a check, so the orde
 first, then the check that fails, then each module until it passes. Never change one module alone.
 
 1. **State the change once.**
-   - A status, a legal move or the longest title: `scripts/rules/task-rules.json`.
+   - A status, a legal move, the longest title or the whitespace a title is trimmed of: `scripts/rules/task-rules.json`.
 <!-- ultra:begin go-service|ts-service|py-service|mcp-server|web -->
    - A limit (body size, request id), a configuration variable (its default, the values it must take or
      refuse), the startup and refusal lines, a route or a status code: `scripts/contract/tasks-api.json`.

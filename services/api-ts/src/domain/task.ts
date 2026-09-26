@@ -36,8 +36,15 @@ const NEXT: Readonly<Record<Status, readonly Status[]>> = {
   done: [],
 };
 
+/**
+ * The Unicode property a title is trimmed of at both ends (scripts/rules/task-rules.json), as every task
+ * service trims it. Not String.prototype.trim, which keeps U+0085 and takes U+FEFF.
+ */
+export const TITLE_WHITESPACE = "White_Space";
+const TITLE_EDGES = new RegExp(`^\\p{${TITLE_WHITESPACE}}+|\\p{${TITLE_WHITESPACE}}+$`, "gu");
+
 export function createTask(id: string, title: string, now: string): Task {
-  const trimmed = title.trim();
+  const trimmed = title.replace(TITLE_EDGES, "");
   if (trimmed === "") throw new DomainError("EMPTY_TITLE", "title must not be empty");
   // Counted in code points, not UTF-16 units, so the limit means the same as in api-go.
   if ([...trimmed].length > MAX_TITLE_LENGTH) {

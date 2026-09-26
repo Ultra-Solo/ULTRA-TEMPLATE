@@ -57,8 +57,18 @@ def next_statuses(status: Status) -> tuple[Status, ...]:
     return _NEXT[status]
 
 
+# The characters with Unicode's White_Space property, which a title is trimmed of at both ends
+# (scripts/rules/task-rules.json): what Go's strings.TrimSpace removes. str.strip() would also take
+# U+001C to U+001F. Python's re has no \p{...}, so they are listed; the contract's cases, built from the
+# property itself, fail when this list and the property differ.
+TITLE_WHITESPACE = (
+    "\t\n\x0b\x0c\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+    "\u2028\u2029\u202f\u205f\u3000"
+)
+
+
 def create_task(task_id: str, title: str, now: str) -> Task:
-    trimmed = title.strip()
+    trimmed = title.strip(TITLE_WHITESPACE)
     if trimmed == "":
         raise DomainError("EMPTY_TITLE", "title must not be empty")
     # Python strings are sequences of code points, so len() is the same count api-go and api-ts use.

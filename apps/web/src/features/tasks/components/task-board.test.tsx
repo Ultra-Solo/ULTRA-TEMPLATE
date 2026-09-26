@@ -49,3 +49,14 @@ it("shows the service's error message when a request fails", async () => {
 
   expect((await screen.findByRole("alert")).textContent).toBe("service unavailable");
 });
+
+it("leaves a title's length to the API, which counts characters where the input would count UTF-16 units", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json([])),
+  );
+  render(<TaskBoard />);
+
+  // A maxLength of 200 would stop at 100 astral characters, half of what the API takes.
+  expect((await screen.findByRole("textbox")).hasAttribute("maxlength")).toBe(false);
+});

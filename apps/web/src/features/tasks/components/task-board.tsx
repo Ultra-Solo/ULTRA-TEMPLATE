@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createTask, listTasks, moveTask } from "../api.ts";
-import { LABELS, MAX_TITLE_LENGTH, nextStatuses, type Status, type Task } from "../model.ts";
+import { LABELS, nextStatuses, type Status, type Task } from "../model.ts";
 
 export function TaskBoard() {
   const [tasks, setTasks] = useState<readonly Task[]>([]);
@@ -49,9 +49,8 @@ export function TaskBoard() {
       <form onSubmit={create}>
         <input
           aria-label="Task title"
-          // The browser counts UTF-16 units and the API code points, so this can only refuse early,
-          // never let through a title the API would refuse.
-          maxLength={MAX_TITLE_LENGTH}
+          // No maxLength: the browser counts UTF-16 units, so it would refuse a title of astral characters
+          // the API takes. The API checks the length and the board shows its reason.
           onChange={(event) => setTitle(event.target.value)}
           placeholder="What needs doing?"
           value={title}

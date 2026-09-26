@@ -8,6 +8,7 @@ import {
   checkImage,
   checkLogs,
   checkSpec,
+  codePointsWith,
   conforms,
   configCases,
   configEnv,
@@ -508,4 +509,14 @@ test("of the same request sent at once, exactly one gets the status and the rest
   assert.deepEqual(await runCases(await fakeService(t), cases), []);
   const failures = await runCases(await fakeService(t, { racyMoves: true }), cases);
   assert.match(failures[0]?.problems.join() ?? "", /16 of 16 concurrent requests answered 200, expected exactly 1/);
+});
+
+test("a title built from the rules' whitespace property holds every character with it, and nothing else", () => {
+  const all = codePointsWith(FACTS.rules.titleWhitespace);
+  assert.equal([...all].length, 25, "Unicode's White_Space property");
+  for (const kept of ["\u001f", "\ufeff", "\u200b", "a"]) assert.equal(all.includes(kept), false, JSON.stringify(kept));
+  for (const trimmed of ["\u0085", "\u00a0", "\u3000", "\u2028"]) assert.equal(all.includes(trimmed), true, JSON.stringify(trimmed));
+  const body = JSON.parse(encodeBody({ title: { whitespace: "rules.titleWhitespace", around: "a" } }, FACTS));
+  assert.equal(body.title, `${all}a${all}`);
+  assert.throws(() => encodeBody({ title: { whitespace: "rules.nothing" } }, FACTS), /rules\.nothing names no Unicode property/);
 });

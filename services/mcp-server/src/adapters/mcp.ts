@@ -115,7 +115,9 @@ export function createServer(gateway: TaskGateway, { version }: { version: strin
     {
       title: "Create a task",
       description: `Create a task. It starts in the ${FIRST_STATUS} status.`,
-      inputSchema: z.object({ title: z.string().max(MAX_TITLE_LENGTH).describe("What the task is, in a line") }),
+      // No maxLength: a schema counts UTF-16 units before trimming, the rules count code points after it.
+      // The domain checks the length, as the API does, and says why a title is refused.
+      inputSchema: z.object({ title: z.string().describe(`What the task is, in a line of at most ${MAX_TITLE_LENGTH} characters`) }),
       outputSchema: z.object({ task: taskOutput }),
       annotations: WRITES,
     },

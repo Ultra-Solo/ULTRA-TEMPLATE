@@ -6,5 +6,7 @@
     "in_progress": ["todo", "done"],
     "done": []
   },
-  "maxTitleLength": 200
+  "maxTitleLength": 200,
+  "titleWhitespace": "White_Space",
+  "$titleWhitespace": "A title is trimmed of the characters with this Unicode property at both ends before it is checked or stored: exactly what Go's strings.TrimSpace removes, and what \\p{White_Space} matches in a JavaScript or Python regular expression. It is not what JavaScript's trim or Python's strip removes: U+FEFF is not trimmed, nor are U+001C to U+001F."
 }
