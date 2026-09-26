@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
-import { bump, command, helperProblems, install, loadTools, localPlan, localTools, platform, toolsFor, validateTools, withHelpers } from "../scripts/tools.mjs";
+import { bump, chassisToolPlan, command, helperProblems, install, loadTools, localPlan, localTools, platform, toolsFor, validateTools, withHelpers } from "../scripts/tools.mjs";
 
 /** A tar.gz (or, with `xz`, a tar.xz) holding one executable, its bytes, and a fetch that serves it at `url`. */
 function release(t, url, member = "demo", { xz = false } = {}) {
@@ -102,6 +102,31 @@ test("an xz archive installs as a gzip one does, from a directory inside it, and
   assert.deepEqual(await install("demo", { tools: pin(sha), dir: join(work, "bin"), fetch }), [join(work, "bin", "demo")]);
   await assert.rejects(() => install("demo", { tools: pin("0".repeat(64)), dir: join(work, "other"), fetch }), /not the pinned 0{64}\. The asset was replaced, or the pin is wrong: nothing was unpacked/);
   assert.equal(existsSync(join(work, "other")), false);
+});
+
+test("verify runs each chassis tool it finds at its pin, and a missing one fails where CI must run it", () => {
+  const asset = { url: "https://example.test/lint.tar.gz", sha256: "a".repeat(64), files: ["lint"] };
+  const tools = {
+    lint: { version: "1.0.0", for: "chassis", releases: { github: "o/lint" }, platforms: { "linux-x64": asset }, checksums: { file: "x" }, versionCommand: ["lint", "--version"], check: ["lint", "-strict"] },
+    other: { version: "2.0.0", for: "go", releases: { github: "o/other" }, platforms: { "linux-x64": asset }, checksums: { file: "x" }, check: ["other"] },
+  };
+  const plan = (found, options = {}) => chassisToolPlan(tools, { found: () => found, on: "linux-x64", helpers: () => [], ...options });
+  assert.deepEqual(plan("1.0.0"), [{ name: "chassis: lint", run: ["lint", "-strict"] }], "only chassis tools with a check");
+  assert.match(plan("0.9.0")[0].note, /lint 0\.9\.0 is on PATH, but scripts\/tools\/tools\.json pins 1\.0\.0/);
+  assert.equal(plan("0.9.0")[0].status, "fail");
+  // Missing: a failure where the caller says a skip fails (CI), a named skip elsewhere.
+  assert.equal(plan(null, { missing: "fail" })[0].status, "fail");
+  assert.equal(plan(null, { missing: "skipped" })[0].status, "skipped");
+  assert.match(plan(null)[0].note, /node scripts\/tools\.mjs install --local installs it/);
+  // With no asset for this platform nothing can install it, so it is only ever skipped, and says why.
+  const elsewhere = plan(null, { on: "win32-x64", missing: "fail" })[0];
+  assert.equal(elsewhere.status, "skipped");
+  assert.match(elsewhere.note, /no pinned asset for win32-x64/);
+  // A helper at another version stops the run; a missing one is recorded after it.
+  const wrong = plan("1.0.0", { helpers: () => [{ helper: "sc", wrong: "sc 0.1.0 is on PATH" }] });
+  assert.deepEqual(wrong.map((e) => [e.name, e.status ?? "run"]), [["chassis: lint with sc", "fail"]]);
+  const missingHelper = plan("1.0.0", { missing: "fail", helpers: () => [{ helper: "sc", missing: true }] });
+  assert.deepEqual(missingHelper.map((e) => [e.name, e.status ?? "run"]), [["chassis: lint", "run"], ["chassis: lint with sc", "fail"]]);
 });
 
 test("a tool run by version is run with the pinned version filled in", () => {

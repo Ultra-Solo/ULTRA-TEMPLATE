@@ -1,6 +1,6 @@
 /**
- * Every module's checks, locally, as CI runs them. Workflow linting, image builds and the security scans
- * run only in CI.
+ * Every module's checks, locally, as CI runs them, and the chassis's pinned tools, which lint the workflows.
+ * Image builds, the online workflow audit and the security scans run only in CI.
  *
  *   node scripts/verify.mjs                  # the chassis and every module present
  *   node scripts/verify.mjs go-service web   # the chassis and only the modules named
@@ -26,8 +26,10 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { available, checkNodeVersion, e2ePartner, ModuleError, presentModules, REQUIREMENTS, ROOT, run, skipOutcome, TOOLCHAINS } from "./modules.mjs";
-import { helperProblems, installedVersion, loadTools, TOOLS_FILE, versionProblem } from "./tools.mjs";
+import { available, checkNodeVersion, e2ePartner, ModuleError, presentModules, REQUIREMENTS, ROOT, run, skipOutcome, TOOLCHAINS, withToolsBin } from "./modules.mjs";
+import { chassisToolPlan, loadTools, TOOLS_FILE } from "./tools.mjs";
+
+process.env.PATH = withToolsBin(process.env.PATH);
 
 const { values: flags, positionals: requested } = parseArgs({
   allowPositionals: true,
@@ -56,24 +58,13 @@ function chassis() {
   const suites = ["test/*.test.mjs"];
   if (existsSync(join(ROOT, "template"))) suites.push("template/*.test.mjs");
   step("chassis: tests", ["node", "--test", ...suites]);
-  // The chassis tools (actionlint, zizmor) run in jobs of their own in CI; here they run when installed,
-  // and a different version than the pin fails rather than passing on rules CI does not apply.
-  for (const [name, tool] of Object.entries(pinnedTools())) {
-    if (tool.for !== "chassis" || !tool.check) continue;
-    const found = flags["dry-run"] ? tool.version : installedVersion(name, tools);
-    if (found === null) record(`chassis: ${name}`, "skipped", `not on PATH; its own CI job runs it, and node scripts/tools.mjs install ${name} installs it here`);
-    else if (versionProblem(name, found, tools)) record(`chassis: ${name}`, "fail", versionProblem(name, found, tools));
-    else {
-      // A helper at another version than its pin fails as the tool would, before the tool runs by its rules.
-      const helpers = flags["dry-run"] ? [] : helperProblems(tool, { tools });
-      if (!helpers.some((h) => h.wrong)) step(`chassis: ${name}`, tool.check);
-      for (const { helper, missing, wrong } of helpers) {
-        const fix = helper in tools ? `, and node scripts/tools.mjs install ${name} installs ${helper} here` : "";
-        const where = skipOutcome() === "fail" ? "this CI job must run them" : `CI runs them${fix}`;
-        if (missing) record(`chassis: ${name} with ${helper}`, skipOutcome(), `${helper} is not on PATH, so ${name} ran without the rules that need it; ${where}`);
-        else record(`chassis: ${name} with ${helper}`, "fail", wrong);
-      }
-    }
+  // The chassis tools with a `check` run here, as in every CI job that verifies the chassis: a missing one
+  // fails in CI, and a different version than the pin fails anywhere rather than passing by other rules.
+  const pinned = pinnedTools();
+  const plan = flags["dry-run"] ? chassisToolPlan(pinned, { found: (name) => pinned[name].version, helpers: () => [] }) : chassisToolPlan(pinned, { missing: skipOutcome() });
+  for (const entry of plan) {
+    if (entry.run) step(entry.name, entry.run);
+    else record(entry.name, entry.status, entry.note);
   }
 }
 
@@ -135,6 +126,8 @@ function verifyModule(module) {
   // A client of the task API is driven against a real one, where a service is present to run it against.
   const partner = module.e2e ? e2ePartner(module, present) : null;
   if (partner) step(`${module.id}: end to end with ${partner.id}`, ["node", "scripts/check-contract.mjs", "--e2e", module.id, "--service", partner.id]);
+  // With no task service in this project there is nothing to drive it against, here or in CI: say so.
+  else if (module.e2e) record(`${module.id}: end to end`, "skipped", "no task service is present to run it against");
 }
 
 let present;

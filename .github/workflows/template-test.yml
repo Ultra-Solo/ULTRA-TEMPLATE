@@ -1,7 +1,7 @@
 # Template-only: init deletes this workflow.
 #
 # The template is only as good as what it generates, so this generates a project from every preset
-# and runs that project's own setup, verify and actionlint. A marker in the wrong place, a feature that silently
+# and runs that project's own setup and verify, which lints its workflows too. A marker in the wrong place, a feature that silently
 # depends on another, or a workflow that stops parsing once a block is removed fails here, before
 # anyone creates a repository from it.
 name: template-test
@@ -95,5 +95,3 @@ jobs:
         run: |
           node scripts/setup.mjs
           node scripts/verify.mjs
-          actionlint -color
-          zizmor --offline .

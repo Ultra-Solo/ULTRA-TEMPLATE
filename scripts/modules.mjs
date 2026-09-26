@@ -10,7 +10,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -222,6 +222,18 @@ export function run(command, args, { cwd = ROOT, capture = false } = {}) {
 }
 
 export const available = (command, args = ["version"]) => run(command, args, { capture: true }).status === 0;
+
+/** Where `node scripts/tools.mjs install --local` puts the pinned tools. */
+export const TOOLS_BIN = join(ROOT, ".tools", "bin");
+
+/**
+ * PATH with `bin` first when it exists, so a pinned tool installed here wins over any other copy for
+ * every command verify and setup start; a shell nobody configured still runs what CI runs.
+ */
+export function withToolsBin(path, bin = TOOLS_BIN, exists = existsSync) {
+  if (!exists(bin)) return path;
+  return [bin, ...(path ?? "").split(delimiter).filter((entry) => entry !== "" && entry !== bin)].join(delimiter);
+}
 
 /**
  * Why the running Node is not the one `.node-version` pins, or null when it is. Only the major version

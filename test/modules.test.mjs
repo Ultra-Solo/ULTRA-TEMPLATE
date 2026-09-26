@@ -92,6 +92,17 @@ test("verify runs a client's end-to-end check when a task service is present", a
   }
 });
 
+test("the tools this checkout installs come first on PATH for everything verify and setup start", async () => {
+  const { delimiter } = await import("node:path");
+  const { withToolsBin } = await import("../scripts/modules.mjs");
+  const bin = "/repo/.tools/bin";
+  assert.equal(withToolsBin(`/usr/bin${delimiter}/bin`, bin, () => true), `${bin}${delimiter}/usr/bin${delimiter}/bin`);
+  assert.equal(withToolsBin("/usr/bin", bin, () => false), "/usr/bin", "nothing installed, nothing added");
+  assert.equal(withToolsBin(`${bin}${delimiter}/usr/bin`, bin, () => true), `${bin}${delimiter}/usr/bin`, "already first");
+  assert.equal(withToolsBin(`/usr/bin${delimiter}${bin}`, bin, () => true), `${bin}${delimiter}/usr/bin`, "moved first, not listed twice");
+  assert.equal(withToolsBin(undefined, bin, () => true), bin);
+});
+
 test("a declared skip is a failure in GitHub Actions, where the module's job has what it needs", async () => {
   const { skipOutcome } = await import("../scripts/modules.mjs");
   assert.equal(skipOutcome({}), "skipped");

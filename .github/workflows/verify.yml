@@ -30,7 +30,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Hygiene, documentation and the chassis's own tests, as `verify.mjs --no-modules` runs them locally.
+  # Hygiene, documentation, the chassis's own tests and its pinned tools (actionlint with shellcheck, and
+  # zizmor offline), as `verify.mjs --no-modules` runs them locally. The tools come from tools.json alone,
+  # and verify fails here on one it cannot find, so no second job restates how to run them.
   chassis:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -41,6 +43,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      - run: node scripts/tools.mjs install --for chassis
       - run: node scripts/verify.mjs --no-modules
 
   # The chassis is written to run on Windows too (no make, no symlinks, npm through a shell), and a
@@ -88,21 +91,10 @@ jobs:
           . "$CLAUDE_ENV_FILE"
           node scripts/verify.mjs --no-modules
 
-  actionlint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/tool
-        with:
-          names: actionlint
-      - run: actionlint -color
-
   # zizmor audits the workflows for security rather than syntax: template injection, dangerous
-  # triggers, persisted credentials, cache poisoning. With a token it also confirms each pinned SHA
-  # belongs to the repository it names, so an impostor commit from a fork cannot pass as a pin.
+  # triggers, persisted credentials, cache poisoning. The chassis job runs its offline audits; this one has
+  # a token, so it also confirms each pinned SHA belongs to the repository it names, so an impostor commit
+  # from a fork cannot pass as a pin.
   zizmor:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -214,7 +206,6 @@ jobs:
       - chassis
       - chassis-windows
       - agent-env
-      - actionlint
       - zizmor
       # ultra:begin go-service
       - go-service
