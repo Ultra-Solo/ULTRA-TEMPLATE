@@ -211,7 +211,7 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     const parsed = entries.map((e) => [e.slice(0, e.indexOf("\t")), e.slice(e.indexOf("\t") + 1)]);
     const skipped = parsed.filter(([kind, path]) => kind !== "A" && !existsSync(join(project, path))).map(([, path]) => path);
     scope = [...scope, ...skipped.map((path) => `:(exclude)${path}`)];
-    const files = parsed.filter(([, path]) => !skipped.includes(path)).map(([kind, path]) => `${kind} ${path}`);
+    let files = parsed.filter(([, path]) => !skipped.includes(path)).map(([kind, path]) => `${kind} ${path}`);
     if (skipped.length > 0) log(`template-update: skipped ${skipped.length} file(s) this project removed: ${skipped.join(", ")}`);
 
     // git apply --3way cannot merge a deletion with an edit, or an addition with a file already there:
@@ -222,6 +222,7 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     const same = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)) && readFileSync(join(project, path)).equals(readFileSync(join(work, "gen-after", path))));
     const occupied = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)) && !same.some(([, p]) => p === path));
     scope = [...scope, ...same.map(([, path]) => `:(exclude)${path}`)];
+    files = files.filter((line) => !same.some(([, path]) => line === `A ${path}`));
     // A file of the project's own inside a feature being removed would be left behind in a directory the
     // feature no longer owns, so it is named as well rather than kept or deleted silently.
     const removedPaths = remove.flatMap((id) => manifestAt(origin.version).features[id]?.paths ?? []);

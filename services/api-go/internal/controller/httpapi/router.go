@@ -217,7 +217,8 @@ func decodeObject(raw []byte, dst any) error {
 }
 
 // exactFieldNames refuses a field whose name matches one of dst's only when case is ignored, as
-// encoding/json matches them: "Title" is not "title" in any other task service.
+// encoding/json matches them: "Title" is not "title" in any other task service. It learns dst's names by
+// encoding it, so a request struct's fields must not be omitempty, or an empty one would go unlisted.
 func exactFieldNames(raw []byte, dst any) error {
 	var sent map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &sent); err != nil {

@@ -65,7 +65,8 @@ test("each deployment environment a workflow names is limited to the default bra
   assert.deepEqual(deploymentEnvironments(workflows), ["mcp-registry", "npm"], "Pages manages its own environment");
   const steps = plan("octo/app", { release: true, environments: ["npm"], defaultBranch: "trunk" }).filter((s) => s.upsertEnvironment);
   assert.deepEqual(steps.map((s) => s.upsertEnvironment), [{ name: "npm", branch: "trunk" }]);
-  assert.equal(steps[0].optional, undefined, "a publishing environment anyone could deploy from is not optional");
+  // GitHub refuses branch policies on a private repository without a paid plan; that is reported, not a failure.
+  assert.equal(steps[0].optional, true);
   assert.equal(plan("octo/app", { release: false }).some((s) => s.upsertEnvironment), false);
 });
 

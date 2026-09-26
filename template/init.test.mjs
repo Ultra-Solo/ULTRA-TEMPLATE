@@ -204,8 +204,8 @@ test("the public contract only grows: no feature or preset of 1.x or 2.x is remo
   if (Number(manifest.version.split(".")[0]) > 2) return;
   const features = ["go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"];
   const presets = ["minimal", "go-api", "py-api", "fullstack-ts", "library", "mcp", "all"];
-  assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed within 1.x");
-  assert.deepEqual(presets.filter((id) => !(id in manifest.presets)), [], "presets removed within 1.x");
+  assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed within 1.x or 2.x");
+  assert.deepEqual(presets.filter((id) => !(id in manifest.presets)), [], "presets removed within 1.x or 2.x");
   for (const preset of presets.filter((id) => id !== "all")) {
     for (const feature of manifest.presets[preset]) assert.ok(manifest.presets.all.includes(feature), `${preset}: ${feature} is not in all`);
   }

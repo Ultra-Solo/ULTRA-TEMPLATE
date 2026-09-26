@@ -353,5 +353,6 @@ test("a file the release adds that the project already has, byte for byte, is no
 
   assert.deepEqual(result.conflicts, []);
   assert.equal(result.to, LATEST);
+  assert.ok(!result.changed.some((line) => line.endsWith(" SUPPORT.md")), `SUPPORT.md is not a change: ${result.changed.join(", ")}`);
   assert.match(readFileSync(join(dir, "CHANGELOG.md"), "utf8"), new RegExp(`Updated to \\[[^\\]]+ ${LATEST.replaceAll(".", "\\.")}\\]`));
 });

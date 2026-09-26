@@ -28,7 +28,8 @@
  *     whole of what release-please needs; GitHub names the setting `can_approve_pull_request_reviews`,
  *     but with no approving review required by the ruleset there is nothing for Actions to approve.
  *     Each deployment environment a workflow names (npm, mcp-registry) then admits the default branch
- *     alone, the branch whose push runs the publishing jobs.
+ *     alone, the branch whose push runs the publishing jobs. Like secret scanning, GitHub refuses that
+ *     on a private repository without a paid plan, and it is then reported as unavailable.
  *
  * Exit 0 applied · 1 a required setting failed · 2 invalid arguments or no usable `gh`.
  */
@@ -154,7 +155,8 @@ export function plan(repo, { release, environments = [], defaultBranch = "main" 
   // a workflow run from any other branch cannot reach the environment's trust (npm's trusted publisher,
   // the registry's OIDC login) even if someone edits the workflow there.
   for (const name of environments) {
-    steps.push({ name: `environment ${name}: deployments from ${defaultBranch} only`, upsertEnvironment: { name, branch: defaultBranch } });
+    // Optional as secret scanning is: GitHub refuses branch policies on a private repository without a paid plan.
+    steps.push({ name: `environment ${name}: deployments from ${defaultBranch} only`, upsertEnvironment: { name, branch: defaultBranch }, optional: true });
   }
   return steps;
 }
