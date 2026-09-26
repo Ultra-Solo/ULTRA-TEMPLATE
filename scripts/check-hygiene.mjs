@@ -33,8 +33,8 @@
  *      declares fails too: deleting a module leaves its job behind, which fails only once CI runs it.
  *      A toolchain manifest (package.json, go.mod, pyproject.toml) below the root with no module.json
  *      beside it or above it fails too: nothing would install or verify it.
- *  14. Every Dockerfile `FROM` names its base image by digest. A tag can be repointed at a different
- *      image with no diff here, the exposure ADR-0003 pins actions against.
+ *  14. Every Dockerfile `FROM`, and a Dev Container's `image`, names its base image by digest. A tag can
+ *      be repointed at a different image with no diff here, the exposure ADR-0003 pins actions against.
  *  15. A download in a workflow or local action that keeps a file is verified against a checksum in
  *      the same step, and no download is piped into an interpreter, which runs it before anything
  *      could check it.
@@ -284,6 +284,18 @@ export function jobIds(text) {
     if (opened) ids.push(opened[1]);
   }
   return ids;
+}
+
+/** Rule 14 for a Dev Container: an `image` it names directly carries a digest, as a Dockerfile's FROM does. */
+export function checkDevcontainerImage(path, text) {
+  const problems = [];
+  text.split(/\r?\n/).forEach((line, i) => {
+    const image = /^\s*"image"\s*:\s*"([^"]+)"/.exec(line)?.[1];
+    if (image && !/@sha256:[0-9a-f]{64}$/.test(image)) {
+      problems.push(`${path}:${i + 1} names image \`${image}\` by tag alone. Add its digest (\`@sha256:…\`), or build from a Dockerfile whose FROM carries one: a tag can be repointed.`);
+    }
+  });
+  return problems;
 }
 
 /** Rule 14. Stage aliases and `scratch` name no image; anything else must carry a full digest. */
@@ -933,6 +945,7 @@ export function checkRepoHygiene(root = process.cwd()) {
   const workflows = present.filter((p) => WORKFLOW.test(p) && p.includes("/workflows/"));
   failures.push(...checkActionPins(Object.fromEntries(present.filter((p) => WORKFLOW.test(p)).map((p) => [p, read(p)])), tracked.includes(DEPENDABOT) ? read(DEPENDABOT) : null));
   failures.push(...checkCalledPermissions(Object.fromEntries(workflows.map((p) => [p, read(p)]))));
+  for (const path of present.filter((p) => /(^|\/)\.devcontainer\/devcontainer\.json$/.test(p))) failures.push(...checkDevcontainerImage(path, read(path)));
   for (const path of present.filter((p) => /(^|\/)Dockerfile$/.test(p))) failures.push(...checkDigests(path, read(path)), ...checkInstalls(path, read(path)));
   failures.push(...checkModules(tracked, read));
   failures.push(...checkVersions(present, read));

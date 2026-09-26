@@ -225,4 +225,14 @@ updates:
       default-days: 7
     commit-message:
       prefix: chore
+
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
   # ultra:end devcontainer

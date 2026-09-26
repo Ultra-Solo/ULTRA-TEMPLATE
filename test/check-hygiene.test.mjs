@@ -14,6 +14,7 @@ import {
   checkModules,
   checkPins,
   checkActionPins,
+  checkDevcontainerImage,
   checkRepoHygiene,
   checkVersions,
   checkWorkflow,
@@ -626,4 +627,13 @@ test("rule 19: a directory holding an action that Dependabot's github-actions en
   assert.match(checkActionPins(files, "version: 2\nupdates:\n  - package-ecosystem: github-actions\n    directory: /\n").join("\n"), /\/\.github\/actions\/module/);
   assert.match(checkActionPins(files, "version: 2\nupdates: []\n").join("\n"), /has no github-actions entry/);
   assert.deepEqual(checkActionPins(files, null), [], "a project without Dependabot has nothing to keep in step");
+});
+
+test("rule 14: a Dev Container image named by tag alone fails, and one with a digest or a Dockerfile passes", () => {
+  const digest = `@sha256:${"a".repeat(64)}`;
+  const found = checkDevcontainerImage(".devcontainer/devcontainer.json", '{\n  // a comment\n  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04"\n}');
+  assert.equal(found.length, 1);
+  assert.match(found[0], /^\.devcontainer\/devcontainer\.json:3 names image `mcr\.microsoft\.com\/devcontainers\/base:ubuntu-24\.04` by tag alone/);
+  assert.deepEqual(checkDevcontainerImage("d.json", `{ "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04${digest}" }`), []);
+  assert.deepEqual(checkDevcontainerImage("d.json", '{ "build": { "dockerfile": "Dockerfile" } }'), []);
 });
