@@ -134,6 +134,12 @@ func TestRequestsAreValidatedAtTheBoundary(t *testing.T) {
 		{"unknown status", http.MethodPatch, "/api/tasks/id-1/status", `{"status":"DONE"}`, http.StatusUnprocessableEntity},
 		{"missing task", http.MethodGet, "/api/tasks/nope", "", http.StatusNotFound},
 		{"wrong method", http.MethodDelete, "/api/tasks", "", http.StatusMethodNotAllowed},
+		// Field names match exactly, where encoding/json alone would take "Title" for "title".
+		{"title with capitals", http.MethodPost, "/api/tasks", `{"Title":"x"}`, http.StatusBadRequest},
+		{"status with capitals", http.MethodPatch, "/api/tasks/id-1/status", `{"Status":"done"}`, http.StatusBadRequest},
+		// JSON is UTF-8 (RFC 8259, section 8.1); encoding/json alone would read the byte as U+FFFD.
+		{"not UTF-8", http.MethodPost, "/api/tasks", "{\"title\":\"\xff\"}", http.StatusBadRequest},
+		{"status not a string", http.MethodPatch, "/api/tasks/id-1/status", `{"status":7}`, http.StatusBadRequest},
 	}
 
 	for _, tt := range tests {

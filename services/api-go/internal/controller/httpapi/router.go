@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hynix666/ultra-template/services/api-go/internal/entity"
 )
@@ -180,9 +181,17 @@ func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
+// errNotUTF8 rejects a body that is not UTF-8, which JSON must be (RFC 8259, section 8.1): encoding/json
+// alone would read each bad byte as U+FFFD and store a title nobody sent.
+var errNotUTF8 = errors.New("request body must be UTF-8")
+
 func decodeObject(raw []byte, dst any) error {
 	if trimmed := bytes.TrimSpace(raw); len(trimmed) == 0 || trimmed[0] != '{' {
 		return errNotOneObject
+	}
+
+	if !utf8.Valid(raw) {
+		return errNotUTF8
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -194,6 +203,33 @@ func decodeObject(raw []byte, dst any) error {
 
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
 		return errNotOneObject
+	}
+
+	return exactFieldNames(raw, dst)
+}
+
+// exactFieldNames refuses a field whose name matches one of dst's only when case is ignored, as
+// encoding/json matches them: "Title" is not "title" in any other task service.
+func exactFieldNames(raw []byte, dst any) error {
+	var sent map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &sent); err != nil {
+		return fmt.Errorf("decode request body: %w", err)
+	}
+
+	encoded, err := json.Marshal(dst)
+	if err != nil {
+		return fmt.Errorf("encode request fields: %w", err)
+	}
+
+	var known map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &known); err != nil {
+		return fmt.Errorf("decode request fields: %w", err)
+	}
+
+	for name := range sent {
+		if _, ok := known[name]; !ok {
+			return fmt.Errorf("unknown field %q", name)
+		}
 	}
 
 	return nil

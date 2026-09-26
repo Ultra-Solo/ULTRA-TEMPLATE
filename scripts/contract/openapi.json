@@ -73,7 +73,7 @@
       }
     },
     "responses": {
-      "BadRequest": { "description": "The body is not one JSON object of the documented fields, or is over the size limit", "x-maxBodyBytes": 1048576, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "BadRequest": { "description": "The body is not one UTF-8 JSON object of the documented fields, spelled exactly and of the documented types, or is over the size limit", "x-maxBodyBytes": 1048576, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
       "NotFound": { "description": "No task has this id", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
     },
     "schemas": {
@@ -99,14 +99,14 @@
       "CreateTask": {
         "type": "object",
         "properties": {
-          "title": { "type": ["string", "null"], "maxLength": 200, "description": "Trimmed before it is checked; a missing or null title reads as empty, and is refused with 422" }
+          "title": { "type": ["string", "null"], "maxLength": 200, "description": "Trimmed before it is checked; a missing or null title reads as empty, and is refused with 422, and a value that is not a string with 400" }
         },
         "additionalProperties": false
       },
       "MoveTask": {
         "type": "object",
         "properties": {
-          "status": { "description": "One of the statuses; anything else, null or a missing status is refused with 422" }
+          "status": { "type": ["string", "null"], "description": "One of the statuses; any other string, null or a missing status is refused with 422, and a value that is not a string with 400" }
         },
         "additionalProperties": false
       },

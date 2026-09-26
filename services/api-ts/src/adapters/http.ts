@@ -64,7 +64,7 @@ async function route(service: TaskService, req: IncomingMessage, res: ServerResp
   }
   if (method !== "PATCH") return notAllowed(res, "PATCH");
   const body = await readObject(req, ["status"]);
-  return send(res, 200, await service.transition(id, parseStatus(body["status"])));
+  return send(res, 200, await service.transition(id, parseStatus(optionalString(body, "status"))));
 }
 
 /** Reads a size-bounded JSON object and refuses fields the endpoint does not document. */
@@ -81,7 +81,9 @@ async function readObject(req: IncomingMessage, allowed: readonly string[]): Pro
   if (size > MAX_BODY_BYTES) throw invalid;
   let body: unknown;
   try {
-    body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    // JSON is UTF-8 (RFC 8259, section 8.1). `fatal` refuses a bad byte that toString would read as
+    // U+FFFD, and `ignoreBOM` keeps a byte-order mark in the text, where JSON.parse refuses it.
+    body = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(Buffer.concat(chunks)));
   } catch {
     throw invalid;
   }

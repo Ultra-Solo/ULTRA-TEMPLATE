@@ -31,9 +31,9 @@ A value it cannot use stops the process with exit code 2 rather than falling bac
 |---|---|
 | `GET /healthz` | `200` The service is up |
 | `GET /api/tasks` | `200` Every task |
-| `POST /api/tasks` `{"title"}` | `201` The task, created · `400` The body is not one JSON object of the documented fields, or is over the size limit · `422` The title is empty once trimmed, or longer than the rules allow |
+| `POST /api/tasks` `{"title"}` | `201` The task, created · `400` The body is not one UTF-8 JSON object of the documented fields, spelled exactly and of the documented types, or is over the size limit · `422` The title is empty once trimmed, or longer than the rules allow |
 | `GET /api/tasks/{id}` | `200` The task · `400` The id is not a valid path segment, such as a malformed percent-escape · `404` No task has this id |
-| `PATCH /api/tasks/{id}/status` `{"status"}` | `200` The task, moved · `400` The body is not one JSON object of the documented fields, or is over the size limit · `404` No task has this id · `409` The rules do not allow this move from the task's status, staying put included · `422` The status is missing, null, or not one of the statuses |
+| `PATCH /api/tasks/{id}/status` `{"status"}` | `200` The task, moved · `400` The body is not one UTF-8 JSON object of the documented fields, spelled exactly and of the documented types, or is over the size limit · `404` No task has this id · `409` The rules do not allow this move from the task's status, staying put included · `422` The status is missing, null, or not one of the statuses |
 <!-- /generated -->
 
 Bodies are capped at <!-- generated:contract limits.maxBodyBytes bytes -->1 MiB<!-- /generated --> and unknown fields are rejected with `400`. `HEAD` is answered wherever `GET` is. A missing or `null` title reads as empty (`422`); a title of another type, an empty body and a malformed path are refused as malformed (`400`). Every error is JSON, `{"error": "…"}`. The cases in [`scripts/contract/tasks-api.json`](../../scripts/contract/tasks-api.json) are the contract every task service keeps, and `node scripts/check-contract.mjs` holds this one to them.

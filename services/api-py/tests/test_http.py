@@ -198,3 +198,23 @@ def test_a_wrong_method_names_the_methods_the_path_allows(method: str, path: str
     client = Client()
     status, _ = client.request(method, path)
     assert (status, client.headers.get("allow")) == (405, allow)
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "raw"),
+    [
+        # json.loads(bytes) detects UTF-16 and a byte-order mark on its own; JSON on the wire is UTF-8.
+        ("POST", "/api/tasks", b'\xef\xbb\xbf{"title":"a"}'),
+        ("POST", "/api/tasks", '{"title":"a"}'.encode("utf-16-le")),
+        ("POST", "/api/tasks", b'{"title":"\xff"}'),
+        # NaN and Infinity are not JSON, though Python's parser takes them.
+        ("PATCH", "/api/tasks/t1/status", b'{"status":NaN}'),
+        ("PATCH", "/api/tasks/t1/status", b'{"status":-Infinity}'),
+        # A field of the wrong type is malformed, as a non-string title already is.
+        ("PATCH", "/api/tasks/t1/status", b'{"status":7}'),
+    ],
+)
+def test_a_body_is_utf8_json_with_fields_of_the_documented_type(method: str, path: str, raw: bytes) -> None:
+    client = Client()
+    assert client.request("POST", "/api/tasks", {"title": "a"})[0] == 201
+    assert client.request(method, path, raw=raw)[0] == 400

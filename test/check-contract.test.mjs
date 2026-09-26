@@ -173,7 +173,11 @@ test("the contract states every pair of statuses, legal or not, as the rules do"
   const moves = new Map();
   for (const c of loadCases()) {
     if (c.method !== "PATCH" || c.path !== "/api/tasks/{id}/status" || typeof c.body !== "string") continue;
-    const body = JSON.parse(c.body || "null");
+    // Some bodies are malformed on purpose; they state no move.
+    let body = null;
+    try {
+      body = JSON.parse(c.body || "null");
+    } catch {}
     if (body === null || Object.keys(body).join() !== "status" || !statuses.includes(body.status)) continue;
     const staged = (c.setup ?? []).filter((step) => step.path === c.path).map((step) => JSON.parse(step.body).status);
     moves.set(`${staged.at(-1) ?? statuses[0]} → ${body.status}`, c.status);

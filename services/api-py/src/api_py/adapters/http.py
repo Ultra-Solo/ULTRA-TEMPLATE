@@ -143,7 +143,7 @@ def _route(service: TaskService, environ: dict[str, Any]) -> tuple[int, object]:
     if method != "PATCH":
         return _not_allowed("PATCH")
     body = _read_object(environ, ["status"])
-    return 200, as_json(service.transition(task_id, parse_status(body.get("status"))))
+    return 200, as_json(service.transition(task_id, parse_status(_optional_string(body, "status"))))
 
 
 def _path(environ: dict[str, Any]) -> str:
@@ -180,7 +180,9 @@ def _read_object(environ: dict[str, Any], allowed: list[str]) -> dict[str, objec
     if raw.strip() == b"":
         raise invalid
     try:
-        body = json.loads(raw)
+        # JSON on the wire is UTF-8 (RFC 8259, section 8.1). json.loads(bytes) would also take UTF-16
+        # and a byte-order mark, and it takes NaN and Infinity, which are not JSON.
+        body = json.loads(raw.decode("utf-8"), parse_constant=_not_json)
     except ValueError:
         raise invalid from None
     if not isinstance(body, dict):
@@ -188,6 +190,10 @@ def _read_object(environ: dict[str, Any], allowed: list[str]) -> dict[str, objec
     if any(key not in allowed for key in body):
         raise invalid
     return body
+
+
+def _not_json(name: str) -> NoReturn:
+    raise ValueError(f"{name} is not JSON")
 
 
 def _drain(stream: Any, remaining: int) -> None:
