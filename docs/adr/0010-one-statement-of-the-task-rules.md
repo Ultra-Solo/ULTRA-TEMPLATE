@@ -1,6 +1,6 @@
 # ADR-0010: State the task rules once, and hold every copy and the API contract to that statement
 
-**Status:** Accepted · Amends [ADR-0005](0005-layered-services-with-enforced-boundaries.md), [ADR-0007](0007-mcp-server-as-an-adapter.md) and [ADR-0008](0008-a-third-language-and-what-a-module-must-prove.md) · Amended by [ADR-0013](0013-declare-each-fact-once.md) · **Date:** 2026-09-24
+**Status:** Accepted · Amends [ADR-0005](0005-layered-services-with-enforced-boundaries.md), [ADR-0007](0007-mcp-server-as-an-adapter.md) and [ADR-0008](0008-a-third-language-and-what-a-module-must-prove.md) · Amended by [ADR-0013](0013-declare-each-fact-once.md) and [ADR-0018](0018-every-task-service-reads-and-answers-alike.md) · **Date:** 2026-09-24
 
 ## Context
 

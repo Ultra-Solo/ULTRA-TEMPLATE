@@ -16,7 +16,10 @@ first, then the check that fails, then each module until it passes. Never change
      A case refers to a limit or rule as `{ "ref": "limits.maxBodyBytes", "plus": 1 }`; never write the
      number. Test a bound at its value and one past it.
    - A route, a field or a status code also goes in `scripts/contract/openapi.json`, which is held to the
-     cases in both directions.
+     cases in both directions, and every JSON answer is held to the schema it gives for its status.
+   - A body whose bytes matter is written as `bodyHex`; a title built from the rules' whitespace as
+     `{ "whitespace": "rules.titleWhitespace", "around": "a" }`; a race as `concurrent`, with the status
+     exactly one copy gets and `othersStatus` for the rest ([ADR-0018](../../../docs/adr/0018-every-task-service-reads-and-answers-alike.md)).
 <!-- ultra:end go-service|ts-service|py-service|mcp-server|web -->
 2. **See it fail.** That is the change reproduced.
 <!-- ultra:begin go-service|ts-service|py-service -->
