@@ -16,8 +16,9 @@ dev = [
 ]
 
 [tool.uv]
-# The one place uv's version is pinned: uv refuses to run outside this range, and every workflow's
-# setup-uv step reads it. Pre-1.0, a minor release can change behaviour, so the range stops there.
+# The range of uv this project accepts; uv refuses to run outside it. uv itself is pinned once, in
+# scripts/tools/tools.json, and check-hygiene holds that pin inside this range. Pre-1.0, a minor release
+# can change behaviour, so the range stops there.
 required-version = ">=0.12.5,<0.13"
 # The service runs from src/, as its image does, and is never built as a package. So `uv sync` installs
 # only what uv.lock pins: no build backend is fetched unpinned and run at install time.

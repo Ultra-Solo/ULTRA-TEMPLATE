@@ -19,7 +19,7 @@ export type Log = (entry: Record<string, unknown>) => void;
 
 /**
  * The HTTP transport: decode the request, call a use case, map the outcome to a response. It holds
- * no business rules, and the API it serves matches api-go's route for route.
+ * no business rules, and the API it serves matches every other task service's route for route.
  */
 export function createHandler(service: TaskService, log: Log) {
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

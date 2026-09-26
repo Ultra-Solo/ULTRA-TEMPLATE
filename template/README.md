@@ -12,7 +12,7 @@ It has no dependencies beyond Node <!-- generated:version .node-version -->24<!-
 
 **Feature paths.** `features.json` lists, for each feature, the paths it owns. Paths of unselected features are deleted, and so is every `templateOnly` path.
 
-Several features may own the same path, which then belongs to any of them and is deleted only when none is selected — the three task services share `scripts/check-contract.mjs`, `scripts/contract` and its test that way. A path *inside* another feature's path is rejected instead: the two disagree about a file, and it would be kept or deleted by whichever path init processed last rather than by the selection. One module directory still has one owner, and a test holds it to that.
+Several features may own the same path, which then belongs to any of them and is deleted only when none is selected — the three task services share `scripts/check-contract.mjs` and its test that way, and every module that states the task rules shares `scripts/rules`. A path *inside* another feature's path is rejected instead: the two disagree about a file, and it would be kept or deleted by whichever path init processed last rather than by the selection. One module directory still has one owner, and a test holds it to that.
 
 **Marker blocks.** Content inside shared files — workflows, Dependabot, the README, the architecture model — is selected with a pair of marker lines. A marker is the text `ultra:begin` or `ultra:end` followed by a feature id, written inside whatever comment syntax the file uses:
 
@@ -28,7 +28,7 @@ Several features may own the same path, which then belongs to any of them and is
 
 **All of several features.** An id may instead join features with `&` — `FEATURE-A&FEATURE-B` — for content that needs every one of them, such as a relation between two modules. The architecture model draws the MCP server's and the web app's calls to each task service this way, so a project keeps the arrow only when it keeps both ends. One id cannot mix `|` and `&`; content that needs a mix is two blocks.
 
-Strict JSON has no comments, so JSON files carry no markers; a feature that needs a JSON file owns the whole file as a path. Content that should appear only when two features are *both* selected cannot be expressed, and is avoided by design (the architecture model links each service to the user rather than to the web app).
+Strict JSON has no comments, so JSON files carry no markers; a feature that needs a JSON file owns the whole file as a path.
 
 A marker is a whole line, and in Markdown it is an HTML comment, which ends a table and splits a paragraph. So a block is whole lines that already stand alone — a paragraph, a list item, a fenced block — never a row of a table or a sentence inside a paragraph. A path, not a marker, is how a whole file is made conditional.
 
@@ -38,7 +38,7 @@ The three are not interchangeable, and the public contract says where each one l
 
 ## Adding a feature
 
-1. **Create the module directory, self-contained:** its toolchain's manifest and lockfile, tests, a README, and a `module.json` saying what it is: its id (the feature's), its toolchain, the checks `verify` runs, and, where they apply, `coverage`, `taskApi`, `facts`, `e2e` and `image` ([ADR-0014](../docs/adr/0014-modules-describe-themselves.md)). `scripts/modules.mjs` finds the module by that file, and setup, verify, the contract, the facts check and CI all read it; `check-hygiene` fails a malformed one. A Node module's `biome.jsonc` extends the root one, its checks start with `npm run lint`, and its coverage writes `coverage/lcov.info`.
+1. **Create the module directory, self-contained:** its toolchain's manifest and lockfile, tests, a README, and a `module.json` saying what it is: its id (the feature's), its toolchain, the checks `verify` runs, and, where they apply, `coverage`, `taskApi`, `facts`, `e2e` and `image` ([ADR-0014](../docs/adr/0014-modules-describe-themselves.md)). `scripts/modules.mjs` finds the module by that file, and setup, verify, the contract, the facts check and CI all read it; `check-hygiene` fails a malformed one. A Node module's `biome.jsonc` extends the root one, its `verify` script starts with `npm run lint`, and its coverage writes `coverage/lcov.info`.
 2. **Add the feature to `features.json`** with the paths it owns, and to the presets it belongs in. The template tests fail if a module is not owned by exactly one feature.
 3. **Add its job to `.github/workflows/verify.yml`,** named after its id — a checkout, then `.github/actions/module` with that id — inside a marker block, and list it under `verify.needs` inside another. `check-hygiene` fails if the job is missing, named otherwise, or left out of the gate. The action reads the module's toolchain from its `module.json`, so no other workflow needs an edit, `template-test.yml` and `copilot-setup-steps.yml` included.
 4. **Add its lines elsewhere,** each inside markers: its Dependabot entries, its lines in `README.md` and `AGENTS.md`, and its element in the architecture model, linking its README, with a relation to another module in an `a&b` block. `check-hygiene` fails if its Dependabot entry is missing, and `check-architecture` if its element is. A task service says how it starts under `taskApi` and must pass the contract, configuration cases included; a module that repeats a fact lists it under `facts` and prints it from a `facts` script; a client of the task API can declare an `e2e` check. Any of them owns `scripts/rules` in `features.json`, and `scripts/contract` too if it serves or calls the task API.
@@ -53,7 +53,7 @@ node template/init.mjs --preset minimal --name demo-app --owner octo-org --out .
 cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && node scripts/verify.mjs
 ```
 
-`template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup`, `verify` and actionlint.
+`template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup` and `verify`, which lints its workflows with the pinned actionlint and zizmor.
 
 ## Scope
 

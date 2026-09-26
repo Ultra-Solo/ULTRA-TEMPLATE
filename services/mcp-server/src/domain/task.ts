@@ -3,7 +3,7 @@
  * from outside this directory — not even a validation library, which is why `parseTask` is written
  * out. scripts/check-boundaries.mjs fails the build otherwise.
  *
- * The status rules are the same rules api-go and api-ts enforce. They are repeated here rather than
+ * The status rules are the same rules every task service enforces. They are repeated here rather than
  * imported across modules ([ADR-0004](../../../../docs/adr/0004-independent-modules.md)) so this
  * service can be deleted, or kept alone, without touching anything else. What they buy: a tool can
  * tell a model which moves are legal instead of letting it discover a 409 by trying.

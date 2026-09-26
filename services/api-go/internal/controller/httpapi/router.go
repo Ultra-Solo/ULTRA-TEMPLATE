@@ -154,7 +154,7 @@ func (h handler) transition(w http.ResponseWriter, r *http.Request) {
 
 // errNotOneObject rejects bodies that are valid JSON but not exactly one object: `null`, which decodes
 // into a struct without error, and anything after the object, which a Decoder never reads. api-ts
-// refuses both, and the two services must answer alike.
+// and api-py refuse both, and every task service must answer alike.
 var errNotOneObject = errors.New("request body must be exactly one JSON object")
 
 // decode reads a size-bounded JSON object, rejecting unknown fields, and writes the error response
