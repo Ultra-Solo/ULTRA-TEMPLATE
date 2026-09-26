@@ -95,6 +95,20 @@
           "files": [
             "zizmor"
           ]
+        },
+        "linux-arm64": {
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-unknown-linux-gnu.tar.gz",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "files": [
+            "zizmor"
+          ]
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-apple-darwin.tar.gz",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "files": [
+            "zizmor"
+          ]
         }
       },
       "checksums": {
