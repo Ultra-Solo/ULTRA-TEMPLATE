@@ -196,11 +196,12 @@ test("template-test generates every preset features.json defines, from features.
   assert.match(workflow, /Object\.keys\(require\("\.\/template\/features\.json"\)\.presets\)/);
 });
 
-test("the 1.x public contract only grows: no feature or preset is removed or renamed", () => {
+test("the public contract only grows: no feature or preset of 1.x or 2.x is removed or renamed", () => {
   // Feature ids and preset names are what adopters type, and what template-update replays from a
   // project's CHANGELOG. Taking one away breaks every project that used it, which is a major version.
+  // 2.0.0 was major for the storage port and kept every one of them; a major that drops one moves this line.
   const manifest = loadManifest();
-  if (!manifest.version.startsWith("1.")) return;
+  if (Number(manifest.version.split(".")[0]) > 2) return;
   const features = ["go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"];
   const presets = ["minimal", "go-api", "py-api", "fullstack-ts", "library", "mcp", "all"];
   assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed within 1.x");

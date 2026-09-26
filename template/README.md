@@ -57,7 +57,7 @@ cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && nod
 
 ## Scope
 
-ULTRA-TEMPLATE 1.x is complete in scope. It gives a project the things with no product opinion — one verification gate, a pinned supply chain, repository and documentation checks, agent guidance, releases, security scanning, and a set of services and packages that demonstrate one architecture in three languages. A change belongs in the template when it would be right for nearly every project made from it.
+ULTRA-TEMPLATE 2.x is complete in scope. It gives a project the things with no product opinion — one verification gate, a pinned supply chain, repository and documentation checks, agent guidance, releases, security scanning, and a set of services and packages that demonstrate one architecture in three languages. A change belongs in the template when it would be right for nearly every project made from it.
 
 These stay decisions for each project, and are left out on purpose: deployment targets and infrastructure, databases and migrations, authentication, message queues, UI frameworks beyond the minimal React app, and desktop or mobile clients. Each is a product choice with more than one good answer, and a template that picks one makes every other project undo it.
 
@@ -67,7 +67,7 @@ A new feature has to meet the five requirements in [ADR-0008](../docs/adr/0008-a
 
 The template is a product with a public contract, and its version says what a release does to the projects made from it.
 
-**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`), `template-update.mjs`'s flags (`--to`, which also takes `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`), the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and reads back (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a 1.x feature or preset disappears.
+**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`), `template-update.mjs`'s flags (`--to`, which also takes `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`), the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and reads back (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a feature or preset of 1.x or 2.x disappears.
 
 | Bump | When | Example |
 |---|---|---|
