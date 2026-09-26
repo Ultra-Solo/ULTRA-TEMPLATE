@@ -27,7 +27,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { available, checkNodeVersion, e2ePartner, ModuleError, presentModules, REQUIREMENTS, ROOT, run, skipOutcome, TOOLCHAINS, withToolsBin } from "./modules.mjs";
-import { chassisToolPlan, loadTools, TOOLS_FILE } from "./tools.mjs";
+import { chassisToolPlan, installedVersion, loadTools, TOOLS_FILE, versionProblem } from "./tools.mjs";
 
 process.env.PATH = withToolsBin(process.env.PATH);
 
