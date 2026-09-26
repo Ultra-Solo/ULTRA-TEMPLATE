@@ -1,6 +1,6 @@
 # ADR-0011: Hold local verify to CI's toolchain, and name what only CI runs
 
-**Status:** Accepted · Amends [ADR-0002](0002-one-required-check.md) · Amended by [ADR-0014](0014-modules-describe-themselves.md), [ADR-0015](0015-one-manifest-for-hand-pinned-tools.md) and [ADR-0016](0016-cloud-agents-get-the-same-toolchains.md) · **Date:** 2026-09-24
+**Status:** Accepted · Amends [ADR-0002](0002-one-required-check.md) · Amended by [ADR-0014](0014-modules-describe-themselves.md), [ADR-0015](0015-one-manifest-for-hand-pinned-tools.md), [ADR-0016](0016-cloud-agents-get-the-same-toolchains.md) and [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md) · **Date:** 2026-09-24
 
 ## Context
 
