@@ -305,6 +305,20 @@
         "uvx",
         "pip-audit=={version}"
       ]
+    },
+    "devcontainer-cli": {
+      "version": "0.89.0",
+      "for": "ci",
+      "releases": {
+        "githubTags": "devcontainers/cli"
+      },
+      "run": [
+        "devcontainer",
+        "--version"
+      ],
+      "checksums": {
+        "githubDigest": true
+      }
     }
   }
 }
