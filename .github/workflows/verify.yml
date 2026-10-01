@@ -215,7 +215,7 @@ jobs:
         run: node scripts/probe-image.mjs py-service --full-contract
       - name: Retain the complete vulnerability report
         run: |
-          .tools/bin/trivy image --scanners vuln --ignorefile .trivyignore \
+          trivy image --scanners vuln --ignorefile .trivyignore \
             --cache-dir "$RUNNER_TEMP/trivy-cache" --db-repository ghcr.io/aquasecurity/trivy-db:2 \
             --format json --output "$RUNNER_TEMP/python-image.json" py-service:probe
       - name: Reject fixable high or critical Python runtime findings
