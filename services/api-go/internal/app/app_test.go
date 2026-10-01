@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/app"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/app"
 )
 
 func TestServeAnswersThenStopsWhenCancelled(t *testing.T) {

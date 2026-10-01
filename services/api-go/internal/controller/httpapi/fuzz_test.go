@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/controller/httpapi"
-	"github.com/hynix666/ultra-template/services/api-go/internal/repo/memory"
-	"github.com/hynix666/ultra-template/services/api-go/internal/usecase"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/controller/httpapi"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/repo/memory"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/usecase"
 )
 
 // FuzzRequestBodiesNeverFailTheServer holds the contract's promise for every body a client can send:

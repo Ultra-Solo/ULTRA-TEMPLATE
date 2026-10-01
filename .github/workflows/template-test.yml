@@ -7,9 +7,8 @@
 name: template-test
 
 on:
-  # Not on push to main: the ruleset admits a change only through a pull request that is up to date
-  # with main, so the commit a merge produces is the one this already generated every preset from.
-  pull_request:
+  # verify calls this on pull requests, main pushes and merge queue entries, and requires its result.
+  workflow_call:
   # Weekly even with no commits: a runner image, a toolchain release or a registry can break a
   # generated project while the template itself stands still, and a template is judged by what it
   # generates on the day someone uses it.

@@ -1,5 +1,5 @@
 {
-  "name": "@hynix666/ultra-template",
+  "name": "@ultra-solo/ultra-template",
   "version": "0.0.0",
   "description": "Task status rules for clients of the ultra-template task API.",
   "license": "MIT",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hynix666/ULTRA-TEMPLATE.git",
+    "url": "git+https://github.com/Ultra-Solo/ULTRA-TEMPLATE.git",
     "directory": "packages/ts-library"
   },
   "publishConfig": {
