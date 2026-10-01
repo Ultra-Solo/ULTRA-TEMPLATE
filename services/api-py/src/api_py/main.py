@@ -17,9 +17,10 @@ import socketserver
 import sys
 import threading
 import time
+from contextlib import suppress
 from datetime import UTC, datetime
 from types import FrameType
-from typing import Any
+from typing import Any, cast
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from api_py.adapters.http import create_app
@@ -98,14 +99,14 @@ class _DeadlineInput:
             raise TimeoutError("request receive deadline exceeded")
         self._connection.settimeout(remaining)
         try:
-            return self._stream.read1(size)
+            return cast(bytes, self._stream.read1(size))
         finally:
             self._connection.settimeout(self._idle_timeout)
 
     def read(self, size: int = -1) -> bytes:
         if size == 0:
             return b""
-        chunks = []
+        chunks: list[bytes] = []
         remaining = size
         while remaining != 0:
             chunk = self._read1(64 * 1024 if remaining < 0 else remaining)
@@ -117,7 +118,7 @@ class _DeadlineInput:
         return b"".join(chunks)
 
     def readline(self, size: int = -1) -> bytes:
-        chunks = []
+        chunks = bytearray()
         while size < 0 or len(chunks) < size:
             chunk = self._read1(1)
             if not chunk:
@@ -152,18 +153,21 @@ class _QuietHandler(WSGIRequestHandler):
         super().setup()
         self._receive_started = time.monotonic()
         self._headers_complete = False
-        self.rfile = _DeadlineInput(
-            self.rfile,
-            self.connection,
-            lambda: self._receive_started + (self.request_timeout if self._headers_complete else self.headers_timeout),
-            self.timeout,
+        self.rfile = cast(
+            Any,
+            _DeadlineInput(
+                self.rfile,
+                self.connection,
+                lambda: (
+                    self._receive_started + (self.request_timeout if self._headers_complete else self.headers_timeout)
+                ),
+                self.timeout,
+            ),
         )
 
     def handle(self) -> None:
-        try:
+        with suppress(TimeoutError):
             super().handle()
-        except TimeoutError:
-            pass
 
     def parse_request(self) -> bool:
         try:
