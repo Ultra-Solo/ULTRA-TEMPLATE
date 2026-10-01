@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Report it privately: **[Report a vulnerability](https://github.com/hynix666/ULTRA-TEMPLATE/security/advisories/new)** (Security tab → *Report a vulnerability*). If the link says reporting is off, a maintainer enables it with `node scripts/configure-github.mjs` or under Settings → Code security → Private vulnerability reporting.
+Report it privately: **[Report a vulnerability](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/security/advisories/new)** (Security tab → *Report a vulnerability*). If the link says reporting is off, a maintainer enables it with `node scripts/configure-github.mjs` or under Settings → Code security → Private vulnerability reporting.
 
 Please do not open a public issue or pull request for it. Include the affected file, endpoint or command, how to reproduce it, and what an attacker gains. No response time is promised until this file states one.
 

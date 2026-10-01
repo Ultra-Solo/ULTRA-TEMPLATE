@@ -1,6 +1,6 @@
 # ULTRA-TEMPLATE
 
-[![verify](https://github.com/hynix666/ULTRA-TEMPLATE/actions/workflows/verify.yml/badge.svg)](https://github.com/hynix666/ULTRA-TEMPLATE/actions/workflows/verify.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![verify](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/actions/workflows/verify.yml/badge.svg)](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/actions/workflows/verify.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 <!-- project description -->
 
@@ -23,7 +23,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 
 ## Start a project
 
-1. **[Use this template](https://github.com/hynix666/ULTRA-TEMPLATE/generate)** to create a new repository, then clone it.
+1. **[Use this template](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/generate)** to create a new repository, then clone it.
 2. List the features and presets:
 
    ```bash

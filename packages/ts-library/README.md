@@ -3,14 +3,14 @@
 A TypeScript library published to npm: an ES module with its own type declarations, a single entry in the `exports` map, and checks that the published package works as consumers will install it. The example code is the task status rules the services enforce, for clients that want to offer only moves the API accepts.
 
 ```ts
-import { canTransition, nextStatuses, parseStatus } from "@hynix666/ultra-template";
+import { canTransition, nextStatuses, parseStatus } from "@ultra-solo/ultra-template";
 
 nextStatuses(parseStatus(response.status)); // ["todo", "done"] for "in_progress"
 ```
 
 ## Check
 
-After `npm install`:
+After `npm ci --ignore-scripts`:
 
 <!-- generated:checks packages/ts-library -->
 ```bash

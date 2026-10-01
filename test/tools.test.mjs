@@ -55,6 +55,34 @@ test("a download whose SHA-256 differs is refused, and nothing is unpacked", asy
   assert.equal(existsSync(join(work, "bin")), false);
 });
 
+test("a transient 504 is retried, and a later good download still installs", async (t) => {
+  const url = "https://example.test/v1.2.3/demo.tar.gz";
+  const { work, bytes, sha } = release(t, url);
+  const waits = [];
+  let calls = 0;
+  const fetch = async (address) => {
+    assert.equal(address, url);
+    calls++;
+    return calls === 1 ? new Response("", { status: 504 }) : new Response(bytes);
+  };
+  const written = await install("demo", { tools: tool("https://example.test/v{version}/demo.tar.gz", sha), dir: join(work, "bin"), fetch, wait: async (ms) => waits.push(ms) });
+  assert.deepEqual(written, [join(work, "bin", "demo")]);
+  assert.equal(calls, 2);
+  assert.deepEqual(waits, [250]);
+});
+
+test("a permanent 404 is not retried", async (t) => {
+  const url = "https://example.test/v1.2.3/demo.tar.gz";
+  const { work, sha } = release(t, url);
+  let calls = 0;
+  const fetch = async () => {
+    calls++;
+    return new Response("", { status: 404 });
+  };
+  await assert.rejects(() => install("demo", { tools: tool("https://example.test/v{version}/demo.tar.gz", sha), dir: join(work, "bin"), fetch, wait: async () => assert.fail("404 should not be retried") }), /answered 404/);
+  assert.equal(calls, 1);
+});
+
 test("an entry that says nothing about where its checksum comes from, or is both kinds of tool, is refused", () => {
   const bad = tool("https://example.test/x.tar.gz", "a".repeat(64), { checksums: {}, run: ["demo"] });
   const found = validateTools(bad).join("\n");

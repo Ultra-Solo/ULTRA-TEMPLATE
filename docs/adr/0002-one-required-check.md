@@ -1,6 +1,6 @@
 # ADR-0002: One required check, shared by CI and local runs
 
-**Status:** Accepted · Amended by [ADR-0011](0011-what-local-verify-guarantees.md) · **Date:** 2026-09-15
+**Status:** Accepted · Amended by [ADR-0011](0011-what-local-verify-guarantees.md) and [ADR-0020](0020-require-generated-preset-verification.md) · **Date:** 2026-09-15
 
 ## Context
 

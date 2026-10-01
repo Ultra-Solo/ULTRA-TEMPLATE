@@ -19,7 +19,7 @@ from api_py.domain.task import DomainError, DomainErrorCode, Task, parse_status
 # A request body larger than this is refused before it is parsed.
 MAX_BODY_BYTES: Final = 1024 * 1024
 # How much of a refused body is still read, so the client can receive the 400 instead of a reset
-# connection. The standard-library server has no request timeout, so this bounds the work instead.
+# connection.
 MAX_DRAIN_BYTES: Final = 8 * MAX_BODY_BYTES
 
 STATUS_BY_CODE: Final[dict[DomainErrorCode, int]] = {
@@ -186,6 +186,8 @@ def _read_object(environ: dict[str, Any], allowed: list[str]) -> dict[str, objec
         raw = stream.read(length) if stream is not None and length > 0 else b""
     except TimeoutError:
         raise RequestTimeoutError from None
+    if len(raw) < length:
+        raise RequestTimeoutError
     # An empty body is not an empty object: api-go and api-ts refuse it as malformed, and so does this.
     if raw.strip() == b"":
         raise invalid
