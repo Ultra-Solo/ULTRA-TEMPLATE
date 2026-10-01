@@ -10,7 +10,7 @@ A record states its own status, on its `**Status:**` line. The table below repea
 |---|---|---|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [0002](0002-one-required-check.md) | One required check, shared by CI and local runs | Accepted, amended by 0011, 0020 |
-| [0003](0003-pin-third-party-code.md) | Pin third-party code by digest | Accepted, amended by 0015, 0017 |
+| [0003](0003-pin-third-party-code.md) | Pin third-party code by digest | Accepted, amended by 0015, 0017, amended by 0024 |
 | [0004](0004-independent-modules.md) | Modules are independent and removable | Accepted, amended by 0013, 0014 |
 | [0005](0005-layered-services-with-enforced-boundaries.md) | Layered services with enforced boundaries | Accepted, amended by 0010, 0019 |
 | [0006](0006-one-set-of-agent-instructions.md) | One set of agent instructions, pointed at by every assistant | Accepted, amended by 0009 |
@@ -31,3 +31,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0021](0021-bound-request-receive-time.md) | Bound request receive time | Accepted, amends 0018 |
 | [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020, amended by 0023 |
 | [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022 |
+| [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |

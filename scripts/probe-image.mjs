@@ -2,7 +2,7 @@
  * Builds a module's container image and proves it runs the way it is deployed. CI runs it; it needs
  * Docker, which local verify does not.
  *
- *   node scripts/probe-image.mjs <module>
+ *   node scripts/probe-image.mjs <module> [--full-contract]
  *
  * The module's module.json says how, under `image`:
  * - "http": the image serves the task API and is held to scripts/contract/tasks-api.json. Started with
@@ -13,6 +13,8 @@
  * - {"run": command}: the module probes its image with its own command, in its directory. {image} is
  *   the tag built here, and {version} the version it was built as, which the build passes as
  *   --build-arg VERSION when the Dockerfile takes one.
+ *
+ * --full-contract also exercises every HTTP case and receive deadline against the running image.
  *
  * Exit 0 as expected · 1 the image behaved differently · 2 it could not be built or run.
  */
@@ -90,7 +92,7 @@ async function answers(url, { method, status }) {
   return false;
 }
 
-async function probeHttp(module, tag) {
+async function probeHttp(module, tag, fullContract = false) {
   const contract = JSON.parse(readFileSync(CONTRACT_FILE, "utf8"));
   const binding = variables(contract.config).find(([, spec]) => spec.binds);
   if (!binding) throw new Error("the contract states no variable that binds a port");
@@ -100,10 +102,18 @@ async function probeHttp(module, tag) {
   if (started.status !== 0) throw new Error(`docker run failed: ${started.stderr.trim()}`);
   try {
     const ready = await answers(`http://127.0.0.1:${host}${contract.startup.ready.path}`, contract.startup.ready);
+    const behavioral = [];
+    if (ready && fullContract) {
+      const { runCases, loadFacts, loadSpec, checkReceiveTimeouts } = await import("./check-contract.mjs");
+      const base = `http://127.0.0.1:${host}`;
+      behavioral.push(...await runCases(base, contract.cases, { facts: loadFacts(contract), spec: loadSpec() }));
+      behavioral.push(...await checkReceiveTimeouts(base, contract.limits.receiveTimeoutsMs));
+      console.log(`probe-image: ${contract.cases.length} HTTP cases and receive-timeout checks completed.`);
+    }
     docker(["stop", "--time", String(stopSeconds(contract)), name]);
     const exitCode = Number(docker(["inspect", "--format", "{{.State.ExitCode}}", name]).stdout.trim());
     const logs = docker(["logs", name]);
-    const problems = judgeImage(contract, { ready, logs: `${logs.stdout}\n${logs.stderr}`, exitCode });
+    const problems = [...behavioral, ...judgeImage(contract, { ready, logs: `${logs.stdout}\n${logs.stderr}`, exitCode })];
     if (problems.length > 0) console.error(`${logs.stdout}${logs.stderr}`);
     return problems;
   } finally {
@@ -111,7 +121,8 @@ async function probeHttp(module, tag) {
   }
 }
 
-async function main([id]) {
+async function main([id, option, ...extra]) {
+  if ((option !== undefined && option !== "--full-contract") || extra.length) throw new Error("Usage: probe-image.mjs <module> [--full-contract]");
   const module = presentModules().find((m) => m.id === id);
   if (!module?.image) {
     console.error(`probe-image: ${id ?? "(none)"} is not a module present here with an image to probe.`);
@@ -126,7 +137,7 @@ async function main([id]) {
     return 2;
   }
   if (module.image === "http") {
-    const problems = await probeHttp(module, tag);
+    const problems = await probeHttp(module, tag, option === "--full-contract");
     if (problems.length > 0) {
       console.error(`probe-image: the ${module.id} image differs from the contract:\n  ${problems.join("\n  ")}`);
       return 1;
