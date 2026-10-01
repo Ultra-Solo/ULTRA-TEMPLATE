@@ -311,7 +311,7 @@ test("every preset generates a project that passes its own chassis checks and do
       assert.doesNotThrow(() => execFileSync("node", [check], { cwd: out, stdio: "pipe" }), `${preset}: ${check}`);
     }
     const readme = readFileSync(join(out, "README.md"), "utf8");
-    assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /template-presets|template-test\.yml/);
+    assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /template-presets|template-release-check|template-test\.yml/);
     assert.ok(!readme.includes(DESCRIPTION_ANCHOR), `${preset}: README keeps the description anchor`);
     assert.ok(readme.includes(`\n${describeProject(manifest, new Set(selected))}\n`), `${preset}: README has no description`);
     // What this project does not have. A path several features own goes only when none of its owners
