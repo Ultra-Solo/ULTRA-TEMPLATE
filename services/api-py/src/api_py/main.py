@@ -89,9 +89,41 @@ class _QuietHandler(WSGIRequestHandler):
     """Requests are logged by the application, in the line every task service writes; the server
     reports only its own trouble."""
 
-    # A read that waits longer than this raises, and the request is answered 408, so a client that
-    # stops sending does not hold a thread for ever; api-ts bounds a request the same way.
+    headers_timeout = 5
+    request_timeout = 15
     timeout = 15
+    _header_timer: threading.Timer | None
+    _request_timer: threading.Timer | None
+    _timed_out: threading.Event
+
+    def _expire_read(self) -> None:
+        self._timed_out.set()
+        try:
+            self.connection.shutdown(socket.SHUT_RD)
+        except OSError:
+            pass
+
+    def handle_one_request(self) -> None:
+        self._timed_out = threading.Event()
+        self._header_timer = threading.Timer(self.headers_timeout, self._expire_read)
+        self._header_timer.daemon = True
+        self._request_timer = None
+        self._header_timer.start()
+        try:
+            super().handle_one_request()
+        finally:
+            self._header_timer.cancel()
+            if self._request_timer is not None:
+                self._request_timer.cancel()
+
+    def parse_request(self) -> bool:
+        parsed = super().parse_request()
+        if parsed:
+            self._header_timer.cancel()
+            self._request_timer = threading.Timer(self.request_timeout, self._expire_read)
+            self._request_timer.daemon = True
+            self._request_timer.start()
+        return parsed
 
     def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
         pass

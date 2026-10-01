@@ -33,6 +33,7 @@ const server = createServer(handler);
 // Without these a client that sends headers or a body slowly holds a connection open indefinitely.
 server.headersTimeout = 5_000;
 server.requestTimeout = 15_000;
+server.connectionsCheckingInterval = 1_000;
 server.listen(config.port, () => log({ level: "info", msg: "listening", port: config.port, shutdownTimeoutMs: config.shutdownTimeoutMs }));
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

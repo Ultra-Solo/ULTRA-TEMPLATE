@@ -7,6 +7,7 @@ import {
   checkConfig,
   checkImage,
   checkLogs,
+  checkReceiveTimeouts,
   checkShutdown,
   shutdownCases,
   checkSpec,
@@ -96,6 +97,22 @@ const CASES = [
 
 test("a service that keeps the contract passes", async (t) => {
   assert.deepEqual(await runCases(await fakeService(t), CASES), []);
+});
+
+test("the receive-timeout check catches a server that accepts slow trickle requests", async (t) => {
+  const server = createServer((req, res) => {
+    req.resume();
+    req.on("end", () => res.writeHead(req.method === "GET" ? 200 : 201, { connection: "close" }).end());
+  });
+  const base = await new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${server.address().port}`)));
+  t.after(() => server.close());
+
+  const failures = await checkReceiveTimeouts(base, { headers: 40, body: 80 });
+
+  assert.deepEqual(failures.map(({ name }) => name), [
+    "receive timeout: slow headers exceed the deadline",
+    "receive timeout: slow body exceeds the deadline",
+  ]);
 });
 
 test("a wrong status fails, and names the case", async (t) => {

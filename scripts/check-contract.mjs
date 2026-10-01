@@ -409,6 +409,74 @@ export async function runCases(base, cases, { exchanges = [], facts = loadFacts(
   return failures;
 }
 
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function slowExchange(base, parts, intervalMs, closeAfterMs) {
+  const url = new URL(base);
+  const socket = connect({ host: url.hostname, port: Number(url.port) });
+  let response = "";
+  let closed = false;
+  socket.on("data", (chunk) => (response += chunk.toString("latin1")));
+  socket.on("error", () => {});
+  const ended = new Promise((resolve) =>
+    socket.once("close", () => {
+      closed = true;
+      resolve(true);
+    }),
+  );
+  await new Promise((resolve, reject) => {
+    socket.once("connect", resolve);
+    socket.once("error", reject);
+  });
+  for (const [index, part] of parts.entries()) {
+    if (index > 0) {
+      if (await Promise.race([ended, pause(intervalMs).then(() => false)])) break;
+    }
+    if (!socket.destroyed) socket.write(part);
+  }
+  const didClose = closed || (await Promise.race([ended, pause(closeAfterMs).then(() => false)]));
+  if (!didClose) socket.destroy();
+  const status = /^HTTP\/\d\.\d (\d{3})/.exec(response)?.[1];
+  return { closed: didClose, status: status === undefined ? undefined : Number(status) };
+}
+
+/** Slow trickles that stay within the contract are accepted; ones past it are terminated. */
+export async function checkReceiveTimeouts(base, timeouts) {
+  const header = [
+    Buffer.from("GET /healthz HTTP/1.1\r\n"),
+    Buffer.from("Host: localhost\r\nConnection: close\r\n"),
+    Buffer.from("\r\n"),
+  ];
+  const body = Buffer.from('{"title":"slow"}');
+  const bodyHead = Buffer.from(
+    `POST /api/tasks HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\n\r\n`,
+  );
+  const bodyParts = [Buffer.concat([bodyHead, body.subarray(0, 1)]), body.subarray(1, 2), body.subarray(2)];
+  const tests = [
+    ["headers arrive before the deadline", header, Math.ceil(timeouts.headers * 0.3), 200],
+    ["slow headers exceed the deadline", header, Math.ceil(timeouts.headers * 0.6), undefined],
+    ["body arrives before the deadline", bodyParts, Math.ceil(timeouts.body * 0.4), 201],
+    ["slow body exceeds the deadline", bodyParts, Math.ceil(timeouts.body * 0.55), undefined],
+  ];
+  const results = await Promise.all(
+    tests.map(async ([name, parts, intervalMs, expected]) => ({
+      name,
+      expected,
+      result: await slowExchange(base, parts, intervalMs, Math.max(50, Math.min(1000, timeouts.body * 0.1))),
+    })),
+  );
+  return results.flatMap(({ name, expected, result }) => {
+    const problems = [];
+    if (!result.closed) problems.push("connection remained open after the request finished or its deadline passed");
+    if (expected === undefined) {
+      if (result.status !== undefined && result.status >= 200 && result.status < 300) problems.push(`answered ${result.status} after the receive deadline`);
+    } else if (result.status !== expected) {
+      problems.push(`status ${result.status ?? "missing"}, expected ${expected}`);
+    }
+    return problems.length === 0 ? [] : [{ name: `receive timeout: ${name}`, problems }];
+  });
+}
+
 // Where each script's digits start in Unicode: `{port:<script>}` writes the port in them.
 const DIGIT_ZERO = { fullwidth: 0xff10, "arabic-indic": 0x0660 };
 
@@ -738,6 +806,7 @@ async function checkService(module, contract, facts) {
       }
       const exchanges = [];
       failures.push(...(await runCases(base, contract.cases, { exchanges, facts, spec: loadSpec() })));
+      failures.push(...(await checkReceiveTimeouts(base, contract.limits.receiveTimeoutsMs)));
       // A log line is written after its response, so give the last ones a moment to arrive.
       const deadline = Date.now() + LOG_WAIT_MS;
       while (Date.now() < deadline && checkLogs(exchanges, running.output.stdout).some((p) => p.includes("logged 0 times"))) {
@@ -832,7 +901,7 @@ async function main() {
       code = 2;
       continue;
     }
-    const total = `${contract.cases.length} HTTP cases and ${result.configCount} configuration cases`;
+    const total = `${contract.cases.length} HTTP cases, receive-timeout cases and ${result.configCount} configuration cases`;
     if (result.failures.length > 0) {
       console.error(`check-contract: ${module.id} answered ${result.failures.length} of ${total} differently\n`);
       for (const { name, problems } of result.failures) console.error(`  ${name}: ${problems.join("; ")}`);
