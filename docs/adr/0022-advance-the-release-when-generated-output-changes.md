@@ -1,6 +1,6 @@
 # ADR-0022: Advance the release when generated output changes
 
-**Status:** Accepted · Amends [ADR-0020](0020-require-generated-preset-verification.md) · **Date:** 2026-10-01
+**Status:** Accepted · Amends [ADR-0020](0020-require-generated-preset-verification.md) · Amended by [ADR-0023](0023-reconstruct-projects-from-exact-source.md) · **Date:** 2026-10-01
 
 ## Context
 

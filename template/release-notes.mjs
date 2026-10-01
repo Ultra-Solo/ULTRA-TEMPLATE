@@ -55,12 +55,13 @@ export function walk(dir, base = "") {
 /**
  * What changed between two generated projects. CHANGELOG.md is left out for the reason
  * template-update leaves it out: init writes the release a project came from into that file, so it
- * differs in every release by definition, and the update rewrites the line itself.
+ * differs in every release by definition, and the update rewrites the line itself. Provenance is
+ * recorded separately for the same reason; its source commit also changes for template-only edits.
  */
 export function diffTrees(before, after) {
   const [a, b] = [new Set(walk(before)), new Set(walk(after))];
   return [...new Set([...a, ...b])].sort()
-    .filter((path) => path !== "CHANGELOG.md")
+    .filter((path) => !["CHANGELOG.md", ".template-provenance.json"].includes(path))
     .flatMap((path) => {
       if (!a.has(path)) return [["A", path]];
       if (!b.has(path)) return [["D", path]];
@@ -151,7 +152,10 @@ const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8"
 
 /** A project as one release's own init would have made it. */
 function generate(templateDir, preset, out) {
-  const result = spawnSync(process.execPath, ["template/init.mjs", ...IDENTITY, "--preset", preset, "--out", out], { cwd: templateDir, encoding: "utf8" });
+  const manifest = JSON.parse(readFileSync(join(templateDir, "template/features.json"), "utf8"));
+  const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: templateDir, encoding: "utf8" }).trim();
+  const sourceArgs = manifest.provenanceSchema === 1 ? ["--source", templateDir, "--source-commit", sha] : [];
+  const result = spawnSync(process.execPath, ["template/init.mjs", ...sourceArgs, ...IDENTITY, "--preset", preset, "--out", out], { cwd: templateDir, encoding: "utf8" });
   if (result.status !== 0) {
     throw new Error(`init at ${templateDir} failed for preset ${preset}: ${(result.stderr || result.stdout).trim().split("\n").at(-1)}`);
   }

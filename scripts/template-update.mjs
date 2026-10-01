@@ -34,6 +34,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { COMMIT, PROVENANCE_FILE, SourceError, cloneSource, defaultDescription, generateSource, readProvenance, resolveSource, sourceLine, writeProvenance } from "./template-source.mjs";
 
 export class UpdateError extends Error {}
 
@@ -92,14 +93,6 @@ const git = (cwd, args, options = {}) => execFileSync("git", args, { cwd, encodi
 /** The line of an error worth showing: git's own message where there is one, not the command it ran. */
 const firstLine = (err) => String(err?.stderr || err?.message || err).trim().split("\n")[0];
 
-/** Runs a template release's own init, exactly as a new project would have. */
-function generate(templateDir, identity, features, out) {
-  const selection = features.length === 0 ? ["--preset", "minimal"] : ["--features", features.join(",")];
-  const args = ["template/init.mjs", "--name", identity.name, "--owner", identity.owner, "--repo", identity.repo, ...selection, "--out", out];
-  const result = spawnSync(process.execPath, args, { cwd: templateDir, encoding: "utf8" });
-  if (result.status !== 0) throw new UpdateError(`init at ${templateDir} failed: ${(result.stderr || result.stdout).trim().split("\n").at(-1)}`);
-}
-
 /** Replaces a repository's tracked content with a directory's, as one commit. */
 function commitTree(repo, from, message) {
   for (const entry of readdirSync(repo)) if (entry !== ".git") rmSync(join(repo, entry), { recursive: true, force: true });
@@ -122,7 +115,8 @@ function latestRelease(source) {
   return tags.reduce((best, tag) => (compareVersions(tag, best) > 0 ? tag : best));
 }
 
-export function update({ project, to, add = [], remove = [], dryRun = false, template, owner, repo, name, log = console.log }) {
+function updateVerified({ project, to, add = [], remove = [], dryRun = false, template, owner, repo, name, legacyCommit, toCommit, log = console.log }) {
+  const requestedRelease = to !== undefined;
   const changesSelection = add.length > 0 || remove.length > 0;
   if (to === undefined && !changesSelection) throw new UpdateError("Nothing to do: pass --to with a release, or --add or --remove with features.");
   if (to !== undefined && to !== "latest" && !VERSION.test(to)) throw new UpdateError(`--to must be a release tag such as v1.10.0, or latest, got "${to}".`);
@@ -131,32 +125,35 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
   const changelogPath = join(project, "CHANGELOG.md");
   if (!existsSync(changelogPath)) throw new UpdateError("CHANGELOG.md is missing; it records which template release this project came from.");
   const changelog = readFileSync(changelogPath, "utf8");
-  const origin = readOrigin(changelog);
+  const provenance = readProvenance(project);
+  const origin = provenance ? { ...provenance.source, features: provenance.inputs.features } : readOrigin(changelog);
+  if (!provenance && !COMMIT.test(legacyCommit ?? "")) throw new UpdateError("Legacy project: CHANGELOG records a version but no exact source. Review the tagged generation baseline, then pass --legacy-commit <40-character-sha>. Main-derived legacy output may need manual repair; no files were changed.");
+  if (toCommit !== undefined && !COMMIT.test(toCommit)) throw new UpdateError("--to-commit must be a full lowercase 40-character SHA.");
   const source = template ?? `${origin.url}.git`;
   if (to === "latest") to = latestRelease(source);
   // Without --to, a selection change happens at the release the project is already on.
   to ??= origin.version;
   for (const id of add) if (origin.features.includes(id)) throw new UpdateError(`${id} is already one of this project's features: ${origin.features.join(", ")}.`);
   for (const id of remove) if (!origin.features.includes(id)) throw new UpdateError(`${id} is not one of this project's features: ${origin.features.join(", ") || "none"}.`);
-  if (origin.version === to && !changesSelection) {
-    log(`template-update: already at ${to}.`);
-    return { status: "current" };
-  }
   // Applied backwards, the difference would quietly undo later releases, and the recorded version (the
   // highest one listed) would still claim the newer release. Updates only move forward.
   if (compareVersions(to, origin.version) < 0) {
     throw new UpdateError(`${to} is older than ${origin.version}, the release this project is on. template-update only moves forward.`);
   }
 
-  const packageJson = join(project, "package.json");
-  name ??= existsSync(packageJson) ? JSON.parse(readFileSync(packageJson, "utf8")).name : undefined;
-  let fromRemote = null;
-  try {
-    fromRemote = remoteIdentity(git(project, ["remote", "get-url", "origin"]));
-  } catch {
-    // No origin remote; --owner and --repo must say it.
+  if (provenance && name !== undefined && name !== provenance.inputs.identity.name) throw new UpdateError("--name disagrees with the original provenance identity; keep the recorded generation inputs.");
+  let identity = provenance?.inputs.identity;
+  if (!identity) {
+    const packageJson = join(project, "package.json");
+    name ??= existsSync(packageJson) ? JSON.parse(readFileSync(packageJson, "utf8")).name : undefined;
+    let fromRemote = null;
+    try { fromRemote = remoteIdentity(git(project, ["remote", "get-url", "origin"])); }
+    catch { /* Legacy projects without origin need explicit owner/repository inputs. */ }
+    identity = { name, owner: owner ?? fromRemote?.owner, repo: repo ?? fromRemote?.repo };
   }
-  const identity = { name, owner: owner ?? fromRemote?.owner, repo: repo ?? fromRemote?.repo };
+  if (provenance && ((owner !== undefined && owner !== identity.owner) || (repo !== undefined && repo !== identity.repo))) {
+    throw new UpdateError("Identity overrides disagree with original provenance inputs. Repository renames are adopter edits; preserve the recorded baseline identity.");
+  }
   if (!identity.name || !identity.owner || !identity.repo) {
     throw new UpdateError("Cannot tell this project's name, owner and repository. The name comes from package.json, and owner and repository from a GitHub origin remote; pass --name, --owner or --repo for what is missing.");
   }
@@ -164,46 +161,49 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
   const work = mkdtempSync(join(tmpdir(), "template-update-"));
   try {
     log(`template-update: ${origin.version} → ${to} from ${source}, features: ${origin.features.join(", ") || "none"}`);
-    try {
-      git(work, ["clone", "--quiet", "--no-checkout", source, "template"]);
-    } catch (err) {
-      throw new UpdateError(`cannot fetch the template from ${source}: ${firstLine(err)}`);
-    }
     const clone = join(work, "template");
-    const versions = [...new Set([origin.version, to])];
-    for (const version of versions) {
-      let sha;
-      try {
-        sha = git(clone, ["rev-parse", "--verify", "--quiet", `refs/tags/${version}^{commit}`]).trim();
-      } catch {
-        throw new UpdateError(`There is no release ${version} in ${source}.`);
-      }
-      // Its init runs next: say exactly which code that is.
-      log(`template-update: ${version} is commit ${sha}`);
+    cloneSource(source, clone);
+    const beforeSnapshot = resolveSource(clone, { version: origin.version, commit: provenance?.source.commit ?? legacyCommit, tag: provenance ? provenance.source.tag : origin.version });
+    const afterSnapshot = !requestedRelease && provenance?.source.tag === null
+      ? beforeSnapshot : resolveSource(clone, { version: to, commit: toCommit });
+    for (const snapshot of [beforeSnapshot, afterSnapshot]) log(`template-update: ${snapshot.source.version} is commit ${snapshot.source.commit}`);
+    if (provenance && beforeSnapshot.source.commit === afterSnapshot.source.commit && !changesSelection) {
+      log(`template-update: already at verified ${to} (${beforeSnapshot.source.commit}).`);
+      return { status: "current" };
     }
+    const snapshots = { before: beforeSnapshot, after: afterSnapshot };
     // Feature ids are the target release's to define: a feature added later exists only from then on.
-    const manifestAt = (version) => JSON.parse(git(clone, ["show", `${version}:template/features.json`]));
-    const known = Object.keys(manifestAt(to).features);
+    const manifestAt = (version) => version === origin.version ? beforeSnapshot.manifest : afterSnapshot.manifest;
+    const known = Object.keys(afterSnapshot.manifest.features);
     const unknown = add.filter((id) => !known.includes(id));
     if (unknown.length > 0) throw new UpdateError(`${to} defines no feature ${unknown.join(", ")}. It defines: ${known.join(", ")}.`);
     const features = changesSelection ? known.filter((id) => (origin.features.includes(id) || add.includes(id)) && !remove.includes(id)) : origin.features;
     if (changesSelection) log(`template-update: features ${origin.features.join(", ") || "none"} → ${features.join(", ") || "none"}`);
 
-    for (const version of versions) git(clone, ["worktree", "add", "--quiet", "--detach", join(work, `at-${version}`), version]);
+    const beforeInputs = provenance?.inputs ?? {
+      identity, features: origin.features,
+      description: { generated: true, sentence: defaultDescription(beforeSnapshot.manifest, origin.features) },
+      year: Number(/^Copyright \(c\) (\d{4}) /m.exec((existsSync(join(project, "LICENSE")) ? readFileSync(join(project, "LICENSE"), "utf8") : ""))?.[1] ?? new Date().getUTCFullYear()),
+    };
+    const afterInputs = { ...beforeInputs, features,
+      description: beforeInputs.description.generated ? { generated: true, sentence: defaultDescription(afterSnapshot.manifest, features) } : beforeInputs.description,
+    };
+    for (const [side, snapshot] of Object.entries(snapshots)) {
+      const entries = git(clone, ["ls-tree", "-rz", snapshot.source.commit]).split("\0").filter(Boolean);
+      if (entries.some((entry) => !/^100(?:644|755) blob /.test(entry))) throw new UpdateError("Source contains symlinks or submodules; no initializer ran.");
+      git(clone, ["worktree", "add", "--quiet", "--detach", join(work, `at-${side}`), snapshot.source.commit]);
+    }
     const pair = join(work, "pair");
     mkdirSync(pair);
     git(pair, ["init", "-q"]);
-    const sides = [
-      ["before", origin.version, origin.features],
-      ["after", to, features],
-    ];
-    const shas = sides.map(([side, version, selection]) => {
-      generate(join(work, `at-${version}`), identity, selection, join(work, `gen-${side}`));
+    const sides = [["before", origin.version], ["after", to]];
+    const shas = sides.map(([side, version]) => {
+      generateSource(join(work, `at-${side}`), snapshots[side], side === "before" ? beforeInputs : afterInputs, join(work, `gen-${side}`));
       return commitTree(pair, join(work, `gen-${side}`), `template ${version} ${side}`);
     });
     const [before, after] = shas;
     // The CHANGELOG is the project's own; init's origin line in it is replaced by the "Updated to" line.
-    let scope = ["--", ".", ":(exclude)CHANGELOG.md"];
+    let scope = ["--", ".", ":(exclude)CHANGELOG.md", `:(exclude)${PROVENANCE_FILE}`];
     const entries = git(pair, ["diff", "--no-renames", "--name-status", before, after, ...scope]).trim().split("\n").filter(Boolean);
     // A change to a file the project has since deleted is the project's decision standing; skip it
     // rather than let one missing file make git apply refuse the whole patch.
@@ -240,10 +240,15 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
       throw new UpdateError(`the update cannot be applied over these files:\n  ${blocked.join("\n  ")}\nMove them out of the way, or delete them, then run this again.`);
     }
 
-    const record = () => recordUpdate(changelog, origin.url, to, changesSelection ? features : undefined);
+    const record = () => {
+      let text = recordUpdate(changelog, afterSnapshot.source.url, to, changesSelection ? features : undefined);
+      if (afterSnapshot.source.tag === null) text = text.replace(`](${afterSnapshot.source.url}/releases/tag/${to})`, ` source](${afterSnapshot.source.url}/tree/${afterSnapshot.source.commit})`);
+      return text.replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(afterSnapshot.source)}`);
+    };
+    const recordSource = () => writeProvenance(project, { schemaVersion: 1, source: afterSnapshot.source, inputs: afterInputs });
     if (files.length === 0) {
       log(`template-update: nothing in ${to} changes a file this project has.`);
-      if (!dryRun) writeFileSync(changelogPath, record());
+      if (!dryRun) { writeFileSync(changelogPath, record()); recordSource(); }
       return { status: dryRun ? "dry-run" : "applied", conflicts: [], changed: [], skipped, features, to };
     }
     if (dryRun) {
@@ -271,12 +276,18 @@ export function update({ project, to, add = [], remove = [], dryRun = false, tem
     // Written even when there are conflicts: the record is part of the same uncommitted change, so
     // reverting the update removes it too, and committing the resolved update keeps it.
     writeFileSync(changelogPath, record());
+    recordSource();
     log(`template-update: ${files.length} file(s) changed.${conflicts.length ? ` Resolve ${conflicts.length} conflict(s): ${conflicts.join(", ")}` : ""}`);
     log("Next: git diff to review, node scripts/setup.mjs, node scripts/verify.mjs, then commit.");
     return { status: "applied", conflicts, changed: files, skipped, features, to };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+export function update(options) {
+  try { return updateVerified(options); }
+  catch (err) { if (err instanceof SourceError) throw new UpdateError(err.message); throw err; }
 }
 
 function main() {
@@ -290,6 +301,8 @@ function main() {
       owner: { type: "string" },
       repo: { type: "string" },
       name: { type: "string" },
+      "legacy-commit": { type: "string" },
+      "to-commit": { type: "string" },
     },
   });
   const ids = (list) => (list ?? "").split(",").map((id) => id.trim()).filter(Boolean);
@@ -306,6 +319,8 @@ function main() {
       owner: values.owner,
       repo: values.repo,
       name: values.name,
+      legacyCommit: values["legacy-commit"],
+      toCommit: values["to-commit"],
     });
     return result.conflicts?.length ? 1 : 0;
   } catch (err) {

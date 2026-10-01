@@ -1,36 +1,18 @@
 #!/usr/bin/env node
 /**
- * Turns ULTRA-TEMPLATE into a project that contains only the features you select.
- *
- * GitHub's "Use this template" copies every file and takes no parameters, so selection happens
- * here, once, on your machine. It cannot happen in a GitHub Actions run on the new repository: a
- * push made with GITHUB_TOKEN may not add, change or delete files under .github/workflows/, and
- * init does all three.
- *
- *   node template/init.mjs --list
- *   node template/init.mjs --name my-app --owner my-org --preset fullstack-ts --dry-run
- *   node template/init.mjs --name my-app --owner my-org --features go-service,release
- *   node template/init.mjs --name my-app --owner my-org --preset all --out ../my-app
- *
- * In order, and with every input validated before the first file is touched:
- *   1. Deletes the paths of each feature you did not select, and everything template-only.
- *   2. In every file that remains, keeps or deletes each block between a begin and an end marker
- *      line, then deletes the marker lines themselves.
- *   3. Replaces the template's identity (owner, repository, project name) with yours.
- *
- * Only files git tracks are read. Without --out the checkout is rewritten in place, and init
- * refuses to start on uncommitted changes, so `git checkout -- . && git clean -fd` is always a
- * complete undo. With --out a new directory is written and this checkout is left alone; that is
- * how template-test.yml exercises every preset.
- *
- * Exit 0 done · 1 invalid arguments or inconsistent template · 2 environment (git, dirty tree, --out).
+ * Resolve a published upstream snapshot independently of a GitHub template copy's new history.
+ * Render that source, then record its commit and original generation inputs for exact updates.
+ * Explicit local mirrors and source commits provide offline and unpublished candidate paths.
+ * renderMain is the committed-source worker; it is called only after source verification.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
+import { checkoutSource, cloneSource, defaultDescription, generateSource, resolveSource, sourceLine, writeProvenance, SourceError } from "../scripts/template-source.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -252,16 +234,13 @@ const WRITTEN_BY_INIT = "<!-- Written by init from the selected features: replac
  * init runs; the owner replaces it once the project is more than its starting point.
  */
 export function describeProject(manifest, selected) {
-  const parts = [...selected].map((id) => manifest.features[id].describes).filter(Boolean);
-  if (parts.length === 0) return "No application code yet: the checks, CI and agent instructions are in place for the first module.";
-  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
-  return `Starts as ${list}.`;
+  return defaultDescription(manifest, [...selected]);
 }
 
 /** --description is one line of prose; a newline or a comment marker would break the README around it. */
 export function validateDescription(text) {
   const sentence = text.trim();
-  if (sentence === "" || sentence.length > 300 || /[\r\n]/.test(sentence) || sentence.includes("<!--") || sentence.includes("-->")) {
+  if (sentence === "" || sentence.length > 300 || /[\r\n]/.test(sentence) || sentence.includes("<!--") || sentence.includes("-->") || sentence.includes("--!>")) {
     throw new InitError("--description must be one line of 1-300 characters, with no HTML comment.");
   }
   return sentence;
@@ -403,7 +382,7 @@ const USAGE = `Usage:
   --name is the project: package names, with the npm scope from --owner, lowercased.
   --description is written under the README's title; without it, a sentence is built from the features.`;
 
-export async function main(argv = process.argv.slice(2), root = ROOT) {
+export async function renderMain(argv = process.argv.slice(2), root = ROOT, inputs) {
   const { values } = parseArgs({
     args: argv,
     strict: true,
@@ -449,15 +428,15 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
 
   const selected = resolveSelection(manifest, values);
   const identity = validateIdentity(values, { nameFrom });
-  const description = values.description === undefined
+  const description = inputs?.description ?? (values.description === undefined
     ? { sentence: describeProject(manifest, selected), generated: true }
-    : { sentence: validateDescription(values.description), generated: false };
+    : { sentence: validateDescription(values.description), generated: false });
 
   const out = values.out === undefined ? null : resolve(values.out);
   if (out === null) assertClean(root);
   else if (existsSync(out) && readdirSync(out).length > 0) throw new InitError(`--out ${out} exists and is not empty.`, 2);
 
-  const result = plan(root, manifest, selected, identity, description);
+  const result = plan(root, manifest, selected, identity, description, inputs?.year);
   const rewritten = result.files.filter((f) => f.changed).length;
   const summary = `${identity.name} (${identity.owner}/${identity.repo}) with ${[...selected].join(", ") || "no features"}: ` +
     `${result.deleted.length} file(s) deleted, ${rewritten} rewritten.`;
@@ -494,6 +473,96 @@ Next:
   git add -A && git commit -m "chore: initialize project"
   git push && node scripts/configure-github.mjs   # squash-only merges, required verify check, security settings`);
   return 0;
+}
+
+/** A GitHub template copy has new history; always resolve the upstream snapshot independently. */
+export async function main(argv = process.argv.slice(2), root = ROOT) {
+  const { values } = parseArgs({ args: argv, strict: true, options: {
+    name: { type: "string" }, owner: { type: "string" }, repo: { type: "string" }, description: { type: "string" },
+    preset: { type: "string" }, features: { type: "string" }, out: { type: "string" },
+    source: { type: "string" }, "source-commit": { type: "string" },
+    list: { type: "boolean" }, "dry-run": { type: "boolean" }, help: { type: "boolean", short: "h" },
+  } });
+  if (values.list || values.help) {
+    const code = await renderMain([values.help ? "--help" : "--list"], root);
+    if (values.help) console.log("\nSources: default = published upstream release. --source <mirror> uses its verified tag;\n  --source <local-git-path> --source-commit <40-character-sha> is explicit offline/unreleased generation.");
+    return code;
+  }
+  if (values["source-commit"] && !values.source) throw new InitError("--source-commit requires an explicit --source local Git checkout.");
+  if (values["source-commit"] && !existsSync(resolve(values.source))) throw new InitError("--source-commit requires a local Git checkout, not a network URL.");
+  const bootstrap = loadManifest(root);
+  const origin = originDefaults(bootstrap, readOrigin(root));
+  values.owner ??= origin?.owner;
+  values.repo ??= origin?.repo;
+  values.name ??= values.repo === undefined ? undefined : toProjectName(values.repo);
+  const confirm = process.stdin.isTTY && process.stdout.isTTY && values.preset === undefined && values.features === undefined
+    ? await ask(bootstrap, values) : null;
+  const identity = validateIdentity(values);
+  const out = values.out === undefined ? null : resolve(values.out);
+  if (out === null) assertClean(root);
+  else if (existsSync(out) && readdirSync(out).length) throw new InitError(`--out ${out} exists and is not empty.`, 2);
+  const version = `v${bootstrap.version}`;
+  const upstream = `https://github.com/${bootstrap.identity.owner}/${bootstrap.identity.repo}`;
+  if (!values.source) {
+    let response;
+    try { response = await fetch(`https://api.github.com/repos/${bootstrap.identity.owner}/${bootstrap.identity.repo}/releases/tags/${version}`, { signal: AbortSignal.timeout(15_000) }); }
+    catch { throw new InitError(`Cannot verify publication of ${version}. Retry online, or use an explicit verified local source. Nothing was written.`, 2); }
+    if (!response.ok) throw new InitError(`${version} is not a verified published release (HTTP ${response.status}). Wait for publication or use an explicit local source commit. Nothing was written.`, 2);
+    const release = await response.json();
+    if (release.draft || release.prerelease || release.tag_name !== version) throw new InitError(`${version} is not a stable published release. Nothing was written.`, 2);
+  }
+  const work = mkdtempSync(join(tmpdir(), "template-source-"));
+  try {
+    const clone = join(work, "source");
+    cloneSource(values.source ?? `${upstream}.git`, clone);
+    const snapshot = resolveSource(clone, { version, commit: values["source-commit"], tag: values["source-commit"] ? null : version });
+    checkoutSource(clone, snapshot);
+    const features = [...resolveSelection(snapshot.manifest, values)];
+    const description = values.description === undefined
+      ? { sentence: describeProject(snapshot.manifest, new Set(features)), generated: true }
+      : { sentence: validateDescription(values.description), generated: false };
+    const inputs = { identity, features, description, year: new Date().getUTCFullYear() };
+    const generated = join(work, "generated");
+    generateSource(clone, snapshot, inputs, generated);
+    writeProvenance(generated, { schemaVersion: 1, source: snapshot.source, inputs });
+    const changelog = join(generated, "CHANGELOG.md");
+    let text = readFileSync(changelog, "utf8");
+    if (snapshot.source.tag === null) {
+      text = text.replace(`](${snapshot.source.url}/releases/tag/${version})`, ` source](${snapshot.source.url}/tree/${snapshot.source.commit})`);
+    }
+    writeFileSync(changelog, text.replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(snapshot.source)}`));
+    const summary = `${identity.name} (${identity.owner}/${identity.repo}) from ${version} at ${snapshot.source.commit}, features: ${features.join(", ") || "none"}.`;
+    if (values["dry-run"]) { console.log(`Dry run — nothing written.\n${summary}`); return 0; }
+    if (confirm && !(await confirm(summary))) { console.log("Nothing written."); return 0; }
+    const files = [];
+    const walk = (dir, prefix = "") => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const file = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) walk(join(dir, entry.name), file);
+        else files.push({ file, data: readFileSync(join(dir, entry.name)) });
+      }
+    };
+    walk(generated);
+    const destination = out ?? root;
+    if (out === null) {
+      const kept = new Set(files.map(({ file }) => file));
+      const tracked = gitTracked(root);
+      for (const path of removedPaths(bootstrap, new Set(features))) rmSync(join(root, path), { recursive: true, force: true });
+      for (const file of tracked.filter((file) => !kept.has(file))) {
+        rmSync(join(root, file), { force: true });
+        pruneEmptyParents(root, file);
+      }
+    }
+    for (const { file, data } of files) {
+      mkdirSync(dirname(join(destination, file)), { recursive: true });
+      writeFileSync(join(destination, file), data);
+    }
+    console.log(`Initialized ${summary}\n${out === null ? "Review with git diff." : `Written to ${out}; initialize Git and add the files.`}\nNext: node scripts/setup.mjs && node scripts/verify.mjs`);
+    return 0;
+  } catch (err) {
+    if (err instanceof SourceError) throw new InitError(err.message, 2);
+    throw err;
+  } finally { rmSync(work, { recursive: true, force: true }); }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

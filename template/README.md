@@ -6,7 +6,15 @@ Everything in `template/` is deleted when a project is initialized. This file is
 
 GitHub's *Use this template* copies every file and accepts no parameters, so feature selection has to happen after the copy. It cannot run as a GitHub Actions job in the new repository: a push made with `GITHUB_TOKEN` may not create, change or delete anything under `.github/workflows/`, and initialization does all three. So `template/init.mjs` runs once, on the developer's machine, and the result is committed as one reviewable change.
 
-It has no dependencies beyond Node <!-- generated:version .node-version -->24<!-- /generated -->, validates every argument before touching a file, builds the whole result in memory before writing any of it, and refuses to run in place on a dirty working tree, so `git checkout -- . && git clean -fd` always undoes it.
+It needs Git and has no package dependencies beyond Node <!-- generated:version .node-version -->24<!-- /generated -->, validates every argument before touching a file, builds the whole result in memory before writing any of it, and refuses to run in place on a dirty working tree, so `git checkout -- . && git clean -fd` always undoes it.
+
+## Exact source and reconstruction
+
+Initialization resolves the copied manifest version from its stable upstream GitHub release and renders that committed source, rather than the template copy's files or its new history. Missing publication stops before project files change. The result records `.template-provenance.json` schema 1 with upstream URL, version, tag, full SHA and original identity, feature selection, description and copyright year. Keep that file committed.
+
+For an offline release mirror, pass `--source <local-git-path>`. For an unpublished candidate, pass `--source <local-git-path> --source-commit <full-sha>`; its record has a null tag and its origin is explicitly source rather than a released baseline. Commit the candidate first: neither mode renders uncommitted edits. Explicit sources are code trust decisions. Hash checks identify committed code and detect repointed recorded tags; they do not authenticate the publisher.
+
+The updater verifies the saved baseline before either renderer runs, including already-current checks, and uses the recorded inputs after project renames. Legacy version-only projects require a reviewed `--legacy-commit`; ambiguous main-derived projects need a manual repair. See [ADR-0023](../docs/adr/0023-reconstruct-projects-from-exact-source.md) and [v3.0.0 migration notes](notes/v3.0.0.md).
 
 ## The three mechanisms
 
@@ -59,7 +67,7 @@ cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && nod
 
 ## Scope
 
-ULTRA-TEMPLATE 2.x is complete in scope. It gives a project the things with no product opinion — one verification gate, a pinned supply chain, repository and documentation checks, agent guidance, releases, security scanning, and a set of services and packages that demonstrate one architecture in three languages. A change belongs in the template when it would be right for nearly every project made from it.
+ULTRA-TEMPLATE is complete in product scope. It gives a project the things with no product opinion — one verification gate, a pinned supply chain, repository and documentation checks, agent guidance, releases, security scanning, and a set of services and packages that demonstrate one architecture in three languages. A change belongs in the template when it would be right for nearly every project made from it.
 
 These stay decisions for each project, and are left out on purpose: deployment targets and infrastructure, databases and migrations, authentication, message queues, UI frameworks beyond the minimal React app, and desktop or mobile clients. Each is a product choice with more than one good answer, and a template that picks one makes every other project undo it.
 
@@ -69,7 +77,7 @@ A new feature has to meet the five requirements in [ADR-0008](../docs/adr/0008-a
 
 The template is a product with a public contract, and its version says what a release does to the projects made from it.
 
-**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`), `template-update.mjs`'s flags (`--to`, which also takes `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`), the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and reads back (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a feature or preset of 1.x or 2.x disappears.
+**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`, `--source`, `--source-commit`), `template-update.mjs`'s flags (`--to`, which also takes `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`, `--legacy-commit`, `--to-commit`), the machine-readable provenance schema and the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and still reads for legacy projects (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a feature or preset of 1.x or 2.x disappears.
 
 | Bump | When | Example |
 |---|---|---|
@@ -81,18 +89,18 @@ A behaviour change a project's users would notice — an API status code, a stri
 
 ## Releasing the template
 
-"Use this template" copies `main` as it is, not the latest release, and init records the `version` in `features.json`. A change to generated output must advance that version; `template-release-check` enforces it on pull requests and merge queue entries. This also applies to dependency updates. A dependency PR can carry the bump, or its changes can be combined into a versioned release PR before merge. Template-only changes with unchanged output need no release.
+"Use this template" copies `main` as it is. The bootstrap resolves the manifest's version from a stable published upstream snapshot before rendering; it records that exact commit and the generation inputs. A change to generated output must advance that version; `template-release-check` enforces it on pull requests and merge queue entries. This also applies to dependency updates. A dependency PR can carry the bump, or its changes can be combined into a versioned release PR before merge. Template-only changes with unchanged output need no release.
 
-Publication happens **after** the merge: `.github/workflows/template-release.yml` tags the version-changing commit and publishes its notes. It is asynchronous and can fail, so main can contain a candidate version whose release is not yet available. Check the workflow and `gh release view v<version>` before initializing or updating from that version. If publication fails, repair and rerun the workflow; do not move an existing release tag to cover later source changes.
+Publication happens **after** the merge: `.github/workflows/template-release.yml` tags the version-changing commit and publishes its notes. It is asynchronous and can fail, so main can contain a candidate version whose release is not yet available. Default initialization checks publication and fails clearly in that window. Inspect the workflow and `gh release view v<version>` when diagnosing it. If publication fails, repair and rerun the workflow; do not move an existing release tag to cover later source changes.
 
-For a known initialization baseline, clone the published tag, for example `git clone --branch v2.1.0 https://github.com/Ultra-Solo/ULTRA-TEMPLATE.git demo-app`, then initialize with explicit `--name`, `--owner` and `--repo`. GitHub copies have new history; their HEAD does not identify the upstream release. Init currently trusts the manifest's version and does not automatically verify a copied snapshot or fetch release source. Exact-source provenance is a separate migration ([ADR-0022](../docs/adr/0022-advance-the-release-when-generated-output-changes.md)); a version bump and this gate alone do not eliminate the publication window.
+GitHub copies have new history; their HEAD does not identify an upstream release. Default generation resolves upstream independently. A local release mirror or an explicitly pinned unreleased candidate provides the offline path; do not substitute the adopter repository's HEAD. The required release check still prevents generated-output changes under an unchanged version ([ADR-0022](../docs/adr/0022-advance-the-release-when-generated-output-changes.md), amended by [ADR-0023](../docs/adr/0023-reconstruct-projects-from-exact-source.md)).
 
 Release notes compare every preset generated at both releases with each release's own init, then explain how to update and list the merged pull requests. Diffing generated projects rather than template paths reflects changes inside marker blocks and changes in file ownership.
 
 Before merging a release pull request:
 
 1. **Choose the bump** from the table above, and set `version` in `features.json` in the same pull request.
-2. **Every preset generates and verifies.** `template-test` does this on the pull request, initializing in place on a fresh checkout as an adopter does. Do not merge on a red preset.
+2. **Every preset generates and verifies.** `template-test` does this on the pull request, initializing in place from the committed candidate SHA, without claiming it is published. Do not merge on a red preset.
 3. **Nothing of the template survives initialization.** Checked in every preset by `check-hygiene` (no marker lines) and by the `template-test` step that fails if `template/` remains.
 4. **The README's steps still work.** If the release changes anything *Start a project* or *Getting started* describes, follow those steps once from a fresh clone.
 5. **`configure-github.mjs` does what its header says.** If the release touches it, run `--dry-run` against a scratch repository and read the requests, then apply them there.
