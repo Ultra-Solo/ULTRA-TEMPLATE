@@ -3,7 +3,12 @@
   "limits": {
     "$comment": "What every task service bounds, stated once. Cases refer to these values instead of restating them, checkSpec holds the OpenAPI document to them, and each service's own constant is held to them by the cases at each bound and one past it. A request id is any run of `requestId.characters`, as a regular-expression character class, at most `maxLength` long.",
     "maxBodyBytes": 1048576,
-    "requestId": { "characters": "A-Za-z0-9._-", "maxLength": 128 }
+    "requestId": { "characters": "A-Za-z0-9._-", "maxLength": 128 },
+    "receiveTimeoutsMs": {
+      "$comment": "The development servers terminate a request whose headers do not arrive within headers, or whose complete request (headers and body) does not arrive within request. Timed-out requests need not receive a particular HTTP status.",
+      "headers": 5000,
+      "request": 15000
+    }
   },
   "startup": {
     "$comment": "How a task service reports that it started, or that it refused its configuration. The listening line carries every variable in `config` under its `reportedAs` field, with the value in effect. A refused configuration writes one `refused` line, whose `error` names the variable, and exits with `exitCode`. `ready` is the request every check polls until the service answers it. Sent `stopped.signal`, as `docker stop` sends it, a service finishes what it is serving and exits with `stopped.exitCode` within the timeout the `within` variable sets; CI's image probe (scripts/probe-image.mjs) checks it on each image, with every variable at its default. check-contract sends the signal with a request half sent: at the default and at the longest `within` value the service accepts, it must stay up, answer the request once the rest arrives, and exit `stopped.exitCode`; at the shortest, it must give up on the request and exit `abandoned.exitCode`.",
