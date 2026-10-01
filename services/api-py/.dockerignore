@@ -1,5 +1,7 @@
 node_modules/
 .venv/
 tests/
-scripts/
+scripts/*
 *.md
+
+!scripts/install_security_packages.py

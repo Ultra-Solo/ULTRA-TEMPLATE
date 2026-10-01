@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://deb.debian.org/debian-security",
+  "packages": {
+    "libpcre2-8-0": {
+      "version": "10.46-1~deb13u3",
+      "files": {
+        "amd64": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_amd64.deb",
+          "sha256": "e226f661d918f04daf38cdbc4806b7ed7d6ef95c7eb0ade692fc350e31970040"
+        },
+        "arm64": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_arm64.deb",
+          "sha256": "1a02b7129990690ea095fd35d7ace6853742923d158019e1fb4ef27efd2c51a7"
+        },
+        "armel": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_armel.deb",
+          "sha256": "e0d7168c0e1dafaf8ed40626c4af2738bc9546983d506c8ad862c9049e21be69"
+        },
+        "armhf": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_armhf.deb",
+          "sha256": "4bba1651d061cb205552b987a82915ed3d0d4cacfe14f7eea1ef925be9aec094"
+        },
+        "i386": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_i386.deb",
+          "sha256": "7a80279bab807488dd0ef63e068b136cb862bcbda73f853451fd2e65e443ebce"
+        },
+        "ppc64el": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_ppc64el.deb",
+          "sha256": "1e56ac46e2ddae00d7b101d4cc7a82ee2c0bc762db327edaff93c105da28fded"
+        },
+        "riscv64": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_riscv64.deb",
+          "sha256": "66baf766f7c1e14cf0cd30c7d85cdd6dc7885c193f49f1909f0b3fecb9fd04d9"
+        },
+        "s390x": {
+          "path": "pool/updates/main/p/pcre2/libpcre2-8-0_10.46-1~deb13u3_s390x.deb",
+          "sha256": "df6eb6598d0240e4ae76251c500a18b726251a373e0ae8ed410b86381dc3a339"
+        }
+      }
+    },
+    "libssl3t64": {
+      "version": "3.5.7-1~deb13u3",
+      "files": {
+        "amd64": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_amd64.deb",
+          "sha256": "ff16bc048bcd7d1b256094450b79c77947d8e76fe2a24bd99b91021d591fa074"
+        },
+        "arm64": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_arm64.deb",
+          "sha256": "d0681293a160392186c6ef85a165e40603d1628a099936137d24d391bd591f97"
+        },
+        "armel": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_armel.deb",
+          "sha256": "53cd7009815b15d77f2092a37e7fac135af3dbb303a05577c847e909218dec15"
+        },
+        "armhf": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_armhf.deb",
+          "sha256": "be99a741119db2fcec44ac2cead4e9f6143ffa1a37e0c667cec99b425641f223"
+        },
+        "i386": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_i386.deb",
+          "sha256": "c6988eab4110e14aa7306a9b32356bc9b699f7f657acdc0211a458f6d91819b5"
+        },
+        "ppc64el": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_ppc64el.deb",
+          "sha256": "9c691538282566cc36266baf9e735434405c361a7dc30fef94c7a1796ef3c203"
+        },
+        "riscv64": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_riscv64.deb",
+          "sha256": "3d8ce2dd4796949484aaff65bdfb6ecdadbe0f1eaf0877d5fd400e1c2c1e6e33"
+        },
+        "s390x": {
+          "path": "pool/updates/main/o/openssl/libssl3t64_3.5.7-1~deb13u3_s390x.deb",
+          "sha256": "3998f5b2870b67dbc6cd453beef8a9cb1c633535f8e60a7a96753bdb389c193b"
+        }
+      }
+    },
+    "openssl": {
+      "version": "3.5.7-1~deb13u3",
+      "files": {
+        "amd64": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_amd64.deb",
+          "sha256": "43a9cbcf2a8a0e1f0a1c3f5a33ee1f56b269690e7a2129f2b2d0582e789589d7"
+        },
+        "arm64": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_arm64.deb",
+          "sha256": "68f226057a7a1c1f23e2ffde0075ea16e27e646d829c8d3c63414c49b839c258"
+        },
+        "armel": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_armel.deb",
+          "sha256": "4ed885dbb6315d1875977a133515f437e264c73f6c8bfe220e9f642249076118"
+        },
+        "armhf": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_armhf.deb",
+          "sha256": "211949dab0389fc5c373a1736095d373f3bac850828a18589ce8fe915c7048ca"
+        },
+        "i386": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_i386.deb",
+          "sha256": "6c10009e522e0fafde99b5e06dd8d81a353a74ea5a439ee8b42d85565cda9b32"
+        },
+        "ppc64el": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_ppc64el.deb",
+          "sha256": "ae96cdd950f2c2d0251db37f8a7665d7aa80253d623dd870e34dd917cd25a2ed"
+        },
+        "riscv64": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_riscv64.deb",
+          "sha256": "8a0272ed7ef0daa3b8087524162dfc29772012d33c4e3d176c4a3b38ab6e49ca"
+        },
+        "s390x": {
+          "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_s390x.deb",
+          "sha256": "03a9afad6c6a91e2bcda64cdb864587ca1d683de9a5042acce0f5e1cb894f093"
+        }
+      }
+    },
+    "openssl-provider-legacy": {
+      "version": "3.5.7-1~deb13u3",
+      "files": {
+        "amd64": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_amd64.deb",
+          "sha256": "c12e0266c4780749a4702b8959ac979689f4182e18eed85a8a5eb90ed0e16eab"
+        },
+        "arm64": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_arm64.deb",
+          "sha256": "dae4ab96be3a1fc8fd490bbeb3938ecd102d360555d4af8ee2728b42ce9f1059"
+        },
+        "armel": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_armel.deb",
+          "sha256": "e949053a67a0b746ea244ce63c17e342a4ad0fdd0cc82600c8a0d4da55c866f4"
+        },
+        "armhf": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_armhf.deb",
+          "sha256": "4dfd45ef1125d9aad8a78a23b9ab73ec8ba1ee103ef55c9c56befe3bca39787e"
+        },
+        "i386": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_i386.deb",
+          "sha256": "7dac484c67af83be8f86977aeeed2210606b1e26740a3342a64f79c3287aaa4d"
+        },
+        "ppc64el": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_ppc64el.deb",
+          "sha256": "b90241a5092dc9b28f3c2a99909d262485007fe2757f957c1750ce36d02e1255"
+        },
+        "riscv64": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_riscv64.deb",
+          "sha256": "96cb6a761ff846312fab4748011166a63c53c17c837ad02a4485ed156f93d878"
+        },
+        "s390x": {
+          "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_s390x.deb",
+          "sha256": "ea4bb842aa29fddef9f1eb7173be81f9e51c090dafa6bb8b86977a63fbf871aa"
+        }
+      }
+    }
+  }
+}

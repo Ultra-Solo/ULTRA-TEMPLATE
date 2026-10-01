@@ -1,6 +1,6 @@
 # ADR-0003: Pin third-party code by digest
 
-**Status:** Accepted · Amended by [ADR-0015](0015-one-manifest-for-hand-pinned-tools.md) and [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md) · **Date:** 2026-09-15
+**Status:** Accepted · Amended by [ADR-0015](0015-one-manifest-for-hand-pinned-tools.md) and [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md) · Amended by [ADR-0024](0024-lock-runtime-security-payloads.md) · **Date:** 2026-09-15
 
 ## Context
 
