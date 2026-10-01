@@ -23,7 +23,8 @@ export function validateProvenance(record) {
       new Set(inputs.features).size !== inputs.features.length ||
       !Number.isInteger(inputs?.year) || inputs.year < 1 || inputs.year > 9999 ||
       typeof inputs?.description?.generated !== "boolean" || typeof inputs.description.sentence !== "string" ||
-      !inputs.description.sentence.trim() || inputs.description.sentence.length > 300 || /[\r\n]|<!--|-->/.test(inputs.description.sentence)) {
+      !inputs.description.sentence.trim() || inputs.description.sentence.length > 300 || /[\r\n]/.test(inputs.description.sentence) ||
+      inputs.description.sentence.includes("<!--") || inputs.description.sentence.includes("-->") || inputs.description.sentence.includes("--!>")) {
     throw new SourceError(`${PROVENANCE_FILE} is malformed or has an unsupported schema. Restore the committed record; do not guess a baseline from the project's HEAD.`);
   }
   return record;

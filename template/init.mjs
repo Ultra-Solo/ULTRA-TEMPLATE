@@ -240,7 +240,7 @@ export function describeProject(manifest, selected) {
 /** --description is one line of prose; a newline or a comment marker would break the README around it. */
 export function validateDescription(text) {
   const sentence = text.trim();
-  if (sentence === "" || sentence.length > 300 || /[\r\n]/.test(sentence) || sentence.includes("<!--") || sentence.includes("-->")) {
+  if (sentence === "" || sentence.length > 300 || /[\r\n]/.test(sentence) || sentence.includes("<!--") || sentence.includes("-->") || sentence.includes("--!>")) {
     throw new InitError("--description must be one line of 1-300 characters, with no HTML comment.");
   }
   return sentence;

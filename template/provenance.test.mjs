@@ -4,9 +4,9 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
-import { loadManifest, main, plan, ROOT } from "./init.mjs";
+import { loadManifest, main, plan, ROOT, validateDescription } from "./init.mjs";
 import { update } from "../scripts/template-update.mjs";
-import { generateSource, readProvenance, resolveSource, writeProvenance } from "../scripts/template-source.mjs";
+import { generateSource, readProvenance, resolveSource, validateProvenance, writeProvenance } from "../scripts/template-source.mjs";
 import { diffTrees } from "./release-notes.mjs";
 import { checkRelease } from "./check-release.mjs";
 import { sourceFixture } from "./test-source.mjs";
@@ -17,6 +17,19 @@ const save = (root) => {
   git(root, "-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-q", "--allow-empty", "-m", "fixture");
   return git(root, "rev-parse", "HEAD");
 };
+
+test("descriptions reject both HTML comment end delimiters in CLI and saved provenance", () => {
+  const record = { schemaVersion: 1,
+    source: { url: "https://github.com/Ultra-Solo/ULTRA-TEMPLATE", version: "v3.0.0", tag: "v3.0.0", commit: "1".repeat(40) },
+    inputs: { identity: { name: "demo-app", owner: "octo", repo: "demo-app" }, features: [], year: 2026,
+      description: { sentence: "A description.", generated: false } },
+  };
+  for (const end of ["-->", "--!>"]) {
+    const sentence = `Description ${end} trailing text`;
+    assert.throws(() => validateDescription(sentence), /no HTML comment/);
+    assert.throws(() => validateProvenance({ ...record, inputs: { ...record.inputs, description: { sentence, generated: false } } }), /malformed/);
+  }
+});
 
 test("a moved baseline tag is rejected even for an already-current update, before source execution", (t) => {
   const work = mkdtempSync(join(tmpdir(), "provenance-"));
