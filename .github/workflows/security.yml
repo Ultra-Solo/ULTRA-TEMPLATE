@@ -184,7 +184,7 @@ jobs:
           echo "$HOME/.devcontainers/bin" >> "$GITHUB_PATH"
       - name: Build devcontainer with Features
         run: |
-          devcontainer build --workspace-folder .devcontainer --image-name devcontainer-scan:ci
+          devcontainer build --workspace-folder . --image-name devcontainer-scan:ci
       - name: Scan devcontainer image with Trivy (full report)
         run: |
           trivy image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
