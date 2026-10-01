@@ -178,7 +178,7 @@ jobs:
         env:
           DEVCONTAINER_CLI_VERSION: ${{ steps.devcontainer-version.outputs.version }}
         run: |
-          curl -fsSL https://raw.githubusercontent.com/devcontainers/cli/v${DEVCONTAINER_CLI_VERSION}/scripts/install.sh -o install.sh
+          curl -fsSL https://raw.githubusercontent.com/devcontainers/cli/v"${DEVCONTAINER_CLI_VERSION}"/scripts/install.sh -o install.sh
           echo "3f7ff412801e382b944fbf300c4f1ff49cf2534fa6cc80995da0b2963924c9da  install.sh" | sha256sum -c -
           sh install.sh --version "${DEVCONTAINER_CLI_VERSION}"
           echo "$HOME/.devcontainers/bin" >> "$GITHUB_PATH"
