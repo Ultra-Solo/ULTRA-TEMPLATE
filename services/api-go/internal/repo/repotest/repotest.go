@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/entity"
-	"github.com/hynix666/ultra-template/services/api-go/internal/usecase"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/entity"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/usecase"
 )
 
 // Run reports every way the stores newRepo returns differ from the port's contract as a test failure.

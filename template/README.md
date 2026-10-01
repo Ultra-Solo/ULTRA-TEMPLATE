@@ -32,7 +32,7 @@ Strict JSON has no comments, so JSON files carry no markers; a feature that need
 
 A marker is a whole line, and in Markdown it is an HTML comment, which ends a table and splits a paragraph. So a block is whole lines that already stand alone — a paragraph, a list item, a fenced block — never a row of a table or a sentence inside a paragraph. A path, not a marker, is how a whole file is made conditional.
 
-**Identity.** The template is a working project under a real identity — owner `hynix666`, repository `ULTRA-TEMPLATE`, name `ultra-template` — so it verifies green before anyone initializes it. Init replaces those three strings in every text file, through placeholders so no replacement can rewrite another's output. Never write them in a form that should survive initialization.
+**Identity.** The template is a working project under a real identity — owner `Ultra-Solo`, repository `ULTRA-TEMPLATE`, name `ultra-template` — so it verifies green before anyone initializes it. Init replaces those three strings in text files, through placeholders so no replacement can rewrite another's output. Registry namespaces use lowercase owners. The license is the exception: its original copyright notice is preserved, and init adds the adopter's notice. Never write the active identity in a form that should survive initialization outside that attribution.
 
 The three are not interchangeable, and the public contract says where each one lands. `--owner` and `--repo` are the GitHub repository: every link, every badge, and the README title, which is what a reader sees at the top of that repository. `--name` is the project: `package.json` names and the npm scope, which is `@owner/name` lowercased because npm rejects capitals. They differ whenever a repository is named for its deployment and the package for its import, so neither may stand in for the other.
 
@@ -53,7 +53,7 @@ node template/init.mjs --preset minimal --name demo-app --owner octo-org --out .
 cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && node scripts/verify.mjs
 ```
 
-`template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup` and `verify`, which lints its workflows with the pinned actionlint and zizmor.
+`template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup` and `verify`, which lints its workflows with the pinned actionlint and zizmor. The template's `verify.yml` calls that workflow and requires its result on pull requests, main pushes, and merge queue entries. Initialization removes the call and its dependency; the standalone weekly and manual preset runs remain available in the template.
 
 ## Scope
 
