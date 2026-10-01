@@ -3,13 +3,18 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { test } from "node:test";
+import { after, before, test } from "node:test";
+import { sourceFixture } from "./test-source.mjs";
 import { presentModules } from "../scripts/modules.mjs";
 import { checkGate } from "../scripts/check-hygiene.mjs";
 import {
   applyMarkers, DESCRIPTION_ANCHOR, describeProject, InitError, loadManifest, MARKER_RE, originDefaults, originIdentity, plan, recordDescription,
   removedPaths, replaceIdentity, resolveSelection, ROOT, toProjectName, validateDescription, validateIdentity, validateManifest,
 } from "./init.mjs";
+
+let source;
+before(() => { source = sourceFixture(ROOT, loadManifest().version); });
+after(() => rmSync(source, { recursive: true, force: true }));
 
 test("the template's own remote is never used as the project's identity", () => {
   const manifest = loadManifest();
@@ -280,7 +285,7 @@ test("in-place init removes an unselected module whole, ignored files included",
   mkdirSync(join(copy, "services/api-ts/node_modules/pkg"), { recursive: true });
   writeFileSync(join(copy, "services/api-ts/node_modules/pkg/index.js"), "");
 
-  execFileSync("node", ["template/init.mjs", "--name", "demo-app", "--owner", "octo", "--preset", "go-api"], { cwd: copy, stdio: "pipe" });
+  execFileSync("node", ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", "go-api"], { cwd: copy, stdio: "pipe" });
 
   assert.equal(existsSync(join(copy, "services/api-ts")), false);
   assert.equal(existsSync(join(copy, "template")), false);
@@ -292,7 +297,7 @@ test("without --name, the project name comes from the repository being initializ
   t.after(() => rmSync(dirname(out), { recursive: true, force: true }));
   const plan = execFileSync(
     "node",
-    ["template/init.mjs", "--owner", "octo", "--repo", "My.Service", "--preset", "minimal", "--out", out, "--dry-run"],
+    ["template/init.mjs", "--source", source, "--owner", "octo", "--repo", "My.Service", "--preset", "minimal", "--out", out, "--dry-run"],
     { cwd: ROOT, encoding: "utf8" },
   );
   assert.match(plan, /^my-service \(octo\/My\.Service\)/m);
@@ -304,7 +309,7 @@ test("every preset generates a project that passes its own chassis checks and do
   t.after(() => rmSync(base, { recursive: true, force: true }));
   for (const [preset, selected] of Object.entries(manifest.presets)) {
     const out = join(base, preset);
-    execFileSync("node", ["template/init.mjs", "--name", "demo-app", "--owner", "octo", "--preset", preset, "--out", out], { cwd: ROOT, stdio: "pipe" });
+    execFileSync("node", ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", preset, "--out", out], { cwd: ROOT, stdio: "pipe" });
     execFileSync("git", ["init", "-q"], { cwd: out });
     execFileSync("git", ["add", "-A"], { cwd: out });
     for (const check of ["scripts/check-hygiene.mjs", "scripts/check-docs.mjs"]) {
@@ -355,7 +360,7 @@ test("every feature on its own generates a project that passes its chassis check
   t.after(() => rmSync(base, { recursive: true, force: true }));
   for (const id of Object.keys(manifest.features)) {
     const out = join(base, id);
-    execFileSync("node", ["template/init.mjs", "--name", "demo-app", "--owner", "octo", "--features", id, "--out", out], { cwd: ROOT, stdio: "pipe" });
+    execFileSync("node", ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--features", id, "--out", out], { cwd: ROOT, stdio: "pipe" });
     execFileSync("git", ["init", "-q"], { cwd: out });
     execFileSync("git", ["add", "-A"], { cwd: out });
     for (const check of ["scripts/check-hygiene.mjs", "scripts/check-docs.mjs"]) {
@@ -369,7 +374,7 @@ test("--description is written under the README title, in place of the generated
   const out = mkdtempSync(join(tmpdir(), "init-"));
   t.after(() => rmSync(out, { recursive: true, force: true }));
   rmSync(out, { recursive: true });
-  const args = ["template/init.mjs", "--name", "demo-app", "--owner", "octo", "--preset", "minimal", "--description", "Tracks work for the support team.", "--out", out];
+  const args = ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", "minimal", "--description", "Tracks work for the support team.", "--out", out];
   execFileSync("node", args, { cwd: ROOT, stdio: "pipe" });
   const readme = readFileSync(join(out, "README.md"), "utf8");
   assert.match(readme, /^# demo-app\n\n\[!\[verify\][^\n]*\n\nTracks work for the support team\.\n/);
@@ -382,7 +387,7 @@ test("prose about the template still names the template after init, not the new 
   // repository's name belongs only in the README title.
   const out = join(mkdtempSync(join(tmpdir(), "init-")), "project");
   t.after(() => rmSync(dirname(out), { recursive: true, force: true }));
-  execFileSync("node", ["template/init.mjs", "--name", "zz-name", "--owner", "zz-owner", "--repo", "Zz.Repo", "--preset", "all", "--out", out], { cwd: ROOT, stdio: "pipe" });
+  execFileSync("node", ["template/init.mjs", "--source", source, "--name", "zz-name", "--owner", "zz-owner", "--repo", "Zz.Repo", "--preset", "all", "--out", out], { cwd: ROOT, stdio: "pipe" });
   const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "utf8" }).split("\0").filter((f) => f && existsSync(join(out, f)));
   const stray = [];
   for (const file of tracked) {
@@ -410,7 +415,7 @@ test("init --out writes a project with no template residue", (t) => {
   const out = mkdtempSync(join(tmpdir(), "init-"));
   t.after(() => rmSync(out, { recursive: true, force: true }));
   rmSync(out, { recursive: true });
-  execFileSync("node", ["template/init.mjs", "--name", "demo-app", "--owner", "octo", "--preset", "minimal", "--out", out], { cwd: ROOT, stdio: "pipe" });
+  execFileSync("node", ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", "minimal", "--out", out], { cwd: ROOT, stdio: "pipe" });
   for (const gone of ["template", "services", "apps", "architecture", ".devcontainer", ".github/workflows/template-test.yml"]) {
     assert.equal(existsSync(join(out, gone)), false, gone);
   }
@@ -419,7 +424,7 @@ test("init --out writes a project with no template residue", (t) => {
   const { version } = loadManifest();
   assert.match(
     readFileSync(join(out, "CHANGELOG.md"), "utf8"),
-    new RegExp(`## \\[Unreleased\\]\\n\\n- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with no features\\.`),
+    new RegExp(`- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with no features\\.`),
   );
   assert.match(readFileSync(join(out, "README.md"), "utf8"), /^# demo-app/);
   assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /ultra:|go-service/);

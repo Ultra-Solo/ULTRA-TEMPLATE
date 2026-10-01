@@ -51,7 +51,7 @@ after(() => rmSync(work, { recursive: true, force: true }));
 function project(name, features = []) {
   const dir = join(work, name);
   const selection = features.length === 0 ? ["--preset", "minimal"] : ["--features", features.join(",")];
-  execFileSync(process.execPath, ["template/init.mjs", "--name", "demo-app", "--owner", "octo-org", ...selection, "--out", dir], {
+  execFileSync(process.execPath, ["template/init.mjs", "--source", template, "--name", "demo-app", "--owner", "octo-org", ...selection, "--out", dir], {
     cwd: join(work, "template"),
     stdio: "ignore",
   });
@@ -300,14 +300,13 @@ test("the selection is read from the newest line that names one, and the first o
   assert.doesNotMatch(recordUpdate("## [Unreleased]\n", url, "v1.3.0"), / with /);
 });
 
-test("--name stands in for a name package.json no longer gives", () => {
+test("recorded identity reconstructs a project after package.json is removed", () => {
   git(template, "checkout", "-q", FROM);
   const dir = project("unnamed");
   git(template, "checkout", "-q", "-");
   rmSync(join(dir, "package.json"));
   commit(dir, "chore: no root package.json");
-  assert.throws(() => run(dir), /Cannot tell this project's name/);
-  assert.equal(run(dir, { name: "demo-app" }).status, "applied");
+  assert.equal(run(dir).status, "applied");
 });
 
 test("each release is named with the commit its tag points at, before its init runs", () => {

@@ -1,10 +1,8 @@
 # Template-only: init deletes this workflow.
 #
-# "Use this template" copies the default branch as it is, not the latest release, and init writes the
-# version in template/features.json into every new project as its update baseline. The required
-# release check rejects output changes that reuse a version. Publication runs after the merge and
-# can fail: confirm the release before initializing from it. When a merge changes the version, this
-# publishes it at that commit, with notes that say what changes in generated projects.
+# The bootstrap verifies stable publication and resolves this tag before default generation.
+# Candidate verification uses an explicit committed source and never claims publication.
+# A version-changing merge publishes that version at its commit after the required gate passes.
 name: template-release
 
 on:

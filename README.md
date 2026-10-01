@@ -32,7 +32,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 
 3. Initialize. This needs Node <!-- generated:version .node-version -->24<!-- /generated --> and a clean working tree. Run in a terminal, init reads the owner and repository from `origin`, asks for anything else, shows the plan and waits for your confirmation:
 
-   Before initializing, confirm that the version in `template/features.json` has been published. Main can contain a candidate while publication is running or has failed. For a known update baseline, start from the published tag's source; [template release guidance](template/README.md#releasing-the-template) explains the publication window.
+   Initialization verifies stable publication and generates from that upstream commit. If publication is pending or failed, it stops before writing project files. Keep `.template-provenance.json` committed; updates use its exact source and original inputs. For offline generation and candidate testing, see [template source guidance](template/README.md#exact-source-and-reconstruction).
 
    ```bash
    node template/init.mjs

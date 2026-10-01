@@ -63,7 +63,9 @@ function generate(root, selected, out) {
     return;
   }
   try {
-    execFileSync(process.execPath, ["template/init.mjs", "--features", selected.join(","), "--name", "release-demo", "--owner", "octo-org", "--repo", "release-demo", "--out", out], {
+    const manifest = JSON.parse(readFileSync(join(root, "template/features.json"), "utf8"));
+    const sourceArgs = manifest.provenanceSchema === 1 ? ["--source", root, "--source-commit", commit(root, "HEAD")] : [];
+    execFileSync(process.execPath, ["template/init.mjs", ...sourceArgs, "--features", selected.join(","), "--name", "release-demo", "--owner", "octo-org", "--repo", "release-demo", "--out", out], {
       cwd: root, stdio: ["ignore", "pipe", "pipe"],
     });
   } catch (err) {

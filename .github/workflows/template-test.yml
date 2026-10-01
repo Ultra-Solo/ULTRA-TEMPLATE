@@ -59,12 +59,13 @@ jobs:
           node-version-file: .node-version
 
       # In place, on this job's own fresh checkout — exactly what an adopter runs after "Use this
-      # template". The unit tests cover --out; this covers the path people actually take.
+      # template". The explicit candidate SHA avoids claiming an unpublished release.
+      # Unit tests cover release resolution and independently copied repository histories.
       - name: Initialize in place
         env:
           PRESET: ${{ matrix.preset }}
         run: |
-          node template/init.mjs --name demo-app --owner octo-org --preset "$PRESET"
+          node template/init.mjs --source "$PWD" --source-commit "$(git rev-parse HEAD)" --name demo-app --owner octo-org --preset "$PRESET"
           git add -A
           git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "chore: initialize project"
           test ! -e template || { echo "::error::template/ survived initialization"; exit 1; }

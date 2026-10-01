@@ -258,6 +258,8 @@ jobs:
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: node template/check-release.mjs
+      - name: Default bootstrap resolves a known published upstream release
+        run: node template/check-publication.mjs
 
   # Full generated-project verification is part of the required gate, not a separate advisory run.
   template-presets:
