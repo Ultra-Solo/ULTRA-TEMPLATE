@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/controller/httpapi"
-	"github.com/hynix666/ultra-template/services/api-go/internal/repo/memory"
-	"github.com/hynix666/ultra-template/services/api-go/internal/usecase"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/controller/httpapi"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/repo/memory"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/usecase"
 )
 
 // Timeouts for every connection. Without them a client that sends headers slowly holds a

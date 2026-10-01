@@ -205,13 +205,15 @@ export function applyMarkers(text, selected, known, file = "<text>") {
 /**
  * Two passes through placeholders, so no replacement can rewrite the output of another — a project
  * named after the template's owner would otherwise be renamed a second time. The owner/repo pair
- * goes first, so a URL keeps the owner and repository it names even when the two are equal. An npm
- * scope comes before it and is lowercased: npm rejects a new package name with capitals, while GitHub
- * names keep the owner's case.
+ * goes first, so a URL keeps the owner and repository it names even when the two are equal.
+ * Registry namespaces come before it and are lowercased, while GitHub names keep the owner's case.
  */
 export function replaceIdentity(text, from, to) {
   const pairs = [
+    [`@${from.owner.toLowerCase()}/${from.name}`, `@${to.owner.toLowerCase()}/${to.name}`],
     [`@${from.owner}/${from.name}`, `@${to.owner.toLowerCase()}/${to.name}`],
+    [`ghcr.io/${from.owner.toLowerCase()}/`, `ghcr.io/${to.owner.toLowerCase()}/`],
+    [`io.github.${from.owner.toLowerCase()}/`, `io.github.${to.owner.toLowerCase()}/`],
     [`${from.owner}/${from.repo}`, `${to.owner}/${to.repo}`],
     [from.repo, to.repo],
     [from.name, to.name],
@@ -311,8 +313,8 @@ export function plan(root, manifest, selected, identity, description = { sentenc
     let next = replaceIdentity(applyMarkers(text, selected, known, file), manifest.identity, identity);
     if (file === "CHANGELOG.md") next = recordOrigin(next, manifest, selected, file);
     if (file === "README.md") next = recordDescription(next, description.sentence, description.generated, file);
-    // A new project's copyright starts the year it is created, not the year the template was written.
-    if (file === "LICENSE") next = next.replace(/^Copyright \(c\) \d{4} /m, `Copyright (c) ${year} `);
+    // The MIT notice must retain the upstream attribution; add the adopter's notice without rewriting it.
+    if (file === "LICENSE") next = text.replace(/^(Copyright \(c\) \d{4} .+)$/m, `Copyright (c) ${year} ${identity.owner}\n$1`);
     result.files.push({ file, data: next, changed: next !== text });
   }
   return result;

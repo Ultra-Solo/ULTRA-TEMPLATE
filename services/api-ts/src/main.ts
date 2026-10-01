@@ -29,7 +29,7 @@ const service = new TaskService({
 });
 
 const handler = withRequestLog(createHandler(service, log), log, { monotonic: () => performance.now(), newId: () => randomUUID() });
-const server = createServer(handler);
+const server = createServer({ connectionsCheckingInterval: 1_000 }, handler);
 // Without these a client that sends headers or a body slowly holds a connection open indefinitely.
 server.headersTimeout = 5_000;
 server.requestTimeout = 15_000;

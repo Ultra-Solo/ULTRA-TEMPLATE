@@ -1,6 +1,6 @@
 # ADR-0018: Every task service reads a request and answers it the same way
 
-**Status:** Accepted · Amends [ADR-0010](0010-one-statement-of-the-task-rules.md) and [ADR-0013](0013-declare-each-fact-once.md) · **Date:** 2026-09-26
+**Status:** Accepted · Amends [ADR-0010](0010-one-statement-of-the-task-rules.md) and [ADR-0013](0013-declare-each-fact-once.md) · Amended by [ADR-0021](0021-bound-request-receive-time.md) · **Date:** 2026-09-26
 
 ## Context
 

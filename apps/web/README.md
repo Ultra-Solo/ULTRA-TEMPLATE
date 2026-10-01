@@ -16,12 +16,12 @@ src/main.tsx             entry point
 
 <!-- generated:fill
 ```bash
-npm install
+npm ci --ignore-scripts
 npm run dev        # http://localhost:5173, with /api proxied to :{{contract config.PORT.default.value}}
 ```
 -->
 ```bash
-npm install
+npm ci --ignore-scripts
 npm run dev        # http://localhost:5173, with /api proxied to :8080
 ```
 <!-- /generated -->
