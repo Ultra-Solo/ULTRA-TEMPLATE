@@ -20,7 +20,7 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime
 from types import FrameType
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from api_py.adapters.http import create_app
@@ -139,15 +139,20 @@ class _DeadlineInput:
             total += len(line)
         return lines
 
+    def close(self) -> None:
+        # socketserver.StreamRequestHandler.finish() closes rfile once the request is handled; without
+        # this the wrapper raised AttributeError on every request's teardown.
+        self._stream.close()
+
 
 class _QuietHandler(WSGIRequestHandler):
     """Requests are logged by the application, in the line every task service writes; the server
     reports only its own trouble."""
 
-    headers_timeout = 5
-    request_timeout = 15
+    headers_timeout: ClassVar[float] = 5
+    request_timeout: ClassVar[float] = 15
     # Retain an inactivity bound in addition to the absolute per-phase deadlines.
-    timeout = 15
+    timeout: ClassVar[float] = 15
 
     def setup(self) -> None:
         super().setup()
