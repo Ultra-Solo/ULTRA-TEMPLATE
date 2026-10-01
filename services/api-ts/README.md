@@ -16,13 +16,13 @@ src/main.ts        composition root: the only place concrete adapters are chosen
 
 <!-- generated:fill
 ```bash
-npm install
+npm ci --ignore-scripts
 npm start
 curl -s localhost:{{contract config.PORT.default.value}}/api/tasks -d '{"title":"ship it"}'
 ```
 -->
 ```bash
-npm install
+npm ci --ignore-scripts
 npm start
 curl -s localhost:8080/api/tasks -d '{"title":"ship it"}'
 ```

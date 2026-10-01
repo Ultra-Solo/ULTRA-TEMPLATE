@@ -9,7 +9,7 @@ The rules are repeated here rather than imported from another module ([ADR-0004]
 ## Run it
 
 ```bash
-npm install
+npm ci --ignore-scripts
 npm start          # serves over stdio; the task API must be running
 ```
 
