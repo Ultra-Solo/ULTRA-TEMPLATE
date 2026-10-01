@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/entity"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/entity"
 )
 
 // ErrStale is what TaskRepository.Replace returns when the stored task is no longer the one the

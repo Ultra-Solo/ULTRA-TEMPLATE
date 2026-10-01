@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/controller/httpapi"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/controller/httpapi"
 )
 
 // logged runs one request through the middleware with a clock that advances 1.5 ms per reading, and

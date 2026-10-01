@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { presentModules } from "../scripts/modules.mjs";
+import { checkGate } from "../scripts/check-hygiene.mjs";
 import {
   applyMarkers, DESCRIPTION_ANCHOR, describeProject, InitError, loadManifest, MARKER_RE, originDefaults, originIdentity, plan, recordDescription,
   removedPaths, replaceIdentity, resolveSelection, ROOT, toProjectName, validateDescription, validateIdentity, validateManifest,
@@ -12,8 +13,8 @@ import {
 
 test("the template's own remote is never used as the project's identity", () => {
   const manifest = loadManifest();
-  assert.equal(originDefaults(manifest, "git@github.com:hynix666/ULTRA-TEMPLATE.git"), null);
-  assert.equal(originDefaults(manifest, "https://github.com/HYNIX666/ultra-template"), null);
+  assert.equal(originDefaults(manifest, "git@github.com:Ultra-Solo/ULTRA-TEMPLATE.git"), null);
+  assert.equal(originDefaults(manifest, "https://github.com/ULTRA-SOLO/ultra-template"), null);
   assert.deepEqual(originDefaults(manifest, "git@github.com:octo-org/demo-app.git"), { owner: "octo-org", repo: "demo-app" });
 });
 
@@ -23,6 +24,28 @@ test("the owner and repository default from a GitHub origin remote", () => {
   assert.equal(originIdentity("https://gitlab.com/octo-org/demo-app.git"), null);
   assert.equal(originIdentity(""), null);
   assert.equal(toProjectName("My.Repo__Name"), "my-repo-name");
+});
+
+test("the current upstream is recognized without borrowing its repository name", () => {
+  const manifest = loadManifest();
+  assert.equal(originDefaults(manifest, "https://github.com/Ultra-Solo/ULTRA-TEMPLATE.git"), null);
+  assert.equal(originDefaults(manifest, "git@github.com:ultra-solo/ultra-template.git"), null);
+  assert.deepEqual(originDefaults(manifest, "https://github.com/octo-org/My.Service.git"), { owner: "octo-org", repo: "My.Service" });
+});
+
+test("a mixed-case template owner rewrites lowercase registry identities too", () => {
+  const from = { owner: "Ultra-Solo", repo: "ULTRA-TEMPLATE", name: "ultra-template" };
+  const to = { owner: "Octo-Org", repo: "My.Service", name: "demo-app" };
+  const text = "@ultra-solo/ultra-template ghcr.io/ultra-solo/ultra-template-mcp-server io.github.ultra-solo/ultra-template github.com/Ultra-Solo/ULTRA-TEMPLATE";
+  assert.equal(replaceIdentity(text, from, to), "@octo-org/demo-app ghcr.io/octo-org/demo-app-mcp-server io.github.octo-org/demo-app github.com/Octo-Org/My.Service");
+});
+
+test("generated licenses keep the upstream notice alongside the adopter's copyright", () => {
+  const manifest = loadManifest();
+  const identity = { name: "demo-app", owner: "octo", repo: "demo-app" };
+  const license = plan(ROOT, manifest, new Set(), identity, undefined, 2031).files.find((f) => f.file === "LICENSE");
+  assert.match(license.data, /^Copyright \(c\) 2031 octo$/m);
+  assert.match(license.data, /^Copyright \(c\) 2026 hynix666$/m);
 });
 
 // Built by concatenation so this file never contains a marker line of its own.
@@ -196,6 +219,16 @@ test("template-test generates every preset features.json defines, from features.
   assert.match(workflow, /Object\.keys\(require\("\.\/template\/features\.json"\)\.presets\)/);
 });
 
+test("the preset workflow is called by verify and cannot be left outside its gate", () => {
+  const verify = readFileSync(join(ROOT, ".github/workflows/verify.yml"), "utf8");
+  const presets = readFileSync(join(ROOT, ".github/workflows/template-test.yml"), "utf8");
+  assert.match(verify, /^  template-presets:\n    uses: \.\/\.github\/workflows\/template-test\.yml$/m);
+  assert.match(presets, /^  workflow_call:/m);
+  assert.doesNotMatch(presets, /^  pull_request:/m, "the caller owns PR runs; do not duplicate the matrix");
+  assert.deepEqual(checkGate("verify.yml", verify), []);
+  assert.match(checkGate("verify.yml", verify.replace(/^      - template-presets\n/m, "")).join("\n"), /template-presets.*missing/);
+});
+
 test("the public contract only grows: no feature or preset of 1.x or 2.x is removed or renamed", () => {
   // Feature ids and preset names are what adopters type, and what template-update replays from a
   // project's CHANGELOG. Taking one away breaks every project that used it, which is a major version.
@@ -278,6 +311,7 @@ test("every preset generates a project that passes its own chassis checks and do
       assert.doesNotThrow(() => execFileSync("node", [check], { cwd: out, stdio: "pipe" }), `${preset}: ${check}`);
     }
     const readme = readFileSync(join(out, "README.md"), "utf8");
+    assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /template-presets|template-test\.yml/);
     assert.ok(!readme.includes(DESCRIPTION_ANCHOR), `${preset}: README keeps the description anchor`);
     assert.ok(readme.includes(`\n${describeProject(manifest, new Set(selected))}\n`), `${preset}: README has no description`);
     // What this project does not have. A path several features own goes only when none of its owners
@@ -385,7 +419,7 @@ test("init --out writes a project with no template residue", (t) => {
   const { version } = loadManifest();
   assert.match(
     readFileSync(join(out, "CHANGELOG.md"), "utf8"),
-    new RegExp(`## \\[Unreleased\\]\\n\\n- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/hynix666/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with no features\\.`),
+    new RegExp(`## \\[Unreleased\\]\\n\\n- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with no features\\.`),
   );
   assert.match(readFileSync(join(out, "README.md"), "utf8"), /^# demo-app/);
   assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /ultra:|go-service/);

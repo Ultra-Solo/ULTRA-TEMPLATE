@@ -17,7 +17,7 @@ ENV MCP_SERVER_VERSION=$VERSION
 USER node
 # The MCP Registry verifies that whoever publishes server.json owns this image by reading this label;
 # it must equal "name" in server.json exactly. The source label links the image to the repository.
-LABEL io.modelcontextprotocol.server.name="io.github.hynix666/ultra-template"
-LABEL org.opencontainers.image.source="https://github.com/hynix666/ULTRA-TEMPLATE"
+LABEL io.modelcontextprotocol.server.name="io.github.ultra-solo/ultra-template"
+LABEL org.opencontainers.image.source="https://github.com/Ultra-Solo/ULTRA-TEMPLATE"
 # No EXPOSE and no port: the protocol is stdin and stdout, so run this image with -i.
 CMD ["node", "src/main.ts"]

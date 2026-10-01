@@ -235,6 +235,12 @@ jobs:
           id: architecture
   # ultra:end architecture
 
+  # ultra:begin template
+  # Full generated-project verification is part of the required gate, not a separate advisory run.
+  template-presets:
+    uses: ./.github/workflows/template-test.yml
+  # ultra:end template
+
   verify:
     if: always()
     needs:
@@ -243,6 +249,9 @@ jobs:
       - agent-env
       - zizmor
       - secrets
+      # ultra:begin template
+      - template-presets
+      # ultra:end template
       # ultra:begin go-service
       - go-service
       # ultra:end go-service

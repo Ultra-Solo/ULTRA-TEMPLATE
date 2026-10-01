@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hynix666/ultra-template/services/api-go/internal/entity"
-	"github.com/hynix666/ultra-template/services/api-go/internal/repo/repotest"
-	"github.com/hynix666/ultra-template/services/api-go/internal/usecase"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/entity"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/repo/repotest"
+	"github.com/Ultra-Solo/ultra-template/services/api-go/internal/usecase"
 )
 
 // broken is a store with the mistakes a new adapter makes: it lists newest first, answers a missing
