@@ -10,7 +10,7 @@ nextStatuses(parseStatus(response.status)); // ["todo", "done"] for "in_progress
 
 ## Check
 
-After `npm install`:
+After `npm ci --ignore-scripts`:
 
 <!-- generated:checks packages/ts-library -->
 ```bash

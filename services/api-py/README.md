@@ -13,7 +13,7 @@ uv sync --locked
 uv run --directory src python -m api_py.main
 ```
 
-The transport is a plain WSGI application, so production is a deployment choice rather than a dependency: `uv run gunicorn --pythonpath src 'api_py.main:app'`, waitress on Windows, or anything else that speaks WSGI. The development server above is the standard library's and is fine for local work and tests.
+The transport is a plain WSGI application, so production is a deployment choice rather than a dependency: `uv run gunicorn --pythonpath src 'api_py.main:app'`, waitress on Windows, or anything else that speaks WSGI. The standard-library server above enforces an absolute header deadline of <!-- generated:contract limits.receiveTimeoutsMs.headers -->5000<!-- /generated --> ms and complete-request deadline of <!-- generated:contract limits.receiveTimeoutsMs.request -->15000<!-- /generated --> ms. Production WSGI servers must be configured to enforce equivalent receive deadlines; the response to a timed-out request is server-specific.
 
 <!-- generated:config-table -->
 | Variable | Default | Meaning |

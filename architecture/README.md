@@ -3,7 +3,7 @@
 The system's architecture as code, in [LikeC4](https://likec4.dev). Diagrams are views of one model, so they cannot drift apart from each other, and the model is checked in CI like any other source.
 
 ```bash
-npm install
+npm ci --ignore-scripts
 npm run dev        # live preview of every view
 npm run verify     # validate the model, run the model rules, build the static site
 ```
