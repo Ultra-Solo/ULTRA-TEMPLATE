@@ -27,5 +27,6 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0017](0017-prove-the-supply-chain-before-it-runs.md) | Prove every pin before it runs, not where it first runs | Accepted, amends 0003, 0011, 0015 |
 | [0018](0018-every-task-service-reads-and-answers-alike.md) | Every task service reads a request and answers it the same way | Accepted, amends 0010, 0013, amended by 0021 |
 | [0019](0019-moves-are-compare-and-set-on-the-store.md) | Moves are compare-and-set on the store | Accepted, amends 0005 |
-| [0020](0020-require-generated-preset-verification.md) | Require generated preset verification in the template's gate | Accepted, amends 0002 |
+| [0020](0020-require-generated-preset-verification.md) | Require generated preset verification in the template's gate | Accepted, amends 0002, amended by 0022 |
 | [0021](0021-bound-request-receive-time.md) | Bound request receive time | Accepted, amends 0018 |
+| [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020 |

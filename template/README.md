@@ -55,6 +55,8 @@ cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && nod
 
 `template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup` and `verify`, which lints its workflows with the pinned actionlint and zizmor. The template's `verify.yml` calls that workflow and requires its result on pull requests, main pushes, and merge queue entries. Initialization removes the call and its dependency; the standalone weekly and manual preset runs remain available in the template.
 
+`node template/check-release.mjs --base <base-ref> --head <head-ref>` checks committed release baselines. If the version stays unchanged, it generates every preset, each feature alone, and all features at both revisions and rejects changed output. A version cannot move backwards. The template-only `template-release-check` job is required by `verify`; initialization removes it. Run the command after committing a candidate change, since uncommitted files are not the revisions being compared.
+
 ## Scope
 
 ULTRA-TEMPLATE 2.x is complete in scope. It gives a project the things with no product opinion — one verification gate, a pinned supply chain, repository and documentation checks, agent guidance, releases, security scanning, and a set of services and packages that demonstrate one architecture in three languages. A change belongs in the template when it would be right for nearly every project made from it.
@@ -79,7 +81,13 @@ A behaviour change a project's users would notice — an API status code, a stri
 
 ## Releasing the template
 
-"Use this template" copies `main` as it is, not the latest release, and init writes `version` from `features.json` into every new project as the release it came from. So **`main` always equals a published release**: a pull request that bumps `version` is released the moment it merges, by `.github/workflows/template-release.yml`, which tags that commit and writes notes with `release-notes.mjs` — what changes in a project made from each preset, generated at both releases with each release's own init and compared, then how to take it with `template-update.mjs`, then the merged pull requests. Diffing generated projects rather than the template is what makes the list true: a change inside a marker block reaches only the presets that keep it, and a file whose ownership moves is deleted from the presets that lose it without its contents changing at all. Nothing needs running by hand; `gh release view v<version>` shows the result.
+"Use this template" copies `main` as it is, not the latest release, and init records the `version` in `features.json`. A change to generated output must advance that version; `template-release-check` enforces it on pull requests and merge queue entries. This also applies to dependency updates. A dependency PR can carry the bump, or its changes can be combined into a versioned release PR before merge. Template-only changes with unchanged output need no release.
+
+Publication happens **after** the merge: `.github/workflows/template-release.yml` tags the version-changing commit and publishes its notes. It is asynchronous and can fail, so main can contain a candidate version whose release is not yet available. Check the workflow and `gh release view v<version>` before initializing or updating from that version. If publication fails, repair and rerun the workflow; do not move an existing release tag to cover later source changes.
+
+For a known initialization baseline, clone the published tag, for example `git clone --branch v2.1.0 https://github.com/Ultra-Solo/ULTRA-TEMPLATE.git demo-app`, then initialize with explicit `--name`, `--owner` and `--repo`. GitHub copies have new history; their HEAD does not identify the upstream release. Init currently trusts the manifest's version and does not automatically verify a copied snapshot or fetch release source. Exact-source provenance is a separate migration ([ADR-0022](../docs/adr/0022-advance-the-release-when-generated-output-changes.md)); a version bump and this gate alone do not eliminate the publication window.
+
+Release notes compare every preset generated at both releases with each release's own init, then explain how to update and list the merged pull requests. Diffing generated projects rather than template paths reflects changes inside marker blocks and changes in file ownership.
 
 Before merging a release pull request:
 

@@ -1,6 +1,6 @@
 # ADR-0020: Require generated preset verification in the template's gate
 
-**Status:** Accepted · Amends [ADR-0002](0002-one-required-check.md) · **Date:** 2026-09-30
+**Status:** Accepted · Amends [ADR-0002](0002-one-required-check.md) · Amended by [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) · **Date:** 2026-09-30
 
 ## Context
 

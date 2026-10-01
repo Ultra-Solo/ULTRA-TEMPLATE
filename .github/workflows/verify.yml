@@ -236,6 +236,29 @@ jobs:
   # ultra:end architecture
 
   # ultra:begin template
+  # The release recorded by init is the updater's baseline; output changes must advance it.
+  template-release-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Check generated output against the event's base
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
+          QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: node template/check-release.mjs
+
   # Full generated-project verification is part of the required gate, not a separate advisory run.
   template-presets:
     uses: ./.github/workflows/template-test.yml
@@ -250,6 +273,7 @@ jobs:
       - zizmor
       - secrets
       # ultra:begin template
+      - template-release-check
       - template-presets
       # ultra:end template
       # ultra:begin go-service
