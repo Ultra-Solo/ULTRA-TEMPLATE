@@ -92,18 +92,30 @@ function need(tools, name) {
 }
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const retryAfterMs = (value) => (/^\d+$/.test(value ?? "") ? Number(value) * 1000 : null);
+const retryableStatus = (status) => status === 408 || status === 429 || status >= 500;
+const RETRY_DELAYS_MS = [250, 1000];
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithRetry(url, { fetch, wait }) {
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(url);
+    if (response.ok || !retryableStatus(response.status) || attempt >= RETRY_DELAYS_MS.length) return response;
+    await wait(retryAfterMs(response.headers.get("retry-after")) ?? RETRY_DELAYS_MS[attempt]);
+  }
+}
 
 /**
  * Downloads a tool's asset for this platform, refuses it unless its SHA-256 is the pinned one, and
  * copies the listed files into `dir`. Returns the paths written.
  */
-export async function install(name, { tools = loadTools(), dir, fetch = globalThis.fetch } = {}) {
+export async function install(name, { tools = loadTools(), dir, fetch = globalThis.fetch, wait = sleep } = {}) {
   const tool = need(tools, name);
   if (!tool.platforms) throw new ToolError(`${name} is run by version, not installed; use \`node scripts/tools.mjs run ${name}\`.`);
   const asset = tool.platforms[platform()];
   if (!asset) throw new ToolError(`${name} has no pinned asset for ${platform()}; add one to scripts/tools/tools.json.`);
   const url = fill(asset.url, tool);
-  const response = await fetch(url);
+  const response = await fetchWithRetry(url, { fetch, wait });
   if (!response.ok) throw new ToolError(`${name}: ${url} answered ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
   const actual = sha256(bytes);
