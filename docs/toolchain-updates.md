@@ -43,6 +43,7 @@ Dependabot cannot see a tool a workflow downloads by version, so each is pinned 
 | [mcp-publisher](https://github.com/modelcontextprotocol/registry/releases) | 1.8.1 | in CI only | the digest GitHub records for each asset |
 | [govulncheck](https://github.com/golang/vuln/tags) | 1.8.0 | in CI only | none: run as `go run golang.org/x/vuln/cmd/govulncheck@v1.8.0` |
 | [pip-audit](https://pypi.org/project/pip-audit/) | 2.10.1 | in CI only | none: run as `uvx pip-audit==2.10.1` |
+| [devcontainer-cli](https://github.com/devcontainers/cli/tags) | 0.89.0 | in CI only | none: run as `devcontainer --version` |
 <!-- /generated -->
 
 To move one, read its release notes, then:
