@@ -31,7 +31,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0021](0021-bound-request-receive-time.md) | Bound request receive time | Accepted, amends 0018 |
 | [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020, amended by 0023 |
 | [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022 |
-<<<<<<< HEAD
 | [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |
-=======
->>>>>>> origin/main
