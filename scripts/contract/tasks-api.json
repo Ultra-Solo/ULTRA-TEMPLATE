@@ -5,9 +5,9 @@
     "maxBodyBytes": 1048576,
     "requestId": { "characters": "A-Za-z0-9._-", "maxLength": 128 },
     "receiveTimeoutsMs": {
-      "$comment": "The development servers terminate a request whose headers do not arrive within headers, or whose body does not arrive within body after the headers. Timed-out requests need not receive a particular HTTP status.",
+      "$comment": "The development servers terminate a request whose headers do not arrive within headers, or whose complete request (headers and body) does not arrive within request. Timed-out requests need not receive a particular HTTP status.",
       "headers": 5000,
-      "body": 15000
+      "request": 15000
     }
   },
   "startup": {

@@ -55,7 +55,8 @@ function fakeService(t, mistakes = {}) {
         res.end(mistakes.textErrors && status >= 400 ? "nope" : JSON.stringify(body));
       };
       if (req.url === "/healthz") return send(200, { status: "ok" });
-      if (req.url === "/api/tasks" && req.method === "GET") return send(200, mistakes.newestFirst ? [...tasks.values()].reverse() : [...tasks.values()]);
+      if (req.url === "/api/tasks" && req.method === "GET")
+        return send(200, mistakes.newestFirst ? [...tasks.values()].reverse() : [...tasks.values()]);
       if (req.url === "/api/tasks" && req.method === "DELETE") return send(405, { error: "method not allowed" }, "GET, HEAD, POST");
       if (req.url === "/api/tasks" && req.method === "POST") {
         const body = JSON.parse(raw || "{}");
@@ -66,7 +67,8 @@ function fakeService(t, mistakes = {}) {
         return send(201, task);
       }
       const match = /^\/api\/tasks\/([^/]+)$/.exec(req.url ?? "");
-      if (match && req.method === "GET") return tasks.has(match[1]) ? send(200, tasks.get(match[1])) : send(404, { error: "task not found" });
+      if (match && req.method === "GET")
+        return tasks.has(match[1]) ? send(200, tasks.get(match[1])) : send(404, { error: "task not found" });
       const move = /^\/api\/tasks\/([^/]+)\/status$/.exec(req.url ?? "");
       if (move && req.method === "PATCH") {
         const task = tasks.get(move[1]);
@@ -107,23 +109,29 @@ test("the receive-timeout check catches a server that accepts slow trickle reque
   const base = await new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${server.address().port}`)));
   t.after(() => server.close());
 
-  const failures = await checkReceiveTimeouts(base, { headers: 40, body: 80 });
+  const failures = await checkReceiveTimeouts(base, { headers: 40, request: 80 });
 
-  assert.deepEqual(failures.map(({ name }) => name), [
-    "receive timeout: slow headers exceed the deadline",
-    "receive timeout: slow body exceeds the deadline",
-  ]);
+  assert.deepEqual(
+    failures.map(({ name }) => name),
+    ["receive timeout: slow headers exceed the deadline", "receive timeout: slow body exceeds the deadline"],
+  );
 });
 
 test("a wrong status fails, and names the case", async (t) => {
   const failures = await runCases(await fakeService(t, { emptyTitle: 400 }), CASES);
-  assert.deepEqual(failures.map((f) => f.name), ["empty title"]);
+  assert.deepEqual(
+    failures.map((f) => f.name),
+    ["empty title"],
+  );
   assert.match(failures[0].problems.join(), /status 400, expected 422/);
 });
 
 test("the right status with an error that is not JSON still fails", async (t) => {
   const failures = await runCases(await fakeService(t, { textErrors: true }), CASES);
-  assert.deepEqual(failures.map((f) => f.name), ["empty title", "unknown"]);
+  assert.deepEqual(
+    failures.map((f) => f.name),
+    ["empty title", "unknown"],
+  );
   assert.match(failures[1].problems.join(), /no \{"error"|content-type text\/plain/);
 });
 
@@ -138,11 +146,17 @@ test("every answer carries a request id, and a usable one sent is echoed while a
   assert.deepEqual(await runCases(await fakeService(t), cases), []);
 
   const missing = await runCases(await fakeService(t, { noRequestId: true }), cases);
-  assert.deepEqual(missing.map((f) => f.name), ["health", "echo", "replace"]);
+  assert.deepEqual(
+    missing.map((f) => f.name),
+    ["health", "echo", "replace"],
+  );
   assert.match(missing[0].problems.join(), /no usable X-Request-Id header/);
 
   const ignored = await runCases(await fakeService(t, { alwaysGenerate: true }), cases);
-  assert.deepEqual(ignored.map((f) => f.name), ["echo"]);
+  assert.deepEqual(
+    ignored.map((f) => f.name),
+    ["echo"],
+  );
   assert.match(ignored[0].problems.join(), /X-Request-Id "gen-2", expected the "contract.echo-1" that was sent/);
 
   // A case the language's own server may answer before the service sees it needs no id.
@@ -163,12 +177,18 @@ test("every request with an id is logged once, as it was answered", () => {
   ];
   assert.deepEqual(checkLogs(exchanges, good.join("\n")), []);
 
-  assert.match(checkLogs(exchanges, good.slice(0, 2).join("\n")).join(), /request b \(PATCH \/api\/tasks\/t1\/status\) was logged 0 times, expected once/);
+  assert.match(
+    checkLogs(exchanges, good.slice(0, 2).join("\n")).join(),
+    /request b \(PATCH \/api\/tasks\/t1\/status\) was logged 0 times, expected once/,
+  );
   assert.match(checkLogs(exchanges, [...good, good[1]].join("\n")).join(), /request a \(GET \/healthz\) was logged 2 times/);
   const wrong = [good[0], line({ method: "GET", path: "/healthz", status: 500, requestId: "a", durationMs: -1, level: "INFO" }), good[2]];
   assert.match(checkLogs(exchanges, wrong.join("\n")).join(), /request a logged status 500, expected 200.*durationMs -1.*level "INFO"/);
   assert.match(checkLogs(exchanges, [...good, "listening on 8080"].join("\n")).join(), /stdout line is not JSON: listening on 8080/);
-  assert.match(checkLogs([...exchanges, { ...exchanges[0], path: "/api/tasks" }], good.join("\n")).join(), /request id a was given to 2 responses/);
+  assert.match(
+    checkLogs([...exchanges, { ...exchanges[0], path: "/api/tasks" }], good.join("\n")).join(),
+    /request id a was given to 2 responses/,
+  );
 });
 
 test("setup steps stage the task a case is sent to", async (t) => {
@@ -184,7 +204,10 @@ test("a setup step that does not land is reported as itself, and its case is not
   const stuck = { todo: [], in_progress: ["todo", "done"], done: [] };
   const cases = [{ name: "done from in progress", ...moveTo("done"), setup: [moveTo("in_progress")], task: { status: "done" } }];
   const failures = await runCases(await fakeService(t, { moves: stuck }), cases);
-  assert.deepEqual(failures.map((f) => f.name), ["done from in progress"]);
+  assert.deepEqual(
+    failures.map((f) => f.name),
+    ["done from in progress"],
+  );
   assert.deepEqual(failures[0].problems, ["setup 1 (PATCH /api/tasks/t1/status) answered 409, expected 200"]);
 });
 
@@ -222,7 +245,10 @@ test("judge checks the task's fields and values, not only the status", () => {
   const wanted = { status: 201, task: { status: "todo" } };
   assert.deepEqual(judge(wanted, answer({ id: "1", title: "a", status: "todo", createdAt: "x", updatedAt: "x" }), FACTS), []);
   assert.match(judge(wanted, answer({ id: "1", title: "a", status: "todo" }), FACTS).join(), /task fields/);
-  assert.match(judge(wanted, answer({ id: "1", title: "a", status: "done", createdAt: "x", updatedAt: "x" }), FACTS).join(), /status "done"/);
+  assert.match(
+    judge(wanted, answer({ id: "1", title: "a", status: "done", createdAt: "x", updatedAt: "x" }), FACTS).join(),
+    /status "done"/,
+  );
 });
 
 test("the committed cases are well formed and each name is unique", () => {
@@ -266,7 +292,10 @@ test("every count in the contract refers to the limit or rule it tests, and no c
   const found = counts(CONTRACT.cases);
   assert.ok(found.length >= 6, `${found.length} counts`);
   for (const [where, value] of found) {
-    assert.ok(value !== null && typeof value === "object" && typeof value.ref === "string", `${where} is ${JSON.stringify(value)}, not a { "ref": … }`);
+    assert.ok(
+      value !== null && typeof value === "object" && typeof value.ref === "string",
+      `${where} is ${JSON.stringify(value)}, not a { "ref": … }`,
+    );
     assert.equal(typeof resolveRef(value, FACTS), "number", where);
   }
   for (const c of CONTRACT.cases) assert.doesNotMatch(c.name, /\d/, `the case name "${c.name}" states a number`);
@@ -301,7 +330,10 @@ test("every way the OpenAPI document can disagree is reported", () => {
   // A case answered with a status the document does not list.
   const unlisted = spec();
   delete unlisted.paths["/api/tasks/{id}/status"].patch.responses["409"];
-  assert.match(checkSpec(unlisted, cases, rules).join("\n"), /case "move refuses a skipped step": PATCH \/api\/tasks\/\{id\}\/status answers 409, which the document does not list/);
+  assert.match(
+    checkSpec(unlisted, cases, rules).join("\n"),
+    /case "move refuses a skipped step": PATCH \/api\/tasks\/\{id\}\/status answers 409, which the document does not list/,
+  );
 
   // A response no case exercises.
   const unexercised = spec();
@@ -309,13 +341,22 @@ test("every way the OpenAPI document can disagree is reported", () => {
   assert.match(checkSpec(unexercised, cases, rules).join("\n"), /lists 500 for GET \/api\/tasks, which no case exercises/);
 
   // A method a path does not list must be answered 405.
-  const extra = { ...CONTRACT, cases: [...CONTRACT.cases, { name: "delete a task", method: "DELETE", path: "/api/tasks/{id}", status: 204 }] };
-  assert.match(checkSpec(spec(), extra, rules).join("\n"), /case "delete a task" sends DELETE to \/api\/tasks\/\{id\}, which the document does not list, and expects 204 rather than 405/);
+  const extra = {
+    ...CONTRACT,
+    cases: [...CONTRACT.cases, { name: "delete a task", method: "DELETE", path: "/api/tasks/{id}", status: 204 }],
+  };
+  assert.match(
+    checkSpec(spec(), extra, rules).join("\n"),
+    /case "delete a task" sends DELETE to \/api\/tasks\/\{id\}, which the document does not list, and expects 204 rather than 405/,
+  );
 
   // The task's fields are the ones every service answers with.
   const fields = spec();
   fields.components.schemas.Task.properties.priority = { type: "integer" };
-  assert.match(checkSpec(fields, cases, rules).join("\n"), /Task schema has fields createdAt,id,priority,status,title,updatedAt, expected createdAt,id,status,title,updatedAt/);
+  assert.match(
+    checkSpec(fields, cases, rules).join("\n"),
+    /Task schema has fields createdAt,id,priority,status,title,updatedAt, expected createdAt,id,status,title,updatedAt/,
+  );
 
   // The statuses and the title length are the rules'.
   const statuses = spec();
@@ -323,7 +364,10 @@ test("every way the OpenAPI document can disagree is reported", () => {
   assert.match(checkSpec(statuses, cases, rules).join("\n"), /Status enum is \["todo","done"\], expected \["todo","in_progress","done"\]/);
   const title = spec();
   title.components.schemas.CreateTask.properties.title.maxLength = 100;
-  assert.match(checkSpec(title, cases, rules).join("\n"), new RegExp(`CreateTask title maxLength is 100, expected ${rules.maxTitleLength}`));
+  assert.match(
+    checkSpec(title, cases, rules).join("\n"),
+    new RegExp(`CreateTask title maxLength is 100, expected ${rules.maxTitleLength}`),
+  );
 
   // The request id pattern and the body limit are the contract's.
   const id = spec();
@@ -360,19 +404,28 @@ test("the configuration section is well formed, and every placeholder is one the
 
 test("configuration cases: an unset and an empty variable read as its default, except where that would bind a port", () => {
   const config = {
-    PORT: { reportedAs: "port", binds: true, default: { value: "80", effective: 80 }, accept: [{ value: "{port}", effective: "{port}" }], refuse: ["x"] },
+    PORT: {
+      reportedAs: "port",
+      binds: true,
+      default: { value: "80", effective: 80 },
+      accept: [{ value: "{port}", effective: "{port}" }],
+      refuse: ["x"],
+    },
     WAIT: { reportedAs: "waitMs", default: { value: "1s", effective: 1000 }, accept: [{ value: "2s", effective: 2000 }], refuse: ["-1s"] },
   };
   const cases = configCases(config);
-  assert.deepEqual(cases.map((c) => [c.variable, c.value, c.accept]), [
-    ["PORT", "{port}", true],
-    ["PORT", "x", false],
-    ["WAIT", undefined, true],
-    ["WAIT", "", true],
-    ["WAIT", "1s", true],
-    ["WAIT", "2s", true],
-    ["WAIT", "-1s", false],
-  ]);
+  assert.deepEqual(
+    cases.map((c) => [c.variable, c.value, c.accept]),
+    [
+      ["PORT", "{port}", true],
+      ["PORT", "x", false],
+      ["WAIT", undefined, true],
+      ["WAIT", "", true],
+      ["WAIT", "1s", true],
+      ["WAIT", "2s", true],
+      ["WAIT", "-1s", false],
+    ],
+  );
   // A value in the shell that runs the check never leaks in.
   const env = configEnv(config, cases[5], 4321, { PATH: "/bin", WAIT: "9s", PORT: "1" });
   assert.deepEqual(env, { PATH: "/bin", PORT: "4321", WAIT: "2s" });
@@ -383,7 +436,10 @@ test("configuration cases: an unset and an empty variable read as its default, e
 });
 
 test("a start is judged on its listening line, or on its refusal line and exit code", () => {
-  const contract = { config: { WAIT: { reportedAs: "waitMs", default: { value: "1s", effective: 1000 }, accept: [], refuse: [] } }, startup: CONTRACT.startup };
+  const contract = {
+    config: { WAIT: { reportedAs: "waitMs", default: { value: "1s", effective: 1000 }, accept: [], refuse: [] } },
+    startup: CONTRACT.startup,
+  };
   const { listening, refused } = CONTRACT.startup;
   const up = (fields) => ({ lines: [{ ...listening, ...fields }], listening: { ...listening, ...fields }, exitCode: null, stderr: "" });
   const down = (lines, exitCode = refused.exitCode) => ({ lines, listening: null, exitCode, stderr: "" });
@@ -398,7 +454,10 @@ test("a start is judged on its listening line, or on its refusal line and exit c
   assert.match(judgeStartup(contract, refuse, 1, up({ waitMs: 1000 })).join(), /started, reporting .* where it must refuse the value/);
   assert.match(judgeStartup(contract, refuse, 1, down([refusal], 1)).join(), new RegExp(`exited 1, expected ${refused.exitCode}`));
   assert.match(judgeStartup(contract, refuse, 1, down([])).join(), /wrote no .*invalid configuration.* line to stdout/);
-  assert.match(judgeStartup(contract, refuse, 1, down([{ ...refusal, error: "bad value" }])).join(), /its error "bad value" does not name WAIT/);
+  assert.match(
+    judgeStartup(contract, refuse, 1, down([{ ...refusal, error: "bad value" }])).join(),
+    /its error "bad value" does not name WAIT/,
+  );
 });
 
 test("an image exposes the port the contract defaults to, and sets no contract variable", () => {
@@ -408,7 +467,10 @@ test("an image exposes the port the contract defaults to, and sets no contract v
   assert.deepEqual(checkImage(`FROM x\nEXPOSE ${port}/tcp\n`, config), []);
   assert.match(checkImage("FROM x\nEXPOSE 9999\n", config).join(), new RegExp(`exposes 9999, but PORT defaults to ${port}`));
   assert.match(checkImage("FROM x\n", config).join(), /exposes no port/);
-  assert.match(checkImage(`FROM x\nENV A=1 \\\n    PORT=9999\nEXPOSE ${port}\n`, config).join(), /sets PORT, so the image's default is not the contract's/);
+  assert.match(
+    checkImage(`FROM x\nENV A=1 \\\n    PORT=9999\nEXPOSE ${port}\n`, config).join(),
+    /sets PORT, so the image's default is not the contract's/,
+  );
 });
 
 // A service whose configuration parser has the mistakes api-py once had: any script's digits, and a
@@ -438,10 +500,12 @@ test("the configuration runner starts a real process for each value and catches 
   };
   const { count, failures } = await checkConfig([process.execPath, "-e", LENIENT_SERVICE], process.cwd(), contract);
   assert.equal(count, 4);
-  assert.deepEqual(failures.map((f) => f.name), ['PORT="{port:fullwidth}"', 'PORT="{port}\\n"']);
+  assert.deepEqual(
+    failures.map((f) => f.name),
+    ['PORT="{port:fullwidth}"', 'PORT="{port}\\n"'],
+  );
   assert.match(failures[0].problems.join(), /started, reporting .*"msg":"listening".* where it must refuse the value/);
 });
-
 
 // The answers are held to the OpenAPI document as well as to the cases.
 const SPEC = loadSpec();
@@ -451,12 +515,25 @@ test("a value is held to its schema: type, enum, pattern, lengths in code points
   const schema = {
     type: "object",
     required: ["id", "at"],
-    properties: { id: { type: "string", pattern: "^t[0-9]+$", maxLength: 3 }, at: { type: "string", format: "date-time" }, s: { $ref: "#/components/schemas/S" }, n: { type: ["string", "null"] }, list: { type: "array", items: { type: "integer" } } },
+    properties: {
+      id: { type: "string", pattern: "^t[0-9]+$", maxLength: 3 },
+      at: { type: "string", format: "date-time" },
+      s: { $ref: "#/components/schemas/S" },
+      n: { type: ["string", "null"] },
+      list: { type: "array", items: { type: "integer" } },
+    },
     additionalProperties: false,
   };
   assert.deepEqual(conforms(spec, schema, { id: "t1", at: "2026-01-02T03:04:05.678Z", s: "a", n: null, list: [1, 2] }), []);
   const found = conforms(spec, schema, { id: "t1234", at: "x", s: "c", n: 1, list: [1, "2"], extra: true });
-  for (const problem of [/\$\.id is 5 characters, more than 3/, /\$\.at is not a date-time/, /\$\.s is "c", not one of \["a","b"\]/, /\$\.n is a number, not string or null/, /\$\.list\[1\] is a string, not integer/, /\$ has extra, which the schema does not allow/]) {
+  for (const problem of [
+    /\$\.id is 5 characters, more than 3/,
+    /\$\.at is not a date-time/,
+    /\$\.s is "c", not one of \["a","b"\]/,
+    /\$\.n is a number, not string or null/,
+    /\$\.list\[1\] is a string, not integer/,
+    /\$ has extra, which the schema does not allow/,
+  ]) {
     assert.match(found.join("\n"), problem);
   }
   assert.match(conforms(spec, schema, { id: "x" }).join("\n"), /\$ has no at, which is required/);
@@ -475,7 +552,10 @@ test("an answer that breaks the document's schema fails, list items included", a
   const cases = [...CASES, { name: "list", method: "GET", path: "/api/tasks", status: 200, array: true }];
   assert.deepEqual(await runCases(await fakeService(t), cases, { spec: SPEC }), []);
   const failures = await runCases(await fakeService(t, { badTimestamp: true }), cases, { spec: SPEC });
-  assert.deepEqual(failures.map((f) => f.name), ["create", "get", "list"]);
+  assert.deepEqual(
+    failures.map((f) => f.name),
+    ["create", "get", "list"],
+  );
   assert.match(failures[0].problems.join(), /\$\.createdAt is not a date-time/);
   assert.match(failures[2].problems.join(), /\$\[0\]\.createdAt is not a date-time/);
 });
@@ -484,7 +564,10 @@ test("a list shows the tasks in the order they were created", async (t) => {
   const cases = [{ name: "oldest first", method: "GET", path: "/api/tasks", status: 200, array: true, oldestFirst: true }];
   assert.deepEqual(await runCases(await fakeService(t), cases), []);
   const failures = await runCases(await fakeService(t, { newestFirst: true }), cases);
-  assert.match(failures[0]?.problems.join() ?? "", /lists the tasks it created as t3, t2, t1, not in the order they were created \(t1, t2, t3\)/);
+  assert.match(
+    failures[0]?.problems.join() ?? "",
+    /lists the tasks it created as t3, t2, t1, not in the order they were created \(t1, t2, t3\)/,
+  );
 });
 
 test("a 405 names the methods the document lists for the path, with HEAD beside GET", async (t) => {
@@ -578,14 +661,26 @@ test("the shutdown cases are the timeout's default, its longest accepted value a
   );
 });
 
-test("a service must finish a request in flight after SIGTERM, and give up on it once the timeout passes", { skip: process.platform === "win32" && "SIGTERM cannot be sent on Windows" }, async () => {
-  const run = (mistake) => checkShutdown([process.execPath, "-e", SHUTTING_DOWN_SERVICE], process.cwd(), CONTRACT, FACTS, { ...process.env, FAKE_MISTAKE: mistake ?? "" });
+test("a service must finish a request in flight after SIGTERM, and give up on it once the timeout passes", {
+  skip: process.platform === "win32" && "SIGTERM cannot be sent on Windows",
+}, async () => {
+  const run = (mistake) =>
+    checkShutdown([process.execPath, "-e", SHUTTING_DOWN_SERVICE], process.cwd(), CONTRACT, FACTS, {
+      ...process.env,
+      FAKE_MISTAKE: mistake ?? "",
+    });
   assert.deepEqual(await run(), []);
   const early = await run("exitAtOnce");
-  assert.deepEqual(early.map((f) => f.name), ["shutdown with SHUTDOWN_TIMEOUT unset", 'shutdown with SHUTDOWN_TIMEOUT="2562047h"', 'shutdown with SHUTDOWN_TIMEOUT="400ns"']);
+  assert.deepEqual(
+    early.map((f) => f.name),
+    ["shutdown with SHUTDOWN_TIMEOUT unset", 'shutdown with SHUTDOWN_TIMEOUT="2562047h"', 'shutdown with SHUTDOWN_TIMEOUT="400ns"'],
+  );
   assert.match(early[0].problems.join(), /exited 0 with a request in flight/);
   assert.match(early[2].problems.join(), /exited 0 after giving up on a request in flight, expected 1/);
   const stuck = await run("waitForever");
-  assert.deepEqual(stuck.map((f) => f.name), ['shutdown with SHUTDOWN_TIMEOUT="400ns"']);
+  assert.deepEqual(
+    stuck.map((f) => f.name),
+    ['shutdown with SHUTDOWN_TIMEOUT="400ns"'],
+  );
   assert.match(stuck[0].problems.join(), /still running .* after SIGTERM, with a request it could not finish/);
 });

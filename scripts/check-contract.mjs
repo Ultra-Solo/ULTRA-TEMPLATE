@@ -67,7 +67,13 @@ export function resolveRef(value, facts) {
 export const requestIdPattern = ({ requestId }) => new RegExp(`^[${requestId.characters}]{1,${requestId.maxLength}}$`);
 
 /** Follows a local `$ref` such as `#/components/schemas/Task`. */
-const deref = (spec, node) => (node?.$ref ? node.$ref.slice(2).split("/").reduce((at, key) => at?.[key], spec) : node);
+const deref = (spec, node) =>
+  node?.$ref
+    ? node.$ref
+        .slice(2)
+        .split("/")
+        .reduce((at, key) => at?.[key], spec)
+    : node;
 
 const HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
 
@@ -80,7 +86,9 @@ export function operationFor(spec, method, path) {
   const segments = path.split("?")[0].split("/");
   const template = Object.keys(spec.paths ?? {}).find((t) => {
     const parts = t.split("/");
-    return parts.length === segments.length && parts.every((part, i) => (/^\{.+\}$/.test(part) ? segments[i] !== "" : part === segments[i]));
+    return (
+      parts.length === segments.length && parts.every((part, i) => (/^\{.+\}$/.test(part) ? segments[i] !== "" : part === segments[i]))
+    );
   });
   if (template === undefined) return undefined;
   const item = spec.paths[template];
@@ -106,14 +114,20 @@ export function conforms(spec, schema, value, at = "$") {
   const types = node.type === undefined ? [] : [node.type].flat();
   if (types.length > 0 && !types.some((type) => isType(type, value))) return [`${at} is a ${kindOf(value)}, not ${types.join(" or ")}`];
   const problems = [];
-  if ("const" in node && JSON.stringify(value) !== JSON.stringify(node.const)) problems.push(`${at} is ${JSON.stringify(value)}, not ${JSON.stringify(node.const)}`);
-  if (node.enum && !node.enum.some((option) => JSON.stringify(option) === JSON.stringify(value))) problems.push(`${at} is ${JSON.stringify(value)}, not one of ${JSON.stringify(node.enum)}`);
+  if ("const" in node && JSON.stringify(value) !== JSON.stringify(node.const))
+    problems.push(`${at} is ${JSON.stringify(value)}, not ${JSON.stringify(node.const)}`);
+  if (node.enum && !node.enum.some((option) => JSON.stringify(option) === JSON.stringify(value)))
+    problems.push(`${at} is ${JSON.stringify(value)}, not one of ${JSON.stringify(node.enum)}`);
   if (typeof value === "string") {
     const length = [...value].length;
-    if (node.maxLength !== undefined && length > node.maxLength) problems.push(`${at} is ${length} characters, more than ${node.maxLength}`);
-    if (node.minLength !== undefined && length < node.minLength) problems.push(`${at} is ${length} characters, fewer than ${node.minLength}`);
-    if (node.pattern !== undefined && !new RegExp(node.pattern, "u").test(value)) problems.push(`${at} ${JSON.stringify(value).slice(0, 80)} does not match ${node.pattern}`);
-    if (node.format === "date-time" && !(DATE_TIME.test(value) && !Number.isNaN(Date.parse(value)))) problems.push(`${at} is not a date-time: ${JSON.stringify(value).slice(0, 40)}`);
+    if (node.maxLength !== undefined && length > node.maxLength)
+      problems.push(`${at} is ${length} characters, more than ${node.maxLength}`);
+    if (node.minLength !== undefined && length < node.minLength)
+      problems.push(`${at} is ${length} characters, fewer than ${node.minLength}`);
+    if (node.pattern !== undefined && !new RegExp(node.pattern, "u").test(value))
+      problems.push(`${at} ${JSON.stringify(value).slice(0, 80)} does not match ${node.pattern}`);
+    if (node.format === "date-time" && !(DATE_TIME.test(value) && !Number.isNaN(Date.parse(value))))
+      problems.push(`${at} is not a date-time: ${JSON.stringify(value).slice(0, 40)}`);
   }
   if (kindOf(value) === "object") {
     for (const key of node.required ?? []) if (!(key in value)) problems.push(`${at} has no ${key}, which is required`);
@@ -146,7 +160,10 @@ export function checkSpec(spec, contract, rules) {
     const { template: path, operation } = found;
     const method = c.method === "HEAD" ? "get" : c.method.toLowerCase();
     if (operation === undefined) {
-      if (c.status !== 405) problems.push(`case "${c.name}" sends ${c.method} to ${path}, which the document does not list, and expects ${c.status} rather than 405`);
+      if (c.status !== 405)
+        problems.push(
+          `case "${c.name}" sends ${c.method} to ${path}, which the document does not list, and expects ${c.status} rather than 405`,
+        );
     } else if (!(String(c.status) in operation.responses)) {
       problems.push(`case "${c.name}": ${c.method} ${path} answers ${c.status}, which the document does not list`);
     } else {
@@ -156,24 +173,33 @@ export function checkSpec(spec, contract, rules) {
   for (const path of templates) {
     for (const [method, operation] of Object.entries(spec.paths[path])) {
       for (const code of Object.keys(operation?.responses ?? {})) {
-        if (!exercised.has(`${method} ${path} ${code}`)) problems.push(`the document lists ${code} for ${method.toUpperCase()} ${path}, which no case exercises`);
+        if (!exercised.has(`${method} ${path} ${code}`))
+          problems.push(`the document lists ${code} for ${method.toUpperCase()} ${path}, which no case exercises`);
       }
     }
   }
   const schemas = spec.components?.schemas ?? {};
-  const fields = Object.keys(schemas.Task?.properties ?? {}).sort().join(",");
+  const fields = Object.keys(schemas.Task?.properties ?? {})
+    .sort()
+    .join(",");
   if (fields !== TASK_FIELDS.join(",")) problems.push(`the Task schema has fields ${fields}, expected ${TASK_FIELDS.join(",")}`);
   const statuses = deref(spec, schemas.Task?.properties?.status)?.enum;
   if (JSON.stringify(statuses) !== JSON.stringify(rules.statuses)) {
     problems.push(`the Status enum is ${JSON.stringify(statuses)}, expected ${JSON.stringify(rules.statuses)}`);
   }
-  for (const [name, title] of [["Task", schemas.Task?.properties?.title], ["CreateTask", schemas.CreateTask?.properties?.title]]) {
-    if (title?.maxLength !== rules.maxTitleLength) problems.push(`the ${name} title maxLength is ${title?.maxLength}, expected ${rules.maxTitleLength}`);
+  for (const [name, title] of [
+    ["Task", schemas.Task?.properties?.title],
+    ["CreateTask", schemas.CreateTask?.properties?.title],
+  ]) {
+    if (title?.maxLength !== rules.maxTitleLength)
+      problems.push(`the ${name} title maxLength is ${title?.maxLength}, expected ${rules.maxTitleLength}`);
   }
   const pattern = spec.components?.headers?.RequestId?.schema?.pattern;
-  if (pattern !== requestIdPattern(limits).source) problems.push(`the RequestId header pattern is ${pattern}, expected ${requestIdPattern(limits).source}`);
+  if (pattern !== requestIdPattern(limits).source)
+    problems.push(`the RequestId header pattern is ${pattern}, expected ${requestIdPattern(limits).source}`);
   const bodyLimit = spec.components?.responses?.BadRequest?.["x-maxBodyBytes"];
-  if (bodyLimit !== limits.maxBodyBytes) problems.push(`the BadRequest response's x-maxBodyBytes is ${bodyLimit}, expected ${limits.maxBodyBytes}`);
+  if (bodyLimit !== limits.maxBodyBytes)
+    problems.push(`the BadRequest response's x-maxBodyBytes is ${bodyLimit}, expected ${limits.maxBodyBytes}`);
   return problems;
 }
 
@@ -183,7 +209,8 @@ export function codePointsWith(name) {
   if (!withProperty.has(name)) {
     const test = new RegExp(`^\\p{${name}}$`, "u");
     let found = "";
-    for (let cp = 0; cp <= 0x10ffff; cp++) if ((cp < 0xd800 || cp > 0xdfff) && test.test(String.fromCodePoint(cp))) found += String.fromCodePoint(cp);
+    for (let cp = 0; cp <= 0x10ffff; cp++)
+      if ((cp < 0xd800 || cp > 0xdfff) && test.test(String.fromCodePoint(cp))) found += String.fromCodePoint(cp);
     withProperty.set(name, found);
   }
   return withProperty.get(name);
@@ -211,7 +238,10 @@ function expand(value, facts) {
  * `padTo` then fills it with trailing spaces, which JSON allows, to exactly that many bytes.
  */
 export function encodeBody(body, facts, padTo) {
-  const text = body === undefined || typeof body === "string" ? body : JSON.stringify(Object.fromEntries(Object.entries(body).map(([key, value]) => [key, expand(value, facts)])));
+  const text =
+    body === undefined || typeof body === "string"
+      ? body
+      : JSON.stringify(Object.fromEntries(Object.entries(body).map(([key, value]) => [key, expand(value, facts)])));
   if (padTo === undefined) return text;
   const size = resolveRef(padTo, facts);
   const used = Buffer.byteLength(text ?? "");
@@ -220,13 +250,17 @@ export function encodeBody(body, facts, padTo) {
 }
 
 /** A case's headers, with `{ repeat, times }` values expanded as in a body. */
-const encodeHeaders = (headers, facts) => Object.fromEntries(Object.entries(headers ?? {}).map(([key, value]) => [key, expand(value, facts)]));
+const encodeHeaders = (headers, facts) =>
+  Object.fromEntries(Object.entries(headers ?? {}).map(([key, value]) => [key, expand(value, facts)]));
 
 function send(base, { method, path, body, bodyHex, padTo, headers: extra, contentType = "application/json" }, facts) {
   const url = new URL(base);
   // `bodyHex` is for a body whose bytes are the point: a byte-order mark, UTF-16, bytes that are not UTF-8.
   const payload = bodyHex === undefined ? encodeBody(body, facts, padTo) : Buffer.from(bodyHex, "hex");
-  const headers = { ...encodeHeaders(extra, facts), ...(payload === undefined ? {} : { "content-type": contentType, "content-length": Buffer.byteLength(payload) }) };
+  const headers = {
+    ...encodeHeaders(extra, facts),
+    ...(payload === undefined ? {} : { "content-type": contentType, "content-length": Buffer.byteLength(payload) }),
+  };
   return new Promise((resolve, reject) => {
     // node:http rather than fetch: fetch refuses a body on some methods and normalizes the path.
     const req = request({ host: url.hostname, port: url.port, method, path, headers }, (res) => {
@@ -268,7 +302,9 @@ export function judge(testCase, answer, facts, spec) {
   if (testCase.array && !Array.isArray(body)) problems.push("body is not a JSON array");
   if (testCase.json && JSON.stringify(body) !== JSON.stringify(testCase.json)) problems.push(`body ${answer.text.slice(0, 80)}`);
   if (testCase.task) {
-    const keys = Object.keys(body ?? {}).sort().join(",");
+    const keys = Object.keys(body ?? {})
+      .sort()
+      .join(",");
     if (keys !== TASK_FIELDS.join(",")) problems.push(`task fields ${keys}`);
     for (const [key, value] of Object.entries(testCase.task)) {
       if (body?.[key] !== value) problems.push(`${key} ${JSON.stringify(body?.[key])}, expected ${JSON.stringify(value)}`);
@@ -278,16 +314,25 @@ export function judge(testCase, answer, facts, spec) {
     problems.push(`content-type ${answer.type || "missing"}`);
   }
   // The language's own server may refuse a request before the service sees it, and then only it answers.
-  if (!testCase.beforeService && !requestIdPattern(facts.limits).test(answer.requestId ?? "")) problems.push("no usable X-Request-Id header");
+  if (!testCase.beforeService && !requestIdPattern(facts.limits).test(answer.requestId ?? ""))
+    problems.push("no usable X-Request-Id header");
   const sent = expand(Object.entries(testCase.headers ?? {}).find(([key]) => key.toLowerCase() === "x-request-id")?.[1], facts);
   if (testCase.requestId === "echo" && answer.requestId !== sent) {
-    problems.push(`X-Request-Id ${JSON.stringify(answer.requestId)?.slice(0, 80)}, expected the ${JSON.stringify(sent).slice(0, 80)} that was sent`);
+    problems.push(
+      `X-Request-Id ${JSON.stringify(answer.requestId)?.slice(0, 80)}, expected the ${JSON.stringify(sent).slice(0, 80)} that was sent`,
+    );
   }
-  if (testCase.requestId === "replaced" && answer.requestId === sent) problems.push(`X-Request-Id echoes ${JSON.stringify(sent).slice(0, 80)}, which is not a usable id`);
+  if (testCase.requestId === "replaced" && answer.requestId === sent)
+    problems.push(`X-Request-Id echoes ${JSON.stringify(sent).slice(0, 80)}, which is not a usable id`);
   const found = spec === undefined ? undefined : operationFor(spec, testCase.method, testCase.path);
   if (found && answer.status === 405) {
-    const allow = String(answer.allow ?? "").split(",").map((m) => m.trim().toUpperCase()).filter(Boolean).sort();
-    if (allow.join() !== found.allow.join()) problems.push(`Allow ${JSON.stringify(answer.allow ?? "")}, expected ${JSON.stringify(found.allow.join(", "))}`);
+    const allow = String(answer.allow ?? "")
+      .split(",")
+      .map((m) => m.trim().toUpperCase())
+      .filter(Boolean)
+      .sort();
+    if (allow.join() !== found.allow.join())
+      problems.push(`Allow ${JSON.stringify(answer.allow ?? "")}, expected ${JSON.stringify(found.allow.join(", "))}`);
   }
   if (found?.operation && testCase.method !== "HEAD" && body !== undefined) {
     const schema = deref(spec, found.operation.responses?.[String(answer.status)])?.content?.["application/json"]?.schema;
@@ -314,7 +359,8 @@ export function checkLogs(exchanges, stdout) {
   }
   const uses = new Map();
   for (const exchange of exchanges) uses.set(exchange.requestId, (uses.get(exchange.requestId) ?? 0) + 1);
-  for (const [id, count] of uses) if (count > 1) problems.push(`request id ${id} was given to ${count} responses, so their log lines cannot be told apart`);
+  for (const [id, count] of uses)
+    if (count > 1) problems.push(`request id ${id} was given to ${count} responses, so their log lines cannot be told apart`);
   for (const { requestId, method, path, status } of exchanges.filter((e) => uses.get(e.requestId) === 1)) {
     const logged = lines.filter((line) => line?.msg === "request" && line.requestId === requestId);
     if (logged.length !== 1) {
@@ -369,7 +415,12 @@ export async function runCases(base, cases, { exchanges = [], facts = loadFacts(
       const path = resolve(step.path);
       const answer = await exchange({ ...step, path }).catch(() => null);
       if (answer?.status !== step.status) {
-        failures.push({ name: testCase.name, problems: [`setup ${index + 1} (${step.method} ${path}) answered ${answer?.status ?? "with invalid HTTP"}, expected ${step.status}`] });
+        failures.push({
+          name: testCase.name,
+          problems: [
+            `setup ${index + 1} (${step.method} ${path}) answered ${answer?.status ?? "with invalid HTTP"}, expected ${step.status}`,
+          ],
+        });
         staged = false;
         break;
       }
@@ -395,14 +446,16 @@ export async function runCases(base, cases, { exchanges = [], facts = loadFacts(
     if (testCase.concurrent !== undefined) {
       const winners = answers.filter((a) => a.status === testCase.status);
       const others = answers.filter((a) => a.status !== testCase.status && a.status !== testCase.othersStatus).map((a) => a.status);
-      if (winners.length !== 1) problems.push(`${winners.length} of ${answers.length} concurrent requests answered ${testCase.status}, expected exactly 1`);
+      if (winners.length !== 1)
+        problems.push(`${winners.length} of ${answers.length} concurrent requests answered ${testCase.status}, expected exactly 1`);
       if (others.length > 0) problems.push(`the others answered ${[...new Set(others)].join(", ")}, expected ${testCase.othersStatus}`);
       answer = winners[0] ?? answer;
     }
     problems.push(...judge(testCase, answer, facts, spec));
     if (testCase.oldestFirst) {
       const listed = (parse(answer.text) ?? []).map?.((task) => task?.id).filter((id) => created.includes(id)) ?? [];
-      if (listed.join() !== created.join()) problems.push(`lists the tasks it created as ${listed.join(", ")}, not in the order they were created (${created.join(", ")})`);
+      if (listed.join() !== created.join())
+        problems.push(`lists the tasks it created as ${listed.join(", ")}, not in the order they were created (${created.join(", ")})`);
     }
     if (problems.length > 0) failures.push({ name: testCase.name, problems });
   }
@@ -442,11 +495,7 @@ async function slowExchange(base, parts, intervalMs, closeAfterMs) {
 
 /** Slow trickles that stay within the contract are accepted; ones past it are terminated. */
 export async function checkReceiveTimeouts(base, timeouts) {
-  const header = [
-    Buffer.from("GET /healthz HTTP/1.1\r\n"),
-    Buffer.from("Host: localhost\r\nConnection: close\r\n"),
-    Buffer.from("\r\n"),
-  ];
+  const header = [Buffer.from("GET /healthz HTTP/1.1\r\n"), Buffer.from("Host: localhost\r\nConnection: close\r\n"), Buffer.from("\r\n")];
   const body = Buffer.from('{"title":"slow"}');
   const bodyHead = Buffer.from(
     `POST /api/tasks HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\n\r\n`,
@@ -455,21 +504,22 @@ export async function checkReceiveTimeouts(base, timeouts) {
   const tests = [
     ["headers arrive before the deadline", header, Math.ceil(timeouts.headers * 0.3), 200],
     ["slow headers exceed the deadline", header, Math.ceil(timeouts.headers * 0.6), undefined],
-    ["body arrives before the deadline", bodyParts, Math.ceil(timeouts.body * 0.4), 201],
-    ["slow body exceeds the deadline", bodyParts, Math.ceil(timeouts.body * 0.55), undefined],
+    ["body arrives before the deadline", bodyParts, Math.ceil(timeouts.request * 0.4), 201],
+    ["slow body exceeds the deadline", bodyParts, Math.ceil(timeouts.request * 0.55), undefined],
   ];
   const results = await Promise.all(
     tests.map(async ([name, parts, intervalMs, expected]) => ({
       name,
       expected,
-      result: await slowExchange(base, parts, intervalMs, Math.max(50, Math.min(1000, timeouts.body * 0.1))),
+      result: await slowExchange(base, parts, intervalMs, Math.max(50, Math.min(1000, timeouts.request * 0.1))),
     })),
   );
   return results.flatMap(({ name, expected, result }) => {
     const problems = [];
     if (!result.closed) problems.push("connection remained open after the request finished or its deadline passed");
     if (expected === undefined) {
-      if (result.status !== undefined && result.status >= 200 && result.status < 300) problems.push(`answered ${result.status} after the receive deadline`);
+      if (result.status !== undefined && result.status >= 200 && result.status < 300)
+        problems.push(`answered ${result.status} after the receive deadline`);
     } else if (result.status !== expected) {
       problems.push(`status ${result.status ?? "missing"}, expected ${expected}`);
     }
@@ -498,7 +548,8 @@ export function configCases(config) {
   const cases = [];
   for (const [variable, spec] of variables(config)) {
     if (!spec.binds) {
-      for (const value of [undefined, "", spec.default.value]) cases.push({ variable, value, accept: true, effective: spec.default.effective });
+      for (const value of [undefined, "", spec.default.value])
+        cases.push({ variable, value, accept: true, effective: spec.default.effective });
     }
     for (const { value, effective } of spec.accept) cases.push({ variable, value, accept: true, effective });
     for (const value of spec.refuse) cases.push({ variable, value, accept: false });
@@ -556,7 +607,8 @@ export function judgeStartup({ config, startup }, testCase, port, outcome) {
   const problems = [];
   if (outcome.exitCode !== startup.refused.exitCode) problems.push(`exited ${outcome.exitCode}, expected ${startup.refused.exitCode}`);
   if (!refusal) problems.push(`wrote no ${JSON.stringify({ level: startup.refused.level, msg: startup.refused.msg })} line to stdout`);
-  else if (typeof refusal.error !== "string" || !refusal.error.includes(testCase.variable)) problems.push(`its error ${JSON.stringify(refusal.error)} does not name ${testCase.variable}`);
+  else if (typeof refusal.error !== "string" || !refusal.error.includes(testCase.variable))
+    problems.push(`its error ${JSON.stringify(refusal.error)} does not name ${testCase.variable}`);
   return problems;
 }
 
@@ -567,11 +619,19 @@ export function judgeStartup({ config, startup }, testCase, port, outcome) {
  */
 export function checkImage(dockerfile, config) {
   const lines = dockerfile.replace(/\\\r?\n/g, " ").split(/\r?\n/);
-  const exposed = lines.flatMap((line) => /^\s*EXPOSE\s+(.+)$/i.exec(line)?.[1].trim().split(/\s+/).map((port) => port.split("/")[0]) ?? []);
+  const exposed = lines.flatMap(
+    (line) =>
+      /^\s*EXPOSE\s+(.+)$/i
+        .exec(line)?.[1]
+        .trim()
+        .split(/\s+/)
+        .map((port) => port.split("/")[0]) ?? [],
+  );
   const set = lines.flatMap((line) => /^\s*ENV\s+(.+)$/i.exec(line)?.[1].match(/[A-Za-z_][A-Za-z0-9_]*(?==|\s)/g) ?? []);
   const problems = [];
   for (const [variable, spec] of variables(config)) {
-    if (spec.binds && !exposed.includes(spec.default.value)) problems.push(`the Dockerfile exposes ${exposed.join(", ") || "no port"}, but ${variable} defaults to ${spec.default.value}`);
+    if (spec.binds && !exposed.includes(spec.default.value))
+      problems.push(`the Dockerfile exposes ${exposed.join(", ") || "no port"}, but ${variable} defaults to ${spec.default.value}`);
     if (set.includes(variable)) problems.push(`the Dockerfile sets ${variable}, so the image's default is not the contract's`);
   }
   return problems;
@@ -659,7 +719,11 @@ async function waitForReady(base, running, ready, facts) {
   return false;
 }
 
-const jsonLines = (text) => text.split(/\r?\n/).filter((l) => l.trim() !== "").map(parse);
+const jsonLines = (text) =>
+  text
+    .split(/\r?\n/)
+    .filter((l) => l.trim() !== "")
+    .map(parse);
 
 /** Starts the service for one configuration case and waits for its listening line, its exit, or the deadline. */
 async function startupOutcome(cmd, dir, env, listening) {
@@ -733,26 +797,39 @@ async function shutdownOnce(cmd, dir, contract, facts, testCase, baseEnv) {
     const ended = new Promise((resolve) => socket.on("close", resolve));
     const body = '{"title":"in flight"}';
     const half = Math.floor(body.length / 2);
-    socket.write(`POST /api/tasks HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${body.slice(0, half)}`);
+    socket.write(
+      `POST /api/tasks HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${body.slice(0, half)}`,
+    );
     await sleep(SETTLE_MS);
     // To the process itself, as `docker stop` signals PID 1: a launcher such as uv passes it on.
     process.kill(running.child.pid, stopped.signal);
     await sleep(SETTLE_MS);
     if (!testCase.finishes) {
       const code = await exitWithin(running, EXIT_MS);
-      if (code === null) return [`still running ${EXIT_MS / 1000}s after SIGTERM, with a request it could not finish, long after its ${testCase.variable}`];
-      return code === stopped.abandoned.exitCode ? [] : [`exited ${code} after giving up on a request in flight, expected ${stopped.abandoned.exitCode}`];
+      if (code === null)
+        return [`still running ${EXIT_MS / 1000}s after SIGTERM, with a request it could not finish, long after its ${testCase.variable}`];
+      return code === stopped.abandoned.exitCode
+        ? []
+        : [`exited ${code} after giving up on a request in flight, expected ${stopped.abandoned.exitCode}`];
     }
     if (running.child.exitCode !== null || running.child.signalCode !== null) {
-      return [`exited ${running.child.exitCode ?? running.child.signalCode} with a request in flight, before its ${testCase.variable} passed`];
+      return [
+        `exited ${running.child.exitCode ?? running.child.signalCode} with a request in flight, before its ${testCase.variable} passed`,
+      ];
     }
     socket.write(body.slice(half));
     await Promise.race([ended, sleep(ANSWER_MS)]);
     const problems = [];
     const status = /^HTTP\/1\.[01] (\d{3})/.exec(received)?.[1];
-    if (status !== "201") problems.push(`answered the request in flight with ${JSON.stringify(received.split("\r\n")[0] ?? "")}, expected 201`);
+    if (status !== "201")
+      problems.push(`answered the request in flight with ${JSON.stringify(received.split("\r\n")[0] ?? "")}, expected 201`);
     const code = await exitWithin(running, EXIT_MS);
-    if (code !== stopped.exitCode) problems.push(code === null ? `still running ${EXIT_MS / 1000}s after answering its last request` : `exited ${code} after answering its last request, expected ${stopped.exitCode}`);
+    if (code !== stopped.exitCode)
+      problems.push(
+        code === null
+          ? `still running ${EXIT_MS / 1000}s after answering its last request`
+          : `exited ${code} after answering its last request, expected ${stopped.exitCode}`,
+      );
     return problems;
   } finally {
     socket?.destroy();
@@ -802,7 +879,10 @@ async function checkService(module, contract, facts) {
     const running = start(cmd, dir, configEnv(contract.config, null, port));
     try {
       if (!(await waitForReady(base, running, contract.startup.ready, facts))) {
-        return { module, fatal: `did not answer ${contract.startup.ready.path} within ${STARTUP_MS / 1000}s. ${running.output.stderr.trim().slice(-400)}` };
+        return {
+          module,
+          fatal: `did not answer ${contract.startup.ready.path} within ${STARTUP_MS / 1000}s. ${running.output.stderr.trim().slice(-400)}`,
+        };
       }
       const exchanges = [];
       failures.push(...(await runCases(base, contract.cases, { exchanges, facts, spec: loadSpec() })));
@@ -841,7 +921,9 @@ async function runE2e(client, service, contract, facts) {
     const running = start(cmd, dir, configEnv(contract.config, null, port));
     try {
       if (!(await waitForReady(base, running, contract.startup.ready, facts))) {
-        return { fatal: `${service.id} did not answer ${contract.startup.ready.path} within ${STARTUP_MS / 1000}s. ${running.output.stderr.trim().slice(-400)}` };
+        return {
+          fatal: `${service.id} did not answer ${contract.startup.ready.path} within ${STARTUP_MS / 1000}s. ${running.output.stderr.trim().slice(-400)}`,
+        };
       }
       const [command, ...args] = expandCommand(client.e2e.run, { taskApi: base });
       return { code: run(command, args, { cwd: join(ROOT, client.dir) }).status };
@@ -857,13 +939,22 @@ async function e2eMain(args) {
   const present = presentModules();
   const client = present.find((m) => m.id === args[0] && m.e2e);
   if (!client) {
-    console.error(`check-contract: ${args[0] ?? "(none)"} is not a module present here with an e2e check. Present: ${present.filter((m) => m.e2e).map((m) => m.id).join(", ") || "none"}.`);
+    console.error(
+      `check-contract: ${args[0] ?? "(none)"} is not a module present here with an e2e check. Present: ${
+        present
+          .filter((m) => m.e2e)
+          .map((m) => m.id)
+          .join(", ") || "none"
+      }.`,
+    );
     return 2;
   }
   const named = args[1] === "--service" ? args[2] : undefined;
   const service = named === undefined ? e2ePartner(client, present) : present.find((m) => m.id === named && m.taskApi);
   if (!service) {
-    console.error(`check-contract: ${named ? `${named} is not a task service present here` : "no task service is present"}, so ${client.id} has nothing to run against.`);
+    console.error(
+      `check-contract: ${named ? `${named} is not a task service present here` : "no task service is present"}, so ${client.id} has nothing to run against.`,
+    );
     return 2;
   }
   const contract = loadContract();
@@ -883,7 +974,9 @@ async function main() {
   const present = presentModules().filter((m) => m.taskApi);
   const unknown = requested.filter((id) => !present.some((m) => m.id === id));
   if (unknown.length > 0) {
-    console.error(`check-contract: ${unknown.join(", ")} is not a task service present here. Present: ${present.map((m) => m.id).join(", ") || "none"}.`);
+    console.error(
+      `check-contract: ${unknown.join(", ")} is not a task service present here. Present: ${present.map((m) => m.id).join(", ") || "none"}.`,
+    );
     return 2;
   }
   const targets = requested.length > 0 ? present.filter((m) => requested.includes(m.id)) : present;

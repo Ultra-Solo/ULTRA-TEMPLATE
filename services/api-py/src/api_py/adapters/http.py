@@ -19,7 +19,7 @@ from api_py.domain.task import DomainError, DomainErrorCode, Task, parse_status
 # A request body larger than this is refused before it is parsed.
 MAX_BODY_BYTES: Final = 1024 * 1024
 # How much of a refused body is still read, so the client can receive the 400 instead of a reset
-# connection. The standard-library server has no request timeout, so this bounds the work instead.
+# connection.
 MAX_DRAIN_BYTES: Final = 8 * MAX_BODY_BYTES
 
 STATUS_BY_CODE: Final[dict[DomainErrorCode, int]] = {
