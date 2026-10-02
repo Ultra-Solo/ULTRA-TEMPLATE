@@ -1,0 +1,108 @@
+# Reusable workflow for devcontainer security scan.
+# Called from verify.yml when the devcontainer feature is selected.
+# Builds the devcontainer with Features, scans with Trivy, and generates SBOM.
+name: devcontainer-scan
+
+on:
+  workflow_call:
+    inputs:
+      node-version-file:
+        description: Path to .node-version file
+        required: false
+        type: string
+        default: .node-version
+    secrets:
+      GH_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  devcontainer-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/tool
+        with:
+          names: trivy
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+      # Install Dev Container CLI at pinned version via install script (verifies integrity)
+      - name: Get Dev Container CLI version
+        id: devcontainer-version
+        run: |
+          echo "version=$(node scripts/tools.mjs version devcontainer-cli)" >> "$GITHUB_OUTPUT"
+      - name: Install Dev Container CLI
+        env:
+          DEVCONTAINER_CLI_VERSION: ${{ steps.devcontainer-version.outputs.version }}
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/devcontainers/cli/v"${DEVCONTAINER_CLI_VERSION}"/scripts/install.sh -o install.sh
+          echo "3f7ff412801e382b944fbf300c4f1ff49cf2534fa6cc80995da0b2963924c9da  install.sh" | sha256sum -c -
+          sh install.sh --version "${DEVCONTAINER_CLI_VERSION}"
+          echo "$HOME/.devcontainers/bin" >> "$GITHUB_PATH"
+      - name: Build devcontainer with Features
+        run: |
+          devcontainer build --workspace-folder . --image-name devcontainer-scan:ci
+      - name: Scan devcontainer image with Trivy (full report)
+        run: |
+          trivy image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+            --ignorefile .trivyignore --format json --output "$RUNNER_TEMP/trivy-devcontainer.json" devcontainer-scan:ci
+          trivy image --scanners vuln --format json --output "$RUNNER_TEMP/trivy-devcontainer-full.json" devcontainer-scan:ci
+      - name: Generate SBOM for devcontainer image
+        run: |
+          trivy image --format cyclonedx --output "$RUNNER_TEMP/sbom-devcontainer.json" devcontainer-scan:ci
+      - name: Record devcontainer build metadata
+        run: |
+          # Record base image digest, CLI version, platform, and final image identity
+          base_digest=$(docker inspect mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae --format '{{.RepoDigests}}')
+          final_digest=$(docker inspect devcontainer-scan:ci --format '{{.RepoDigests}}')
+          cli_version=$(devcontainer --version)
+          platform=$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')
+          {
+            echo "### Dev Container Build Metadata"
+            echo ""
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| Base Image Digest | ${base_digest} |"
+            echo "| Final Image Digest | ${final_digest} |"
+            echo "| Dev Container CLI Version | ${cli_version} |"
+            echo "| Platform | ${platform} |"
+            echo "| Build Timestamp | $(date -u +%Y-%m-%dT%H:%M:%SZ) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Write metadata to file for artifact upload
+          cat > "$RUNNER_TEMP/devcontainer-metadata.json" <<EOF
+          {
+            "baseImageDigest": "${base_digest}",
+            "finalImageDigest": "${final_digest}",
+            "cliVersion": "${cli_version}",
+            "platform": "${platform}",
+            "buildTimestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+      - name: Upload Trivy report and SBOM as artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: devcontainer-security-evidence
+          path: |
+            ${{ runner.temp }}/trivy-devcontainer.json
+            ${{ runner.temp }}/trivy-devcontainer-full.json
+            ${{ runner.temp }}/sbom-devcontainer.json
+            ${{ runner.temp }}/devcontainer-metadata.json
+          retention-days: 30
+      - name: Summarize devcontainer scan
+        run: |
+          count="$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$RUNNER_TEMP/trivy-devcontainer.json")"
+          {
+            echo "### Dev Container scan: ${count} fixable high or critical finding(s), report-only"
+            if [ "$count" -gt 0 ]; then
+              echo ""
+              echo "| Severity | ID | Package | Installed | Fixed in |"
+              echo "|---|---|---|---|---|"
+              jq -r '.Results[]?.Vulnerabilities[]? | "| \(.Severity) | \(.VulnerabilityID) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion) |"' "$RUNNER_TEMP/trivy-devcontainer.json" | head -50
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"

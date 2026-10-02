@@ -49,7 +49,7 @@
     },
     "devcontainer": {
       "summary": "Dev Container with the toolchains of the features you selected",
-      "paths": [".devcontainer"]
+      "paths": [".devcontainer", ".github/workflows/devcontainer-scan.yml"]
     }
   },
   "presets": {
