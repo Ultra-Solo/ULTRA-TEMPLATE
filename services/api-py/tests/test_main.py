@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import select
 import socket
 import subprocess
 import sys
@@ -117,12 +118,32 @@ def _trickle(port: int, parts: list[bytes], interval_s: float) -> bytes:
                 if index > 0:
                     time.sleep(interval_s)
                 sock.sendall(part)
-            while True:
+                # Continuously try to read any response the server may have sent (e.g., 408 on timeout)
+                # while sending parts. This works around Windows' ConnectionAbortedError when the
+                # server closes after sending a response but before the client finishes sending.
+                deadline = time.monotonic() + 0.5  # Allow up to 0.5s for server to respond
+                while time.monotonic() < deadline:
+                    ready = select.select([sock], [], [], 0.01)
+                    if not ready[0]:
+                        continue
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        return bytes(response)
+                    response.extend(chunk)
+                    # If we got a response, the server likely closed; stop sending more parts
+                    if response:
+                        return bytes(response)
+            # Final read attempt after all parts sent
+            deadline = time.monotonic() + 0.5
+            while time.monotonic() < deadline:
+                ready = select.select([sock], [], [], 0.01)
+                if not ready[0]:
+                    continue
                 chunk = sock.recv(4096)
                 if not chunk:
                     break
                 response.extend(chunk)
-        except (TimeoutError, BrokenPipeError, ConnectionResetError):
+        except (TimeoutError, BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             # The server closed the connection once the deadline passed, mid-send or mid-receive.
             pass
         return bytes(response)
