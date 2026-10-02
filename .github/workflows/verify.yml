@@ -282,6 +282,11 @@ jobs:
           id: architecture
   # ultra:end architecture
 
+  # ultra:begin devcontainer
+  devcontainer-scan:
+    uses: ./.github/workflows/devcontainer-scan.yml
+  # ultra:end devcontainer
+
   # ultra:begin template
   # The release recorded by init is the updater's baseline; output changes must advance it.
   template-release-check:
@@ -347,6 +352,9 @@ jobs:
       # ultra:begin architecture
       - architecture
       # ultra:end architecture
+      # ultra:begin devcontainer
+      - devcontainer-scan
+      # ultra:end devcontainer
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
