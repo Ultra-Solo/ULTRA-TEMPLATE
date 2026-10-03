@@ -13,6 +13,8 @@ npm run verify     # validate the model, run the model rules, build the static s
 - `model/views.c4` — the diagrams.
 - `rules.mjs` — rules the model must satisfy, such as "every service states its technology" and "no service depends on a web app"; `test/model.test.mjs` runs them against the model and proves each one can fail.
 
+`npm run verify` builds the static site, laying out views with Graphviz's `dot` and `unflatten` — the Dev Container and GitHub's Ubuntu runners provide them; on another machine, install Graphviz first.
+
 Change the model in the same pull request as the structure it describes. To publish it, enable GitHub Pages with the *GitHub Actions* source and set the repository variable `PAGES_ENABLED=true`; `.github/workflows/architecture.yml` then deploys it on every push to `main`.
 
 The VS Code extension `likec4.likec4-vscode` adds completion, navigation and previews.
