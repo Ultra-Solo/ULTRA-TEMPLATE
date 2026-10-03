@@ -1,6 +1,7 @@
 # Reusable workflow for devcontainer security scan.
 # Called from verify.yml when the devcontainer feature is selected.
-# Builds the devcontainer with Features, scans with Trivy, and generates SBOM.
+# Builds the devcontainer with Features, scans with Trivy, generates SBOM,
+# and exercises the devcontainer lifecycle by verifying the modules inside it.
 name: devcontainer-scan
 
 on:
@@ -94,6 +95,13 @@ jobs:
             ${{ runner.temp }}/sbom-devcontainer.json
             ${{ runner.temp }}/devcontainer-metadata.json
           retention-days: 30
+      - name: Exercise lifecycle and verify modules inside the devcontainer
+        env:
+          ID_LABEL: devcontainer-verify=ci
+        run: |
+          trap 'docker rm --force "$(docker ps -aq --filter "label=$ID_LABEL")" 2>/dev/null || true' EXIT
+          devcontainer up --id-label "$ID_LABEL" --workspace-folder .
+          devcontainer exec --id-label "$ID_LABEL" --workspace-folder . node scripts/verify.mjs --no-chassis
       - name: Summarize devcontainer scan
         run: |
           count="$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$RUNNER_TEMP/trivy-devcontainer.json")"
