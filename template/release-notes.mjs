@@ -65,7 +65,9 @@ export function diffTrees(before, after) {
     .flatMap((path) => {
       if (!a.has(path)) return [["A", path]];
       if (!b.has(path)) return [["D", path]];
-      return readFileSync(join(before, path)).equals(readFileSync(join(after, path))) ? [] : [["M", path]];
+      const beforeContent = readFileSync(join(before, path)).toString().replace(/\r\n/g, "\n");
+      const afterContent = readFileSync(join(after, path)).toString().replace(/\r\n/g, "\n");
+      return beforeContent === afterContent ? [] : [["M", path]];
     });
 }
 

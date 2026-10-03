@@ -156,7 +156,7 @@ export function e2ePartner(module, modules) {
   return services.find((m) => m.toolchain === module.toolchain) ?? services[0] ?? null;
 }
 
-// Directories that never hold a module: dependencies, caches, build output and the template machinery.
+// Directories that never hold a module: dependencies, caches, build output, the template machinery, and test output.
 const SKIP = new Set(["node_modules", "dist", "coverage", "template", "__pycache__"]);
 const MAX_DEPTH = 3;
 
@@ -167,7 +167,7 @@ function* manifestsUnder(root, dir = root, depth = 0) {
   }
   if (depth >= MAX_DEPTH) return;
   for (const entry of readdirSync(dir).sort()) {
-    if (entry.startsWith(".") || SKIP.has(entry)) continue;
+    if (entry.startsWith(".") || SKIP.has(entry) || entry.startsWith("test-output")) continue;
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) yield* manifestsUnder(root, path, depth + 1);
   }
