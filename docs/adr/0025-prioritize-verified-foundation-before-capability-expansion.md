@@ -1,6 +1,6 @@
 # ADR-0025: Prioritize verified foundation before capability expansion
 
-**Status:** Accepted · **Date:** 2026-10-02
+**Status:** Accepted · Amended by [ADR-0026](0026-remap-the-foundation-milestones-to-versions.md) · **Date:** 2026-10-02
 
 ## Context
 

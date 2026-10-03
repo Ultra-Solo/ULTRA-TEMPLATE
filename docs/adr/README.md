@@ -32,4 +32,5 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020, amended by 0023 |
 | [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022 |
 | [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |
-| [0025](0025-prioritize-verified-foundation-before-capability-expansion.md) | Prioritize verified foundation before capability expansion | Accepted |
+| [0025](0025-prioritize-verified-foundation-before-capability-expansion.md) | Prioritize verified foundation before capability expansion | Accepted, amended by 0026 |
+| [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025 |

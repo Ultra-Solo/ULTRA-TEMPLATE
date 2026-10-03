@@ -14,6 +14,10 @@ What is written down about this repository, and how to keep it true.
 [template/README.md](../template/README.md) covers the template itself: how its feature selection, marker blocks and identity replacement work.
 <!-- ultra:end template -->
 
+<!-- ultra:begin devcontainer -->
+[Dev Container scan baseline](devcontainer-scan-baseline.md) records what the report-only devcontainer security scan found, and how to read the count moving.
+<!-- ultra:end devcontainer -->
+
 ## Rules for changing documentation
 
 These exist because a documentation tree decays in one particular way: not by going missing, but by growing a second page on the same subject, so that both are half true and neither is obviously wrong.
