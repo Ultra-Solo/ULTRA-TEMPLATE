@@ -59,6 +59,24 @@ def test_shutdown_waits_for_requests_in_flight_until_the_timeout_and_no_longer()
     assert ThreadingWSGIServer.daemon_threads is True
 
 
+def test_the_listen_backlog_holds_the_sixteen_moves_the_contract_sends_at_once() -> None:
+    # The contract sends the same move 16 times at once, and Windows answers a connect beyond the
+    # listen backlog with a refusal instead of the retry Linux makes, so the stdlib server's default
+    # backlog of 5 refused some of them with ECONNREFUSED. The server is built but not serving, so
+    # nothing accepts: the backlog alone must hold every connect in the burst.
+    server = ThreadingWSGIServer(("127.0.0.1", 0), WSGIRequestHandler)
+    held: list[socket.socket] = []
+    try:
+        for _ in range(16):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            held.append(sock)
+            sock.connect(("127.0.0.1", server.server_port))
+    finally:
+        for sock in held:
+            sock.close()
+        server.server_close()
+
+
 def test_log_lines_from_threads_at_once_are_whole_lines() -> None:
     # Through a real pipe, as the service's stdout is: pytest's captured stdout hides the interleaving.
     script = """

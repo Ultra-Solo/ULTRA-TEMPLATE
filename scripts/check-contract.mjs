@@ -647,6 +647,27 @@ const freePort = () =>
     });
   });
 
+// Configuration cases run four at a time, and a case's port is free between the probe and the
+// service's bind. A kernel hands a port the probe just closed to the next bind(0) — on CI's kernel
+// for long enough that two cases were handed the same port, and the service that bound second
+// crashed with EADDRINUSE. So every case probes its own slot below the ephemeral range, where the
+// kernel never allocates a port on its own, and skips a candidate another process holds.
+const CONFIG_PORT_BASE = 24_001;
+const CONFIG_PORT_SLOTS = 8;
+
+/** A free port among a case's `CONFIG_PORT_SLOTS` candidates, or null when another process holds them all. */
+export async function freePortNear(base) {
+  for (let candidate = base; candidate < base + CONFIG_PORT_SLOTS; candidate++) {
+    const free = await new Promise((resolve) => {
+      const server = createServer();
+      server.on("error", () => resolve(false));
+      server.listen(candidate, "127.0.0.1", () => server.close(() => resolve(true)));
+    });
+    if (free) return candidate;
+  }
+  return null;
+}
+
 /**
  * The placeholders a module's `taskApi` commands may use: a scratch directory for a build, and the
  * platform's executable suffix. Anything else in braces is a mistake in the manifest, and is refused.
@@ -853,10 +874,18 @@ export async function checkShutdown(cmd, dir, contract, facts, baseEnv = process
 /** Starts the service once for every configuration case in the contract, and returns what went wrong. */
 export async function checkConfig(cmd, dir, contract) {
   const cases = configCases(contract.config);
-  const failures = await pool(cases, Math.max(1, Math.min(4, availableParallelism() - 1)), async (testCase) => {
-    const port = await freePort();
-    const outcome = await startupOutcome(cmd, dir, configEnv(contract.config, testCase, port), contract.startup.listening);
-    const problems = judgeStartup(contract, testCase, port, outcome);
+  const slots = cases.map((testCase, index) => [testCase, CONFIG_PORT_BASE + index * CONFIG_PORT_SLOTS]);
+  const failures = await pool(slots, Math.max(1, Math.min(4, availableParallelism() - 1)), async ([testCase, base]) => {
+    const port = await freePortNear(base);
+    const problems =
+      port === null
+        ? [`no free port in [${base}, ${base + CONFIG_PORT_SLOTS})`]
+        : judgeStartup(
+            contract,
+            testCase,
+            port,
+            await startupOutcome(cmd, dir, configEnv(contract.config, testCase, port), contract.startup.listening),
+          );
     return problems.length > 0 ? { name: configCaseName(testCase), problems } : null;
   });
   return { count: cases.length, failures: failures.filter(Boolean) };

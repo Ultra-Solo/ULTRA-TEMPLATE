@@ -59,9 +59,12 @@ jobs:
           trivy image --format cyclonedx --output "$RUNNER_TEMP/sbom-devcontainer.json" devcontainer-scan:ci
       - name: Record devcontainer build metadata
         run: |
-          # Record base image digest, CLI version, platform, and final image identity
-          base_digest=$(docker inspect mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae --format '{{.RepoDigests}}')
-          final_digest=$(docker inspect devcontainer-scan:ci --format '{{.RepoDigests}}')
+          # Record the source commit, base image digest, scanner version, platform, and final image identity
+          base_ref="$(grep -oE '^FROM [^[:space:]]+' .devcontainer/Dockerfile | head -n 1 | cut -d' ' -f2)"
+          base_digest=$(docker inspect "$base_ref" --format '{{.RepoDigests}}')
+          # A locally built image has no repo digest; its image ID is the identity the scan read.
+          final_id=$(docker inspect devcontainer-scan:ci --format '{{.Id}}')
+          scanner_version=$(trivy --version | head -n 1)
           cli_version=$(devcontainer --version)
           platform=$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')
           {
@@ -69,8 +72,11 @@ jobs:
             echo ""
             echo "| Property | Value |"
             echo "|---|---|"
+            echo "| Source Commit | ${GITHUB_SHA} |"
+            echo "| Base Image | ${base_ref} |"
             echo "| Base Image Digest | ${base_digest} |"
-            echo "| Final Image Digest | ${final_digest} |"
+            echo "| Final Image ID | ${final_id} |"
+            echo "| Trivy Version | ${scanner_version} |"
             echo "| Dev Container CLI Version | ${cli_version} |"
             echo "| Platform | ${platform} |"
             echo "| Build Timestamp | $(date -u +%Y-%m-%dT%H:%M:%SZ) |"
@@ -78,8 +84,11 @@ jobs:
           # Write metadata to file for artifact upload
           cat > "$RUNNER_TEMP/devcontainer-metadata.json" <<EOF
           {
+            "sourceSha": "${GITHUB_SHA}",
+            "baseImageRef": "${base_ref}",
             "baseImageDigest": "${base_digest}",
-            "finalImageDigest": "${final_digest}",
+            "finalImageId": "${final_id}",
+            "scannerVersion": "${scanner_version}",
             "cliVersion": "${cli_version}",
             "platform": "${platform}",
             "buildTimestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

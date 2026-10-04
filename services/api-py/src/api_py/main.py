@@ -13,6 +13,7 @@ import json
 import os
 import secrets
 import signal
+import socket
 import socketserver
 import sys
 import threading
@@ -61,6 +62,10 @@ class ThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
     its own list and waits for it in finish_requests."""
 
     daemon_threads = True
+    # The stdlib server listens with a backlog of 5, and Windows refuses a connect beyond the backlog
+    # instead of retrying it as Linux does, so the contract's sixteen moves sent at once were answered
+    # ECONNREFUSED. The system's maximum is what api-go and api-ts listen with.
+    request_queue_size = socket.SOMAXCONN
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

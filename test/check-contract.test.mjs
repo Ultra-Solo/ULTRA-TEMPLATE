@@ -1,7 +1,10 @@
 // The contract check must be seen to fail. A runner that only ever meets services that comply
 // proves nothing: it passes just as well when it compares nothing.
 import assert from "node:assert/strict";
+import { readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import {
   checkConfig,
@@ -18,6 +21,7 @@ import {
   encodeBody,
   expectedReport,
   fillPort,
+  freePortNear,
   judge,
   judgeStartup,
   loadCases,
@@ -505,6 +509,57 @@ test("the configuration runner starts a real process for each value and catches 
     ['PORT="{port:fullwidth}"', 'PORT="{port}\\n"'],
   );
   assert.match(failures[0].problems.join(), /started, reporting .*"msg":"listening".* where it must refuse the value/);
+});
+
+test("a case's port comes from its own slot, skipping candidates another process holds", async () => {
+  const base = 24_500;
+  const held = [createServer(), createServer()];
+  await Promise.all(held.map((server, index) => new Promise((resolve) => server.listen(base + index, "127.0.0.1", resolve))));
+  assert.equal(await freePortNear(base), base + 2);
+  const rest = Array.from({ length: 6 }, () => createServer());
+  await Promise.all(rest.map((server, index) => new Promise((resolve) => server.listen(base + 2 + index, "127.0.0.1", resolve))));
+  assert.equal(await freePortNear(base), null);
+  for (const server of [...held, ...rest]) server.close();
+});
+
+// A service that records the port every case hands it, so the test can see the slots the runner chose.
+const RECORDING_SERVICE = `
+const env = process.env;
+const log = (line) => console.log(JSON.stringify({ time: new Date().toISOString(), ...line }));
+const port = Number(env.PORT);
+require("node:fs").appendFileSync(env.RECORD_PORTS, port + "\\n");
+const server = require("node:http").createServer((req, res) => res.end());
+server.listen(port, "127.0.0.1", () => log({ level: "info", msg: "listening", port }));
+process.on("SIGTERM", () => server.close(() => process.exit(0)));
+`;
+
+test("configuration cases are each handed their own port below the ephemeral range", async () => {
+  const record = join(tmpdir(), `check-contract-ports-${process.pid}`);
+  rmSync(record, { force: true });
+  process.env.RECORD_PORTS = record;
+  try {
+    const contract = {
+      startup: CONTRACT.startup,
+      config: {
+        PORT: {
+          reportedAs: "port",
+          binds: true,
+          default: { value: "8080", effective: 8080 },
+          accept: Array.from({ length: 6 }, () => ({ value: "{port}", effective: "{port}" })),
+          refuse: [],
+        },
+      },
+    };
+    const { count, failures } = await checkConfig([process.execPath, "-e", RECORDING_SERVICE], process.cwd(), contract);
+    assert.deepEqual(failures, []);
+    const ports = readFileSync(record, "utf8").trim().split("\n").map(Number);
+    assert.equal(ports.length, count);
+    assert.equal(new Set(ports).size, count, "every case must be handed a different port");
+    assert.ok(ports.every((port) => port < 32_768), `ports below the ephemeral range: ${ports.join(", ")}`);
+  } finally {
+    delete process.env.RECORD_PORTS;
+    rmSync(record, { force: true });
+  }
 });
 
 // The answers are held to the OpenAPI document as well as to the cases.

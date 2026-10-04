@@ -2,13 +2,14 @@
 #
 # The bootstrap verifies stable publication and resolves this tag before default generation.
 # Candidate verification uses an explicit committed source and never claims publication.
-# A version-changing merge publishes that version at its commit after the required gate passes.
+# Publication is gated on the verify workflow: it releases the exact commit verify passed
+# on after a push to main, and a version that is already released is a no-op.
 name: template-release
 
 on:
-  push:
-    branches: [main]
-    paths: [template/features.json]
+  workflow_run:
+    workflows: [verify]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -20,13 +21,22 @@ concurrency:
 
 jobs:
   release:
+    # A pull request's or merge queue's verify run must not publish, and neither must a failed one.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
+    env:
+      # The commit to release: the one this dispatched run checked out, or the one verify passed
+      # on. github.sha alone is wrong for workflow_run, where it names the default branch's head.
+      RELEASE_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -42,5 +52,5 @@ jobs:
             exit 0
           fi
           node template/release-notes.mjs --to "$VERSION" --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/notes.md"
-          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_SHA" \
             --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md"
