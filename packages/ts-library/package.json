@@ -41,7 +41,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "2.5.14",
-    "@types/node": "^24.13.6",
+    "@types/node": "^24.19.0",
     "publint": "^0.3.24",
     "typescript": "^7.0.2"
   }
