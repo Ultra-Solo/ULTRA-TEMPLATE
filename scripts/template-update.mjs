@@ -15,10 +15,15 @@
  *   node scripts/template-update.mjs --to vX.Y.Z --dry-run    # list what would change
  *   node scripts/template-update.mjs --add web                 # take a feature, at the current release
  *   node scripts/template-update.mjs --remove py-service       # give one up
+ *   node scripts/template-update.mjs --check                   # is a newer release out there?
  *
  * --add and --remove take comma-separated feature ids, may be combined with each other and with --to,
  * and change the selection by the same means: the "after" side is generated with the new selection.
  * The new selection is recorded in CHANGELOG.md beside the release, where the next update reads it.
+ *
+ * --check only reads: it reports the release the project is on, the newest one the template has, and
+ * the command that would move the project to it, as JSON. It takes no other action, works on a dirty
+ * tree, and exits 1 when a newer release exists so a script can ask without parsing the report.
  *
  * Needs git, network access to the template repository, and a clean working tree; it works on the
  * repository it is run in, from any directory of it. The name is read from package.json and owner and
@@ -26,7 +31,8 @@
  * another copy of the template (a path or URL). Each release's tag is printed with the commit it names
  * before that release's init runs, since that init is code this runs.
  *
- * Exit 0 applied cleanly or nothing to do · 1 applied with conflicts · 2 cannot run.
+ * Exit 0 applied cleanly, nothing to do, or --check found no newer release · 1 applied with conflicts,
+ * or --check found one · 2 cannot run.
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -290,9 +296,45 @@ export function update(options) {
   catch (err) { if (err instanceof SourceError) throw new UpdateError(err.message); throw err; }
 }
 
+/**
+ * Whether the template has a release newer than the one this project is on, as `--check` reports.
+ * Read-only, so it runs on a dirty tree; the update itself needs a clean one. The release the project
+ * is on comes from the provenance record when there is one, and from CHANGELOG.md before that existed.
+ */
+export function checkForUpdate({ project, template }) {
+  let provenance;
+  try {
+    provenance = readProvenance(project);
+  } catch (err) {
+    if (err instanceof SourceError) throw new UpdateError(err.message);
+    throw err;
+  }
+  let current;
+  let url;
+  if (provenance) {
+    current = { version: provenance.source.version, source: "provenance" };
+    url = provenance.source.url;
+  } else {
+    const changelogPath = join(project, "CHANGELOG.md");
+    if (!existsSync(changelogPath)) throw new UpdateError("CHANGELOG.md is missing; it records which template release this project came from.");
+    const origin = readOrigin(readFileSync(changelogPath, "utf8"));
+    current = { version: origin.version, source: "changelog" };
+    url = origin.url;
+  }
+  const latest = latestRelease(template ?? `${url}.git`);
+  return {
+    schema: 1,
+    current,
+    latest: { version: latest },
+    updateAvailable: compareVersions(latest, current.version) > 0,
+    command: `node scripts/template-update.mjs --to ${latest}`,
+  };
+}
+
 function main() {
   const { values } = parseArgs({
     options: {
+      check: { type: "boolean" },
       to: { type: "string" },
       add: { type: "string" },
       remove: { type: "string" },
@@ -309,6 +351,15 @@ function main() {
   try {
     // The repository this runs in, from wherever in it: its CHANGELOG and package.json are at the root.
     const project = git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
+    if (values.check) {
+      // --check only reads; every other option describes an update to make.
+      const others = ["to", "add", "remove", "dry-run", "to-commit", "legacy-commit", "name", "owner", "repo"]
+        .filter((key) => values[key] !== undefined);
+      if (others.length > 0) throw new UpdateError(`--check only takes --template, not --${others[0]}.`);
+      const report = checkForUpdate({ project, template: values.template });
+      console.log(JSON.stringify(report, null, 2));
+      return report.updateAvailable ? 1 : 0;
+    }
     const result = update({
       project,
       to: values.to,

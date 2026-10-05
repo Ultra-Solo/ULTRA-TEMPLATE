@@ -1,6 +1,6 @@
 {
   "$comment": "Read by template/init.mjs, and deleted with it. A feature's paths are deleted when it is not selected; content inside shared files is selected with marker lines instead. See template/README.md.",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "provenanceSchema": 1,
   "identity": {
     "owner": "Ultra-Solo",
@@ -12,12 +12,12 @@
     "go-service": {
       "summary": "Go HTTP service in Clean Architecture layers, standard library only; a test enforces the layer rules; golangci-lint; distroless image",
       "describes": "a Go task API",
-      "paths": ["services/api-go", ".claude/skills/add-endpoint-go", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "scripts/rules", ".claude/skills/change-task-contract"]
+      "paths": ["services/api-go", ".claude/skills/add-endpoint-go", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "test/dev.test.mjs", "scripts/rules", ".claude/skills/change-task-contract"]
     },
     "ts-service": {
       "summary": "TypeScript HTTP service run directly by Node; pure domain core; import boundaries checked on every file; no runtime dependencies",
       "describes": "a TypeScript task API",
-      "paths": ["services/api-ts", ".claude/skills/add-endpoint-ts", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "scripts/rules", "biome.jsonc", ".claude/skills/change-task-contract"]
+      "paths": ["services/api-ts", ".claude/skills/add-endpoint-ts", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "test/dev.test.mjs", "scripts/rules", "biome.jsonc", ".claude/skills/change-task-contract"]
     },
     "mcp-server": {
       "summary": "MCP server on the official SDK: task tools over stdio for an AI assistant, same layers, driven in tests by a real client",
@@ -27,7 +27,7 @@
     "py-service": {
       "summary": "Python HTTP service on the standard library: pure domain, WSGI transport, ruff and strict mypy, layer rules enforced by an `ast`-based check",
       "describes": "a Python task API",
-      "paths": ["services/api-py", ".claude/skills/add-endpoint-py", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "scripts/rules", ".claude/skills/change-task-contract"]
+      "paths": ["services/api-py", ".claude/skills/add-endpoint-py", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "test/dev.test.mjs", "scripts/rules", ".claude/skills/change-task-contract"]
     },
     "web": {
       "summary": "React + Vite app organised by feature (bulletproof-react), import boundaries checked on every file, unit and component tests",

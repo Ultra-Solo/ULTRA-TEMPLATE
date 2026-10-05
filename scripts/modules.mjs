@@ -87,7 +87,7 @@ export function validateManifest(manifest, where = MANIFEST) {
   if (!isObject(manifest)) return [`${where} is not a JSON object`];
   const problems = [];
   const say = (message) => problems.push(`${where}: ${message}`);
-  for (const key of unknownKeys(manifest, ["id", "toolchain", "checks", "coverage", "taskApi", "facts", "e2e", "image"])) say(`unknown key \`${key}\``);
+  for (const key of unknownKeys(manifest, ["id", "toolchain", "checks", "coverage", "dev", "taskApi", "facts", "e2e", "image"])) say(`unknown key \`${key}\``);
   if (typeof manifest.id !== "string" || !/^[a-z][a-z0-9-]*$/.test(manifest.id)) say("`id` must be lowercase letters, digits and hyphens, starting with a letter");
   if (!(manifest.toolchain in TOOLCHAINS)) say(`\`toolchain\` must be one of ${Object.keys(TOOLCHAINS).join(", ")}`);
   if (!Array.isArray(manifest.checks) || manifest.checks.length === 0) say("`checks` must list at least one check");
@@ -113,6 +113,10 @@ export function validateManifest(manifest, where = MANIFEST) {
     if (!isObject(coverage) || !Array.isArray(coverage.run) || !coverage.run.every(isCommand) || typeof coverage.report !== "string" || unknownKeys(coverage, ["run", "report"]).length > 0) {
       say("`coverage` is {\"run\": [commands], \"report\": path}");
     }
+  }
+  if (manifest.dev !== undefined) {
+    const { dev } = manifest;
+    if (!isObject(dev) || !isCommand(dev.run) || unknownKeys(dev, ["run"]).length > 0) say("`dev` is {\"run\": command}");
   }
   if (manifest.taskApi !== undefined) {
     const api = manifest.taskApi;

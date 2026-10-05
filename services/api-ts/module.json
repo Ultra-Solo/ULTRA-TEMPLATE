@@ -3,6 +3,7 @@
   "toolchain": "node",
   "checks": [{ "name": "npm run verify", "run": ["npm", "run", "verify"] }],
   "coverage": { "run": [["npm", "run", "--silent", "coverage"]], "report": "coverage/lcov.info" },
+  "dev": { "run": ["node", "src/main.ts"] },
   "taskApi": { "run": ["node", "src/main.ts"] },
   "image": "http"
 }

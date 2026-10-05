@@ -20,6 +20,7 @@
     ],
     "report": "coverage/lcov.info"
   },
+  "dev": { "run": ["uv", "run", "--frozen", "--directory", "src", "python", "-m", "api_py.main"] },
   "taskApi": { "run": ["uv", "run", "--frozen", "--directory", "src", "python", "-m", "api_py.main"] },
   "image": "http"
 }
