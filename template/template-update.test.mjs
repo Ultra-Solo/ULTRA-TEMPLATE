@@ -7,7 +7,16 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
-import { compareVersions, readOrigin, recordUpdate, remoteIdentity, update, UpdateError } from "../scripts/template-update.mjs";
+import {
+  checkForUpdate,
+  compareVersions,
+  readOrigin,
+  recordUpdate,
+  remoteIdentity,
+  update,
+  UpdateError,
+} from "../scripts/template-update.mjs";
+import { PROVENANCE_FILE } from "../scripts/template-source.mjs";
 import { loadManifest, ROOT } from "./init.mjs";
 
 const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -329,6 +338,95 @@ test("run from a subdirectory, it updates the whole project", () => {
   const result = spawnSync(process.execPath, [join(dir, "scripts/template-update.mjs"), "--to", TO, "--template", template, "--owner", "octo-org", "--repo", "demo-app"], { cwd: below, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   assert.match(readFileSync(join(dir, "SECURITY.md"), "utf8"), new RegExp(NOTE));
+});
+
+test("--check reports a newer release and the command that takes it, without touching the tree", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("check-behind");
+  git(template, "checkout", "-q", "-");
+  writeFileSync(join(dir, "README.md"), `${readFileSync(join(dir, "README.md"), "utf8")}\nUncommitted.\n`);
+
+  const report = checkForUpdate({ project: dir, template });
+
+  assert.equal(report.schema, 1);
+  assert.deepEqual(report.current, { version: FROM, source: "provenance" });
+  assert.deepEqual(report.latest, { version: TO });
+  assert.equal(report.updateAvailable, true);
+  assert.equal(report.command, `node scripts/template-update.mjs --to ${TO}`);
+  assert.equal(git(dir, "status", "--porcelain").trim(), "M README.md");
+});
+
+test("--check on the newest release says so", () => {
+  git(template, "checkout", "-q", TO);
+  const dir = project("check-current");
+  git(template, "checkout", "-q", "-");
+
+  const report = checkForUpdate({ project: dir, template });
+
+  assert.deepEqual(report.current, { version: TO, source: "provenance" });
+  assert.equal(report.updateAvailable, false);
+});
+
+test("--check reads CHANGELOG.md when a legacy project predates the provenance record", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("check-legacy");
+  git(template, "checkout", "-q", "-");
+  rmSync(join(dir, PROVENANCE_FILE));
+  commit(dir, "chore: a project from before provenance");
+
+  const report = checkForUpdate({ project: dir, template });
+
+  assert.deepEqual(report.current, { version: FROM, source: "changelog" });
+  assert.equal(report.updateAvailable, true);
+});
+
+test("--check refuses a provenance record it cannot read, and names a project that records nothing", () => {
+  const unreadable = project("check-bad-provenance");
+  writeFileSync(join(unreadable, PROVENANCE_FILE), "{ not json\n");
+  assert.throws(
+    () => checkForUpdate({ project: unreadable, template }),
+    (err) => err instanceof UpdateError && /not valid JSON/.test(err.message),
+  );
+
+  const silent = project("check-nothing");
+  rmSync(join(silent, PROVENANCE_FILE));
+  rmSync(join(silent, "CHANGELOG.md"));
+  assert.throws(() => checkForUpdate({ project: silent, template }), /CHANGELOG.md is missing/);
+});
+
+test("--check on a template it cannot reach is an error, never a silent no", () => {
+  const dir = project("check-unreachable");
+  assert.throws(
+    () => checkForUpdate({ project: dir, template: join(work, "no-such-template") }),
+    (err) => err instanceof UpdateError && /cannot list the releases/.test(err.message),
+  );
+});
+
+test("--check exits 1 when a newer release is out and 0 at the newest, and takes no update option", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("check-main");
+  git(template, "checkout", "-q", "-");
+  const check = () =>
+    spawnSync(process.execPath, [join(dir, "scripts/template-update.mjs"), "--check", "--template", template], {
+      cwd: dir,
+      encoding: "utf8",
+    });
+
+  const behind = check();
+  assert.equal(behind.status, 1, behind.stderr);
+  assert.equal(JSON.parse(behind.stdout).updateAvailable, true);
+
+  const mixed = spawnSync(process.execPath, [join(dir, "scripts/template-update.mjs"), "--check", "--to", TO, "--template", template], {
+    cwd: dir,
+    encoding: "utf8",
+  });
+  assert.equal(mixed.status, 2);
+  assert.match(mixed.stderr, /--check only takes --template/);
+
+  run(dir);
+  const current = check();
+  assert.equal(current.status, 0, current.stderr);
+  assert.equal(JSON.parse(current.stdout).updateAvailable, false);
 });
 
 test("a file the release adds that the project already has, byte for byte, is not in the way; --to latest takes the newest release", () => {

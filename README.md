@@ -122,13 +122,13 @@ Each toolchain version is pinned once, in the file named beside it above, so the
    node scripts/verify.mjs <module>    # the chassis plus the named modules only
    ```
 
-   It runs each module's own checks and tests, and the API contract against every task service present, on the Node major `.node-version` names, and fails on any other. A check it cannot run fails. One whose tool or condition this machine lacks is reported as skipped by name, never as passed: a pinned tool that is not installed (`node scripts/tools.mjs install --local` installs them), Go's race detector where there is no C compiler, and actionlint's shell-script rules where there is no shellcheck. A few checks run only in CI, because they need a container engine or a network service: `npm audit signatures`, building and starting each container image, and the report-only scans in `security.yml`.
+   It runs each module's own checks and tests, and the API contract against every task service present, on the Node major `.node-version` names, and fails on any other. A check it cannot run fails. One whose tool or condition this machine lacks is reported as skipped by name, never as passed: a pinned tool that is not installed (`node scripts/tools.mjs install --local` installs them), Go's race detector where there is no C compiler, and actionlint's shell-script rules where there is no shellcheck. When the reason for a skip is not clear from that, `node scripts/doctor.mjs` reports as JSON what the checkout needs before a check can run — offline, changing nothing. A few checks run only in CI, because they need a container engine or a network service: `npm audit signatures`, building and starting each container image, and the report-only scans in `security.yml`.
 
-3. Start what you are working on. Each module's entry under *What's here* names the command that starts it.
+3. Start what you are working on. Each module's entry under *What's here* names the command that starts it, and `node scripts/dev.mjs` starts the task service and every module that runs alongside it, stopping them as one tree; `--api <id>` picks the task service when several are present.
 
 ## What's here
 
-- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
+- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
 <!-- ultra:begin go-service|ts-service|py-service -->
 - `scripts/check-contract.mjs` — holds every task service to the one API contract, whose cases are in `scripts/contract/` beside the OpenAPI document it holds to them.
 <!-- ultra:end go-service|ts-service|py-service -->
@@ -148,7 +148,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 - `services/mcp-server/` — MCP server exposing the task API to an AI assistant. `npm start` there serves it over stdio, calling the task API at `TASK_API_URL`; the README shows how to register it with a client. [README](services/mcp-server/README.md)
 <!-- ultra:end mcp-server -->
 <!-- ultra:begin web -->
-- `apps/web/` — React single-page app, organised by feature. `npm run dev` there serves it at http://localhost:5173, with `/api` passed to a task service on port <!-- generated:contract config.PORT.default.value -->8080<!-- /generated -->. [README](apps/web/README.md)
+- `apps/web/` — React single-page app, organised by feature. `npm run dev` there serves it at http://localhost:5173, with `/api` passed to a task service on port <!-- generated:contract config.PORT.default.value -->8080<!-- /generated -->; `node scripts/dev.mjs` starts it and a task service together. [README](apps/web/README.md)
 <!-- ultra:end web -->
 <!-- ultra:begin ts-library -->
 - `packages/ts-library/` — TypeScript library published to npm. `npm run verify` there builds it and checks the package consumers would install. [README](packages/ts-library/README.md)
@@ -202,10 +202,13 @@ Dependabot proposes grouped updates weekly for every ecosystem present, SHA-pinn
 This project was generated from a repository template, and `CHANGELOG.md` records which one and the release it came from. When a later release fixes something you want, `scripts/template-update.mjs` brings the change in: it regenerates the project as the old and the new release would have made it, with this project's name and features, and applies the difference as a three-way merge. What you changed yourself is kept, and a conflict is left to resolve like any merge conflict.
 
 ```bash
+node scripts/template-update.mjs --check                 # is a newer release out?
 node scripts/template-update.mjs --to vX.Y.Z --dry-run   # what would change
 node scripts/template-update.mjs --to vX.Y.Z             # apply, then review, verify and commit
 node scripts/template-update.mjs --to latest             # the newest release
 ```
+
+`--check` works on a dirty tree, because it only reads: it reports as JSON the release the project is on, the newest one the template has, and the command that would move the project to it, and exits 1 when a newer release exists — so a script can ask without parsing the report.
 
 Updates only move forward: a release older than the one the project is on is refused. It works on the whole repository from any directory in it, and prints each release's tag with the commit it names before running that release's code.
 

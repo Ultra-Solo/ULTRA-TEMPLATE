@@ -21,7 +21,7 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0011](0011-what-local-verify-guarantees.md) | Hold local verify to CI's toolchain, and name what only CI runs | Accepted, amends 0002, amended by 0014, 0015, 0016, 0017 |
 | [0012](0012-lint-and-format-typescript-with-biome.md) | Lint and format the Node modules with Biome | Accepted, amended by 0013 |
 | [0013](0013-declare-each-fact-once.md) | Declare each fact once, then derive it or check every copy | Accepted, amends 0004, 0010, 0012, amended by 0018 |
-| [0014](0014-modules-describe-themselves.md) | Modules describe themselves in `module.json` | Accepted, amends 0004, 0008, 0011 |
+| [0014](0014-modules-describe-themselves.md) | Modules describe themselves in `module.json` | Accepted, amends 0004, 0008, 0011, amended by 0027 |
 | [0015](0015-one-manifest-for-hand-pinned-tools.md) | Hand-pinned tools live in one manifest | Accepted, amends 0003, 0011, amended by 0017 |
 | [0016](0016-cloud-agents-get-the-same-toolchains.md) | Cloud agents get the same toolchains | Accepted, amends 0009, 0011 |
 | [0017](0017-prove-the-supply-chain-before-it-runs.md) | Prove every pin before it runs, not where it first runs | Accepted, amends 0003, 0011, 0015 |
@@ -33,4 +33,5 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022 |
 | [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |
 | [0025](0025-prioritize-verified-foundation-before-capability-expansion.md) | Prioritize verified foundation before capability expansion | Accepted, amended by 0026 |
-| [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025 |
+| [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025, amended by 0027 |
+| [0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) | Ship run and diagnose before the browser smoke test | Accepted, amends 0026, 0014 |

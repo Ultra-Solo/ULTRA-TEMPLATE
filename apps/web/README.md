@@ -26,7 +26,7 @@ npm run dev        # http://localhost:5173, with /api proxied to :8080
 ```
 <!-- /generated -->
 
-Start one of this project's task services on port <!-- generated:contract config.PORT.default.value -->8080<!-- /generated --> for the page to have data; the service's own README says how.
+Start one of this project's task services on port <!-- generated:contract config.PORT.default.value -->8080<!-- /generated --> for the page to have data; the service's own README says how. From the repository root, `node scripts/dev.mjs` starts this app and a task service together.
 
 ## Check
 

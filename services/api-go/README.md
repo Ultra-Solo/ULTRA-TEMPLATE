@@ -28,6 +28,8 @@ curl -s localhost:8080/api/tasks -d '{"title":"ship it"}'
 ```
 <!-- /generated -->
 
+From the repository root, `node scripts/dev.mjs` starts this service together with every module that runs alongside it.
+
 <!-- generated:config-table -->
 | Variable | Default | Meaning |
 |---|---|---|

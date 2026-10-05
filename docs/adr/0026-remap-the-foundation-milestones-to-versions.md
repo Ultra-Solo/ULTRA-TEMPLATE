@@ -1,6 +1,6 @@
 # ADR-0026: Remap the foundation milestones to versions
 
-**Status:** Accepted · Amends [ADR-0025](0025-prioritize-verified-foundation-before-capability-expansion.md) · **Date:** 2026-10-03
+**Status:** Accepted · Amends [ADR-0025](0025-prioritize-verified-foundation-before-capability-expansion.md) · Amended by [ADR-0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) · **Date:** 2026-10-03
 
 ## Context
 

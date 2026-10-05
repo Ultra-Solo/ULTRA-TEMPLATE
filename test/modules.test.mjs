@@ -67,6 +67,15 @@ test("verify runs each module's checks from its manifest, and nothing else", asy
   }
 });
 
+test("a module states how it runs in development, and nothing else about it", async () => {
+  const { validateManifest } = await import("../scripts/modules.mjs");
+  const base = { id: "m", toolchain: "node", checks: [{ name: "t", run: ["npm", "test"] }] };
+  assert.deepEqual(validateManifest({ ...base, dev: { run: ["npm", "run", "dev"] } }), []);
+  assert.match(validateManifest({ ...base, dev: { run: ["npm", "run", "dev"], watch: true } }).join(), /`dev` is \{"run": command\}/);
+  assert.match(validateManifest({ ...base, dev: { run: "npm run dev" } }).join(), /`dev` is \{"run": command\}/);
+  assert.match(validateManifest({ ...base, dev: ["npm", "run", "dev"] }).join(), /`dev` is \{"run": command\}/);
+});
+
 test("a module's end-to-end check names the task API it runs against, and runs against a service on its own toolchain first", async () => {
   const { e2ePartner, validateManifest } = await import("../scripts/modules.mjs");
   const base = { id: "client", toolchain: "node", checks: [{ name: "t", run: ["npm", "test"] }] };
