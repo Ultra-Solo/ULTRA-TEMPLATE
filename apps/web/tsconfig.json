@@ -14,5 +14,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src", "vite.config.ts", "api-proxy.ts"]
+  "include": ["src", "vite.config.ts", "api-proxy.ts", "scripts/print-facts.ts", "scripts/e2e.ts"]
 }
