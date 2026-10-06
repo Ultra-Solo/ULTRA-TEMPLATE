@@ -34,4 +34,5 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |
 | [0025](0025-prioritize-verified-foundation-before-capability-expansion.md) | Prioritize verified foundation before capability expansion | Accepted, amended by 0026 |
 | [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025, amended by 0027 |
-| [0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) | Ship run and diagnose before the browser smoke test | Accepted, amends 0026, 0014 |
+| [0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) | Ship run and diagnose before the browser smoke test | Accepted, amends 0026, 0014, amended by 0028 |
+| [0028](0028-run-the-browser-smoke-test-through-the-e2e-slot.md) | Run the browser smoke test through the e2e slot | Accepted, amends 0027 |

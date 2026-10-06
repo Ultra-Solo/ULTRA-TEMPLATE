@@ -15,7 +15,8 @@
     "coverage": "vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=lcov --coverage.reportsDirectory=coverage",
     "lint": "biome ci .",
     "verify": "npm run lint && npm run check:boundaries && npm run typecheck && npm test && npm run build",
-    "facts": "node scripts/print-facts.ts"
+    "facts": "node scripts/print-facts.ts",
+    "e2e": "node scripts/e2e.ts"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -31,6 +32,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "^5.0.2",
     "happy-dom": "^20.14.5",
+    "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitest": "^5.0.1"

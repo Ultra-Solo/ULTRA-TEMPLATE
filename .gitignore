@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 coverage/
+test-results/
 # Tools scripts/tools.mjs installs locally, checked against scripts/tools/tools.json.
 .tools/
 *.tsbuildinfo

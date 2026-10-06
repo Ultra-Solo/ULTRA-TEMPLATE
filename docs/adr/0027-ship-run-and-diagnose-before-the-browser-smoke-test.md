@@ -1,6 +1,6 @@
 # ADR-0027: Ship run and diagnose before the browser smoke test
 
-**Status:** Accepted · Amends [ADR-0026](0026-remap-the-foundation-milestones-to-versions.md) and [ADR-0014](0014-modules-describe-themselves.md) · **Date:** 2026-10-04
+**Status:** Accepted · Amends [ADR-0026](0026-remap-the-foundation-milestones-to-versions.md) and [ADR-0014](0014-modules-describe-themselves.md) · Amended by [ADR-0028](0028-run-the-browser-smoke-test-through-the-e2e-slot.md) · **Date:** 2026-10-04
 
 ## Context
 

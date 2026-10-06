@@ -4,5 +4,6 @@
   "checks": [{ "name": "npm run verify", "run": ["npm", "run", "verify"] }],
   "coverage": { "run": [["npm", "run", "--silent", "coverage"]], "report": "coverage/lcov.info" },
   "dev": { "run": ["npm", "run", "dev", "--", "--strictPort"] },
-  "facts": { "run": ["npm", "run", "--silent", "facts"], "keys": ["statuses", "transitions", "apiDefaultPort"] }
+  "facts": { "run": ["npm", "run", "--silent", "facts"], "keys": ["statuses", "transitions", "apiDefaultPort"] },
+  "e2e": { "run": ["npm", "run", "--silent", "e2e", "--", "{taskApi}"] }
 }
