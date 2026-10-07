@@ -47,7 +47,7 @@ model {
     // ultra:begin mcp-server
     mcpServer = service 'mcp-server' {
       technology 'TypeScript, Model Context Protocol SDK'
-      description 'Exposes the task API to an AI assistant as MCP tools over stdio. Refuses an illegal status move itself, so the assistant is told which moves are legal instead of discovering a 409.'
+      description 'Exposes the task API to an AI assistant as MCP tools over stdio or Streamable HTTP. Refuses an illegal status move itself, so the assistant is told which moves are legal instead of discovering a 409.'
       link ../../services/mcp-server/README.md 'README'
     }
     user -> mcpServer 'asks an assistant to manage tasks, which calls its tools'
