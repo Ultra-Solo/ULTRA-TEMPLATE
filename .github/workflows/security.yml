@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   gitleaks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,7 +67,7 @@ jobs:
   # Every npm lockfile in the repository, found from git rather than listed, so a module added or removed
   # changes what is audited without editing this file. `npm audit` reads the lockfile; nothing installs.
   npm-audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -107,7 +107,7 @@ jobs:
   # not through its GitHub Action. Suppress a finding only in .trivyignore, with the reason.
   # Results go to the job summary and to the log, so a scan's outcome is readable wherever one looks.
   image-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -164,7 +164,7 @@ jobs:
   # govulncheck reports only vulnerabilities in code the service actually calls, not every advisory for
   # a module it imports. `go run` downloads the pinned version through the Go checksum database.
   govulncheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
@@ -200,7 +200,7 @@ jobs:
 
   # pip-audit reads the exact versions uv.lock pins, development tools included, as npm audit does.
   pip-audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:

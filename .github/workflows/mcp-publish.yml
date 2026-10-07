@@ -35,7 +35,7 @@ jobs:
     # A deployment environment on the first job holds the whole publish: a required reviewer or a
     # limit on which refs may publish, set in the environment's settings, applies before anything is built.
     environment: mcp-registry
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       tag: ${{ steps.version.outputs.tag }}
@@ -62,7 +62,7 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
@@ -94,7 +94,7 @@ jobs:
 
   publish:
     needs: [release, image]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read

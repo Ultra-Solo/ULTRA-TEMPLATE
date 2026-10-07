@@ -21,7 +21,7 @@ permissions: read-all
 jobs:
   analysis:
     if: vars.SCORECARD_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       security-events: write

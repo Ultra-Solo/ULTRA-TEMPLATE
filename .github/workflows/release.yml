@@ -29,7 +29,7 @@ jobs:
     # repository and runs its workflows before anyone initializes it, so a release job that ran by
     # default would release the uninitialized template. It stays off until configure-github.mjs runs.
     if: vars.RELEASE_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -56,7 +56,7 @@ jobs:
     # A deployment environment: npm's trusted publisher can require it, and its settings can add a
     # required reviewer or limit which refs may publish, with no change to this file.
     environment: npm
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
