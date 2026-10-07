@@ -145,7 +145,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 - `services/api-py/` — Python task API, same routes and layers. `uv run --directory src python -m api_py.main` there serves it on port <!-- generated:contract config.PORT.default.value -->8080<!-- /generated -->. [README](services/api-py/README.md)
 <!-- ultra:end py-service -->
 <!-- ultra:begin mcp-server -->
-- `services/mcp-server/` — MCP server exposing the task API to an AI assistant. `npm start` there serves it over stdio, calling the task API at `TASK_API_URL`; the README shows how to register it with a client. [README](services/mcp-server/README.md)
+- `services/mcp-server/` — MCP server exposing the task API to an AI assistant. `npm start` there serves it over stdio, or over Streamable HTTP with `MCP_TRANSPORT=http`, calling the task API at `TASK_API_URL`; the README shows how to register it with a client. [README](services/mcp-server/README.md)
 <!-- ultra:end mcp-server -->
 <!-- ultra:begin web -->
 - `apps/web/` — React single-page app, organised by feature. `npm run dev` there serves it at http://localhost:5173, with `/api` passed to a task service on port <!-- generated:contract config.PORT.default.value -->8080<!-- /generated -->; `node scripts/dev.mjs` starts it and a task service together. [README](apps/web/README.md)
