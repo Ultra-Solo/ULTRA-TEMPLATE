@@ -1,8 +1,8 @@
 # mcp-server
 
-An [MCP](https://modelcontextprotocol.io) server that gives an AI assistant four tools over the task API: `list_tasks`, `get_task`, `create_task` and `move_task`. It speaks the protocol over stdio, so a client starts it as a subprocess.
+An [MCP](https://modelcontextprotocol.io) server that gives an AI assistant four tools over the task API: `list_tasks`, `get_task`, `create_task` and `move_task`. It speaks the protocol over stdio, so a client starts it as a subprocess, or over Streamable HTTP, so a client can reach it at a URL ([ADR-0030](../../docs/adr/0030-serve-mcp-over-streamable-http-beside-stdio.md)).
 
-It is the same architecture as the services beside it, with the transport changed ([ADR-0007](../../docs/adr/0007-mcp-server-as-an-adapter.md)): `src/domain` holds the rules, `src/application` the use cases behind an outbound port, `src/adapters` the two things that touch the outside world — the HTTP client that calls the task API, and the MCP layer that publishes the use cases as tools — and `src/main.ts` wires them. `npm run check:boundaries` fails the build when a layer reaches past its allowlist.
+It is the same architecture as the services beside it, with the transport changed ([ADR-0007](../../docs/adr/0007-mcp-server-as-an-adapter.md)): `src/domain` holds the rules, `src/application` the use cases behind an outbound port, `src/adapters` the three things that touch the outside world — the HTTP client that calls the task API, the MCP layer that publishes the use cases as tools, and the HTTP listener that serves the protocol over the network — and `src/main.ts` wires them. `npm run check:boundaries` fails the build when a layer reaches past its allowlist.
 
 The rules are repeated here rather than imported from another module ([ADR-0004](../../docs/adr/0004-independent-modules.md)), and they earn their place: an illegal status move is refused here, with the legal moves named, instead of reaching the model as a 409 it usually retries.
 
@@ -46,11 +46,35 @@ Register it with a client — for Claude Code, `claude mcp add tasks -- node /ab
 |---|---|---|
 | `TASK_API_URL` | `http://localhost:8080` | Where the task API is: an absolute http or https URL. |
 | `TASK_API_TIMEOUT_MS` | `10000` | How long one call to the task API may take, in milliseconds. |
+| `MCP_TRANSPORT` | `stdio` | How the server speaks: stdio, the default, or http. |
+| `MCP_HTTP_PORT` | `3000` | The port the http transport listens on; 0 lets the operating system assign one. |
 <!-- /generated -->
 
 A value it cannot use stops the process at startup. A server that starts and then fails every tool call is worse than one that never started: the model keeps trying.
 
-**Nothing is ever written to stdout.** On a stdio server stdout is the protocol channel, and one stray `console.log` corrupts the stream. Diagnostics go to stderr.
+### Over HTTP
+
+`MCP_TRANSPORT=http` serves the same tools over Streamable HTTP instead, on port 3000 at `/mcp`:
+
+```bash
+MCP_TRANSPORT=http npm start
+```
+
+Register the URL with a client — for Claude Code, `claude mcp add --transport http tasks http://localhost:3000/mcp`, or the equivalent entry in another client's configuration:
+
+```json
+{
+  "mcpServers": {
+    "tasks": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+`MCP_HTTP_PORT` picks the port; `0` asks the operating system for one. The endpoint is stateless — every request stands alone, with no session and no authentication — so a deployment that exposes it beyond localhost must front it with a proxy that authenticates.
+
+**Nothing is ever written to stdout, on either transport.** On a stdio server stdout is the protocol channel, and one stray `console.log` corrupts the stream. Diagnostics go to stderr.
 
 ## Tools
 
@@ -75,7 +99,7 @@ npm run verify   # lint, check:boundaries, typecheck, test
 
 The tests drive the server through a real MCP client over an in-memory transport pair, so a tool that is registered but unreachable — a bad schema, a handler that throws — fails here rather than in someone's editor.
 
-The tool descriptions state the rules from the domain's own table, which `scripts/check-facts.mjs` holds to `scripts/rules/task-rules.json`, so a model never reads a move the API refuses. `scripts/drive.ts` drives the server over stdio with the SDK's client where the tests cannot reach:
+The tool descriptions state the rules from the domain's own table, which `scripts/check-facts.mjs` holds to `scripts/rules/task-rules.json`, so a model never reads a move the API refuses. `scripts/drive.ts` drives the server over stdio and over HTTP with the SDK's client where the tests cannot reach:
 
 <!-- generated:fill
 ```bash
@@ -93,7 +117,7 @@ npm run probe -- 1.2.0 -- docker run --rm -i mcp-server     # the image reports 
 
 ## Publish
 
-`.github/workflows/mcp-publish.yml` publishes the image to GitHub Container Registry and `server.json` to the [MCP Registry](https://registry.modelcontextprotocol.io), where clients discover servers. It uses no stored token: the image is pushed with the run's `GITHUB_TOKEN`, and the registry trusts GitHub's OIDC identity for the `io.github.<owner>/` namespace. The image is built for `linux/amd64` and `linux/arm64`, each on a native runner, and published as one tag, so it runs natively on an Apple Silicon Mac. The two builds also stay in the registry as `<version>-amd64` and `<version>-arm64`. In a private repository the arm64 runner uses paid Actions minutes once the free allowance is spent.
+`.github/workflows/mcp-publish.yml` publishes the image to GitHub Container Registry and `server.json` to the [MCP Registry](https://registry.modelcontextprotocol.io), where clients discover servers. The manifest advertises the stdio form, which any registry client can start; the same image serves HTTP when `MCP_TRANSPORT=http` is set. It uses no stored token: the image is pushed with the run's `GITHUB_TOKEN`, and the registry trusts GitHub's OIDC identity for the `io.github.<owner>/` namespace. The image is built for `linux/amd64` and `linux/arm64`, each on a native runner, and published as one tag, so it runs natively on an Apple Silicon Mac. The two builds also stay in the registry as `<version>-amd64` and `<version>-arm64`. In a private repository the arm64 runner uses paid Actions minutes once the free allowance is spent.
 
 The published image carries a build provenance attestation, a signed record of the workflow run and commit that built it, which anyone can check with `gh attestation verify oci://ghcr.io/<owner>/ultra-template-mcp-server:<version> --owner <owner>`. GitHub provides attestations to public repositories, and to private ones only on GitHub Enterprise Cloud, where setting the repository variable `ATTESTATIONS_ENABLED=true` turns the step on.
 
@@ -112,12 +136,14 @@ It runs after each release that creates a version tag, and on demand with a vers
 ```bash
 docker build --tag mcp-server .
 docker run --rm -i --env TASK_API_URL=http://host.docker.internal:{{contract config.PORT.default.value}} mcp-server
+docker run --rm --publish 3000:3000 --env TASK_API_URL=http://host.docker.internal:{{contract config.PORT.default.value}} --env MCP_TRANSPORT=http mcp-server
 ```
 -->
 ```bash
 docker build --tag mcp-server .
 docker run --rm -i --env TASK_API_URL=http://host.docker.internal:8080 mcp-server
+docker run --rm --publish 3000:3000 --env TASK_API_URL=http://host.docker.internal:8080 --env MCP_TRANSPORT=http mcp-server
 ```
 <!-- /generated -->
 
-`-i` matters: the protocol is stdin and stdout.
+`-i` matters on the first form: the protocol is stdin and stdout. The second form serves it over HTTP instead, on the port the image exposes.

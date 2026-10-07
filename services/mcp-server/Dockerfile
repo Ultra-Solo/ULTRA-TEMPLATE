@@ -19,5 +19,8 @@ USER node
 # it must equal "name" in server.json exactly. The source label links the image to the repository.
 LABEL io.modelcontextprotocol.server.name="io.github.ultra-solo/ultra-template"
 LABEL org.opencontainers.image.source="https://github.com/Ultra-Solo/ULTRA-TEMPLATE"
-# No EXPOSE and no port: the protocol is stdin and stdout, so run this image with -i.
+# The default transport is stdio: the protocol is stdin and stdout, so run this image with -i.
+# With MCP_TRANSPORT=http it listens on every interface with no authentication, like the task
+# services: front it with a proxy that adds both. EXPOSE names the port that form listens on.
+EXPOSE 3000
 CMD ["node", "src/main.ts"]

@@ -14,7 +14,7 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0004](0004-independent-modules.md) | Modules are independent and removable | Accepted, amended by 0013, 0014 |
 | [0005](0005-layered-services-with-enforced-boundaries.md) | Layered services with enforced boundaries | Accepted, amended by 0010, 0019 |
 | [0006](0006-one-set-of-agent-instructions.md) | One set of agent instructions, pointed at by every assistant | Accepted, amended by 0009 |
-| [0007](0007-mcp-server-as-an-adapter.md) | Expose the domain to assistants through an MCP adapter | Accepted, amended by 0010 |
+| [0007](0007-mcp-server-as-an-adapter.md) | Expose the domain to assistants through an MCP adapter | Accepted, amended by 0010, 0030 |
 | [0008](0008-a-third-language-and-what-a-module-must-prove.md) | A third language, and what any module must prove | Accepted, amended by 0010, 0014 |
 | [0009](0009-where-agent-adapters-and-skills-live.md) | Skills stay real files in `.claude/skills/`; every agent adapter is governed | Accepted, amends 0006, amended by 0016 |
 | [0010](0010-one-statement-of-the-task-rules.md) | State the task rules once, and hold every copy and the API contract to it | Accepted, amends 0005, 0007, 0008, amended by 0013, 0018 |
@@ -37,3 +37,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) | Ship run and diagnose before the browser smoke test | Accepted, amends 0026, 0014, amended by 0028 |
 | [0028](0028-run-the-browser-smoke-test-through-the-e2e-slot.md) | Run the browser smoke test through the e2e slot | Accepted, amends 0027 |
 | [0029](0029-pin-the-runner-operating-system.md) | Pin the runner operating system in every workflow | Accepted |
+| [0030](0030-serve-mcp-over-streamable-http-beside-stdio.md) | Serve MCP over Streamable HTTP beside stdio | Accepted, amends 0007 |
