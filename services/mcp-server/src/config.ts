@@ -7,13 +7,21 @@
 export interface Config {
   readonly apiBaseUrl: string;
   readonly requestTimeoutMs: number;
+  readonly transport: Transport;
+  readonly httpPort: number;
 }
 
 export class ConfigError extends Error {}
 
+/** How the server speaks: stdio, which a client starts as a subprocess, or http, which a client connects to. */
+export type Transport = "stdio" | "http";
+
 /** A task service on this machine, on the port every task service listens on by default. */
 export const DEFAULT_TASK_API_URL = "http://localhost:8080";
 export const DEFAULT_TIMEOUT_MS = 10_000;
+export const DEFAULT_TRANSPORT: Transport = "stdio";
+/** The port the http transport listens on; 8080 is the task API's, so this one sits beside it. */
+export const DEFAULT_HTTP_PORT = 3000;
 
 /** What a build that is not a release reports as its version, so it cannot be mistaken for one. */
 export const DEVELOPMENT_VERSION = "0.0.0-dev";
@@ -51,5 +59,18 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): C
     throw new ConfigError(`TASK_API_TIMEOUT_MS must be a positive whole number of milliseconds, got "${rawTimeout}"`);
   }
 
-  return { apiBaseUrl: url.toString(), requestTimeoutMs: timeout };
+  const rawTransport = env["MCP_TRANSPORT"] ?? "";
+  if (rawTransport !== "" && rawTransport !== "stdio" && rawTransport !== "http") {
+    throw new ConfigError(`MCP_TRANSPORT must be stdio or http, got "${rawTransport}"`);
+  }
+  const transport: Transport = rawTransport === "" ? DEFAULT_TRANSPORT : rawTransport;
+
+  const rawPort = env["MCP_HTTP_PORT"] ?? "";
+  const httpPort = rawPort === "" ? DEFAULT_HTTP_PORT : /^\d+$/.test(rawPort) ? Number(rawPort) : Number.NaN;
+  // 0 is allowed: it asks the operating system for a port, which the startup line then reports.
+  if (!Number.isInteger(httpPort) || httpPort < 0 || httpPort > 65_535) {
+    throw new ConfigError(`MCP_HTTP_PORT must be a whole number from 0 to 65535, got "${rawPort}"`);
+  }
+
+  return { apiBaseUrl: url.toString(), requestTimeoutMs: timeout, transport, httpPort };
 }

@@ -72,7 +72,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 |---|---|
 | `go-service` | Go HTTP service in Clean Architecture layers, standard library only; a test enforces the layer rules; golangci-lint; distroless image |
 | `ts-service` | TypeScript HTTP service run directly by Node; pure domain core; import boundaries checked on every file; no runtime dependencies |
-| `mcp-server` | MCP server on the official SDK: task tools over stdio for an AI assistant, same layers, driven in tests by a real client |
+| `mcp-server` | MCP server on the official SDK: task tools over stdio or Streamable HTTP for an AI assistant, same layers, driven in tests by a real client |
 | `py-service` | Python HTTP service on the standard library: pure domain, WSGI transport, ruff and strict mypy, layer rules enforced by an `ast`-based check |
 | `web` | React + Vite app organised by feature (bulletproof-react), import boundaries checked on every file, unit and component tests |
 | `ts-library` | TypeScript library for npm: one `exports` entry, publint and are-the-types-wrong checks on the packed tarball, which is also installed into an empty project and imported, tokenless trusted publishing with provenance |

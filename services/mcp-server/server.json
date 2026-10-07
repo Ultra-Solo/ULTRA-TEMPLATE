@@ -30,6 +30,20 @@
           "isRequired": false,
           "isSecret": false,
           "default": "10000"
+        },
+        {
+          "name": "MCP_TRANSPORT",
+          "description": "How the server speaks: stdio, the default, or http.",
+          "isRequired": false,
+          "isSecret": false,
+          "default": "stdio"
+        },
+        {
+          "name": "MCP_HTTP_PORT",
+          "description": "The port the http transport listens on; 0 lets the operating system assign one.",
+          "isRequired": false,
+          "isSecret": false,
+          "default": "3000"
         }
       ]
     }

@@ -1,6 +1,6 @@
 {
   "$comment": "Read by template/init.mjs, and deleted with it. A feature's paths are deleted when it is not selected; content inside shared files is selected with marker lines instead. See template/README.md.",
-  "version": "3.6.1",
+  "version": "3.7.0",
   "provenanceSchema": 1,
   "identity": {
     "owner": "Ultra-Solo",
@@ -20,7 +20,7 @@
       "paths": ["services/api-ts", ".claude/skills/add-endpoint-ts", "scripts/check-contract.mjs", "scripts/contract", "test/check-contract.test.mjs", "test/dev.test.mjs", "scripts/rules", "biome.jsonc", ".claude/skills/change-task-contract"]
     },
     "mcp-server": {
-      "summary": "MCP server on the official SDK: task tools over stdio for an AI assistant, same layers, driven in tests by a real client",
+      "summary": "MCP server on the official SDK: task tools over stdio or Streamable HTTP for an AI assistant, same layers, driven in tests by a real client",
       "describes": "an MCP server that gives an AI assistant the task API's tools",
       "paths": ["services/mcp-server", ".claude/skills/add-mcp-tool", ".github/workflows/mcp-publish.yml", "scripts/rules", "scripts/contract", "scripts/check-facts.mjs", "test/check-facts.test.mjs", "biome.jsonc", ".claude/skills/change-task-contract"]
     },
