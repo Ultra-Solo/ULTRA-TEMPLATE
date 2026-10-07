@@ -125,7 +125,7 @@
       ]
     },
     "golangci-lint": {
-      "version": "2.13.2",
+      "version": "2.14.0",
       "for": "go",
       "actions": [
         "golangci/golangci-lint-action"
@@ -136,21 +136,21 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-linux-amd64.tar.gz",
-          "sha256": "2277d43b98ec0054280f2ac26b53268bae97682444678a59a657dd565da021d6",
+          "sha256": "ab90aeb7b066f92a33415b638a50fe5344bbb75a0d32ad30cc248d88f81032ab",
           "files": [
             "golangci-lint-{version}-linux-amd64/golangci-lint"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-linux-arm64.tar.gz",
-          "sha256": "a2a4e0065aa41be71f7c5ac90f271b61751331e5d04314e62afe4027855f0893",
+          "sha256": "ee7ec5f3453d15ddf106fae5a4d6c71737712348a979d1fe9cd52ec7ea299bae",
           "files": [
             "golangci-lint-{version}-linux-arm64/golangci-lint"
           ]
         },
         "darwin-arm64": {
           "url": "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-darwin-arm64.tar.gz",
-          "sha256": "f4bf83f0b64f055c42b28fc9a38861839f69c096e61c788e72dfaae412011789",
+          "sha256": "5ef5f36a7147e91dc58ef9ef4d11bb7bad5ead0c76eb6c01327a73c641d1dcc3",
           "files": [
             "golangci-lint-{version}-darwin-arm64/golangci-lint"
           ]
@@ -168,7 +168,7 @@
       ]
     },
     "uv": {
-      "version": "0.12.18",
+      "version": "0.12.23",
       "for": "python",
       "actions": [
         "astral-sh/setup-uv"
@@ -180,7 +180,7 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "89eadd7c76fc063887959510d5ba0ab1264dfd5f1143b925ddb73021a40acf16",
+          "sha256": "9167d72b3319674b6303c4cbe071854bba13ebdf3d76b1a7cbdc175471fb66d6",
           "files": [
             "uv-x86_64-unknown-linux-gnu/uv",
             "uv-x86_64-unknown-linux-gnu/uvx"
@@ -188,7 +188,7 @@
         },
         "linux-arm64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-unknown-linux-gnu.tar.gz",
-          "sha256": "afb6291f3f0a6b4521fc67b947822506c41dde5b60d2189dd8f3695b2ac8c9e7",
+          "sha256": "6524bd338177ed50d035d39354e12545e993bbeba2ecbddf0480c5b3a81d313f",
           "files": [
             "uv-aarch64-unknown-linux-gnu/uv",
             "uv-aarch64-unknown-linux-gnu/uvx"
@@ -196,7 +196,7 @@
         },
         "darwin-arm64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-apple-darwin.tar.gz",
-          "sha256": "cf40e0c6a202190ccd9e0406dcfdd5b2d6668a9a5c779b17948963df32aafe5b",
+          "sha256": "50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544",
           "files": [
             "uv-aarch64-apple-darwin/uv",
             "uv-aarch64-apple-darwin/uvx"
@@ -234,7 +234,7 @@
       }
     },
     "trivy": {
-      "version": "0.74.0",
+      "version": "0.75.0",
       "for": "ci",
       "actions": [
         "aquasecurity/trivy-action",
@@ -246,14 +246,14 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_Linux-64bit.tar.gz",
-          "sha256": "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a",
+          "sha256": "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f",
           "files": [
             "trivy"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_Linux-ARM64.tar.gz",
-          "sha256": "b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5",
+          "sha256": "a1ee9f6ffb7d112b64ff726a2a0717c21175c1114361391f4a132956751a13b3",
           "files": [
             "trivy"
           ]

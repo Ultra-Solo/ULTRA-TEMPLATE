@@ -26,7 +26,7 @@ concurrency:
 jobs:
   # The presets come from template/features.json, so adding one there adds it here with no edit.
   presets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       presets: ${{ steps.list.outputs.presets }}
@@ -44,7 +44,7 @@ jobs:
   preset:
     name: preset (${{ matrix.preset }})
     needs: presets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
