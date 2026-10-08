@@ -15,7 +15,7 @@
     "ghcr.io/devcontainers/features/python:1": { "version": "3.14", "installTools": false },
     // ultra:end py-service
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/node:2": { "version": "24" }
+    "ghcr.io/devcontainers/features/node:2": { "version": "26" }
   },
   // The tools scripts/tools/tools.json pins are installed here, checksum-verified, ahead of anything else.
   "remoteEnv": { "PATH": "${containerWorkspaceFolder}/.tools/bin:${containerEnv:PATH}" },

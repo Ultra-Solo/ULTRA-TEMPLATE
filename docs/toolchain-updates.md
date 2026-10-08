@@ -18,7 +18,7 @@ Weekly, grouped, as pull requests that must pass `verify` like any other.
 
 Dependabot holds these back on purpose. Each is declared in one file; every other place that names it is a copy, and `check-hygiene` rule 17 fails the build and names each copy still on the old version. So move a language version by changing its declaration and then every copy the check names, in one pull request, and let `verify` prove it.
 
-- **Node** — `.node-version` (major <!-- generated:version .node-version -->24<!-- /generated -->), read by every `setup-node` step and by `scripts/agent-env.mjs`. Its copies: `engines` in each `package.json`, the `@types/node` major, the `node:` tag in each Node Dockerfile, and the Dev Container feature.
+- **Node** — `.node-version` (major <!-- generated:version .node-version -->26<!-- /generated -->), read by every `setup-node` step and by `scripts/agent-env.mjs`. Its copies: `engines` in each `package.json`, the `@types/node` major, the `node:` tag in each Node Dockerfile, and the Dev Container feature.
 <!-- ultra:begin go-service -->
 - **Go** — the `go` line in `services/api-go/go.mod` (<!-- generated:version services/api-go/go.mod -->1.26<!-- /generated -->), read by `setup-go`. Its copies: the `golang:` tag in its Dockerfile and the Dev Container feature.
 <!-- ultra:end go-service -->
