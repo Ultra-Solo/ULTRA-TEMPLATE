@@ -30,7 +30,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
    node template/init.mjs --list
    ```
 
-3. Initialize. This needs Node <!-- generated:version .node-version -->24<!-- /generated --> and a clean working tree. Run in a terminal, init reads the owner and repository from `origin`, asks for anything else, shows the plan and waits for your confirmation:
+3. Initialize. This needs Node <!-- generated:version .node-version -->26<!-- /generated --> and a clean working tree. Run in a terminal, init reads the owner and repository from `origin`, asks for anything else, shows the plan and waits for your confirmation:
 
    Initialization verifies stable publication and generates from that upstream commit. If publication is pending or failed, it stops before writing project files. Keep `.template-provenance.json` committed; updates use its exact source and original inputs. For offline generation and candidate testing, see [template source guidance](template/README.md#exact-source-and-reconstruction).
 
@@ -98,7 +98,7 @@ Deployment targets and infrastructure, databases and migrations, authentication,
 
 You need:
 
-- Node <!-- generated:version .node-version -->24<!-- /generated --> (`.node-version`), for the scripts and every Node module.
+- Node <!-- generated:version .node-version -->26<!-- /generated --> (`.node-version`), for the scripts and every Node module.
 <!-- ultra:begin go-service -->
 - Go <!-- generated:version services/api-go/go.mod -->1.26<!-- /generated --> (`services/api-go/go.mod`), and golangci-lint <!-- generated:tool golangci-lint -->2.14.0<!-- /generated --> for the complete local check: `node scripts/tools.mjs install --local` installs it at that version. Without it, `verify.mjs` reports golangci-lint as skipped, and CI still runs it.
 <!-- ultra:end go-service -->

@@ -6,7 +6,7 @@ Everything in `template/` is deleted when a project is initialized. This file is
 
 GitHub's *Use this template* copies every file and accepts no parameters, so feature selection has to happen after the copy. It cannot run as a GitHub Actions job in the new repository: a push made with `GITHUB_TOKEN` may not create, change or delete anything under `.github/workflows/`, and initialization does all three. So `template/init.mjs` runs once, on the developer's machine, and the result is committed as one reviewable change.
 
-It needs Git and has no package dependencies beyond Node <!-- generated:version .node-version -->24<!-- /generated -->, validates every argument before touching a file, builds the whole result in memory before writing any of it, and refuses to run in place on a dirty working tree, so `git checkout -- . && git clean -fd` always undoes it.
+It needs Git and has no package dependencies beyond Node <!-- generated:version .node-version -->26<!-- /generated -->, validates every argument before touching a file, builds the whole result in memory before writing any of it, and refuses to run in place on a dirty working tree, so `git checkout -- . && git clean -fd` always undoes it.
 
 ## Exact source and reconstruction
 

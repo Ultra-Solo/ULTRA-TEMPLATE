@@ -15,7 +15,7 @@
   ],
   "sideEffects": false,
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "repository": {
     "type": "git",
@@ -41,7 +41,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "2.5.14",
-    "@types/node": "^24.19.0",
+    "@types/node": "^26.6.4",
     "publint": "^0.3.24",
     "typescript": "^7.0.2"
   }

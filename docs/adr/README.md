@@ -38,3 +38,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0028](0028-run-the-browser-smoke-test-through-the-e2e-slot.md) | Run the browser smoke test through the e2e slot | Accepted, amends 0027 |
 | [0029](0029-pin-the-runner-operating-system.md) | Pin the runner operating system in every workflow | Accepted |
 | [0030](0030-serve-mcp-over-streamable-http-beside-stdio.md) | Serve MCP over Streamable HTTP beside stdio | Accepted, amends 0007 |
+| [0031](0031-track-the-node-lts-line.md) | Track the Node LTS line | Accepted |
