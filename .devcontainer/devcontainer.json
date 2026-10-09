@@ -8,7 +8,7 @@
   "features": {
     // ultra:begin go-service
     // The go feature always installs golangci-lint, so it is told the version scripts/tools/tools.json pins.
-    "ghcr.io/devcontainers/features/go:1": { "version": "1.26", "golangciLintVersion": "2.14.0" },
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.27", "golangciLintVersion": "2.14.0" },
     // ultra:end go-service
     // ultra:begin py-service
     // The feature's own tool list installs whatever is newest; uv comes from scripts/tools/tools.json instead.

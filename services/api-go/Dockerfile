@@ -1,6 +1,6 @@
 # Base images are pinned by digest as well as tag: a tag can be repointed at a different image.
 # Dependabot updates both together.
-FROM golang:1.26-alpine@sha256:8ac98ca534ac3f51e1f420a1dd2c15e74c75cfa0f23f3ad27eb5d7236c349a0c AS build
+FROM golang:1.27-alpine@sha256:738d1cf061836894ff6bb8c33881080ac66de8cf0586615012a0c8f592649cfa AS build
 WORKDIR /src
 COPY go.* ./
 RUN go mod download

@@ -39,3 +39,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0029](0029-pin-the-runner-operating-system.md) | Pin the runner operating system in every workflow | Accepted |
 | [0030](0030-serve-mcp-over-streamable-http-beside-stdio.md) | Serve MCP over Streamable HTTP beside stdio | Accepted, amends 0007 |
 | [0031](0031-track-the-node-lts-line.md) | Track the Node LTS line | Accepted |
+| [0032](0032-track-the-current-stable-go-line.md) | Track the current stable Go line | Accepted |

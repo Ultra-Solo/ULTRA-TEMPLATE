@@ -100,10 +100,10 @@ You need:
 
 - Node <!-- generated:version .node-version -->26<!-- /generated --> (`.node-version`), for the scripts and every Node module.
 <!-- ultra:begin go-service -->
-- Go <!-- generated:version services/api-go/go.mod -->1.26<!-- /generated --> (`services/api-go/go.mod`), and golangci-lint <!-- generated:tool golangci-lint -->2.14.0<!-- /generated --> for the complete local check: `node scripts/tools.mjs install --local` installs it at that version. Without it, `verify.mjs` reports golangci-lint as skipped, and CI still runs it.
+- Go <!-- generated:version services/api-go/go.mod -->1.27<!-- /generated --> (`services/api-go/go.mod`), and golangci-lint <!-- generated:tool golangci-lint -->2.14.0<!-- /generated --> for the complete local check: `node scripts/tools.mjs install --local` installs it at that version. Without it, `verify.mjs` reports golangci-lint as skipped, and CI still runs it.
 <!-- ultra:end go-service -->
 <!-- ultra:begin py-service -->
-- Python <!-- generated:floor services/api-py/pyproject.toml -->3.13<!-- /generated --> or newer and [uv](https://docs.astral.sh/uv/) <!-- generated:tool uv -->0.12.23<!-- /generated --> (`services/api-py/.python-version`, `scripts/tools/tools.json`), which installs the rest.
+- Python <!-- generated:floor services/api-py/pyproject.toml -->3.13<!-- /generated --> or newer and [uv](https://docs.astral.sh/uv/) <!-- generated:tool uv -->0.12.24<!-- /generated --> (`services/api-py/.python-version`, `scripts/tools/tools.json`), which installs the rest.
 <!-- ultra:end py-service -->
 - The GitHub CLI, only to apply repository settings with `configure-github.mjs`.
 
