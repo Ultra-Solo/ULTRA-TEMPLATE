@@ -23,7 +23,7 @@ Dependabot holds these back on purpose. Each is declared in one file; every othe
 - **Go** — the `go` line in `services/api-go/go.mod` (<!-- generated:version services/api-go/go.mod -->1.27<!-- /generated -->), read by `setup-go`. Its copies: the `golang:` tag in its Dockerfile and the Dev Container feature.
 <!-- ultra:end go-service -->
 <!-- ultra:begin py-service -->
-- **Python** — `services/api-py/.python-version` (<!-- generated:version services/api-py/.python-version -->3.14<!-- /generated -->), read by uv; `requires-python` in `pyproject.toml` is the oldest version the service supports (<!-- generated:floor services/api-py/pyproject.toml -->3.13<!-- /generated -->), which mypy's `python_version` must equal. Its copies: the `python:` tag in its Dockerfile and the Dev Container feature.
+- **Python** — `services/api-py/.python-version` (<!-- generated:version services/api-py/.python-version -->3.15<!-- /generated -->), read by uv; `requires-python` in `pyproject.toml` is the oldest version the service supports (<!-- generated:floor services/api-py/pyproject.toml -->3.13<!-- /generated -->), which mypy's `python_version` must equal. Its copies: the `python:` tag in its Dockerfile and the Dev Container feature.
 <!-- ultra:end py-service -->
 
 ## Pinned by hand — one manifest, moved by one command
@@ -37,7 +37,7 @@ Dependabot cannot see a tool a workflow downloads by version, so each is pinned 
 | [shellcheck](https://github.com/koalaman/shellcheck/releases) | 0.11.0 | everywhere | the digest GitHub records for each asset |
 | [zizmor](https://github.com/zizmorcore/zizmor/releases) | 1.30.1 | everywhere | the digest GitHub records for each asset |
 | [golangci-lint](https://github.com/golangci/golangci-lint/releases) | 2.14.0 | with a Go module | the release's checksum file |
-| [uv](https://github.com/astral-sh/uv/releases) | 0.12.24 | with a Python module | the `.sha256` file beside each asset |
+| [uv](https://github.com/astral-sh/uv/releases) | 0.13.0 | with a Python module | the `.sha256` file beside each asset |
 | [gitleaks](https://github.com/gitleaks/gitleaks/releases) | 8.30.1 | in CI only | the release's checksum file |
 | [trivy](https://github.com/aquasecurity/trivy/releases) | 0.75.0 | in CI only | the release's checksum file |
 | [mcp-publisher](https://github.com/modelcontextprotocol/registry/releases) | 1.8.1 | in CI only | the digest GitHub records for each asset |

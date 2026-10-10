@@ -12,7 +12,7 @@
     // ultra:end go-service
     // ultra:begin py-service
     // The feature's own tool list installs whatever is newest; uv comes from scripts/tools/tools.json instead.
-    "ghcr.io/devcontainers/features/python:1": { "version": "3.14", "installTools": false },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.15", "installTools": false },
     // ultra:end py-service
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:2": { "version": "26" }

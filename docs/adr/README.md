@@ -40,3 +40,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0030](0030-serve-mcp-over-streamable-http-beside-stdio.md) | Serve MCP over Streamable HTTP beside stdio | Accepted, amends 0007 |
 | [0031](0031-track-the-node-lts-line.md) | Track the Node LTS line | Accepted |
 | [0032](0032-track-the-current-stable-go-line.md) | Track the current stable Go line | Accepted |
+| [0033](0033-track-the-current-stable-python-line.md) | Track the current stable Python line | Accepted |
