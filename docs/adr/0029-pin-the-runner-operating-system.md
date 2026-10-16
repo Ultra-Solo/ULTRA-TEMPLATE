@@ -1,6 +1,6 @@
 # ADR-0029: Pin the runner operating system in every workflow
 
-**Status:** Accepted · **Date:** 2026-10-06
+**Status:** Accepted · Amended by [ADR-0034](0034-move-the-runner-pin-to-ubuntu-26.04.md) · **Date:** 2026-10-06
 
 ## Context
 
