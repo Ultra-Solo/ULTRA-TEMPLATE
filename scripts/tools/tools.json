@@ -83,7 +83,7 @@
       ]
     },
     "zizmor": {
-      "version": "1.30.1",
+      "version": "1.31.1",
       "for": "chassis",
       "releases": {
         "github": "zizmorcore/zizmor"
@@ -91,21 +91,21 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a",
+          "sha256": "d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99",
           "files": [
             "zizmor"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-unknown-linux-gnu.tar.gz",
-          "sha256": "7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540",
+          "sha256": "37eebbd5762a44f262d94875431b14a6d2402991e90a685113ea97b8b41be833",
           "files": [
             "zizmor"
           ]
         },
         "darwin-arm64": {
           "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-apple-darwin.tar.gz",
-          "sha256": "e28d22b087f9ebb8d99da6e740d348c930f559961c7c3f12badda54f882195a2",
+          "sha256": "ad5aa633cd56215b11e6c51d51f90c7e6b22904a75047d1215abbd422f61d698",
           "files": [
             "zizmor"
           ]
@@ -125,7 +125,7 @@
       ]
     },
     "golangci-lint": {
-      "version": "2.14.0",
+      "version": "2.15.0",
       "for": "go",
       "actions": [
         "golangci/golangci-lint-action"
@@ -136,21 +136,21 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-linux-amd64.tar.gz",
-          "sha256": "ab90aeb7b066f92a33415b638a50fe5344bbb75a0d32ad30cc248d88f81032ab",
+          "sha256": "9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea",
           "files": [
             "golangci-lint-{version}-linux-amd64/golangci-lint"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-linux-arm64.tar.gz",
-          "sha256": "ee7ec5f3453d15ddf106fae5a4d6c71737712348a979d1fe9cd52ec7ea299bae",
+          "sha256": "b4d8f17068b35ee6060cc2f69a16fb48740d706fbba81661c318649c114a6998",
           "files": [
             "golangci-lint-{version}-linux-arm64/golangci-lint"
           ]
         },
         "darwin-arm64": {
           "url": "https://github.com/golangci/golangci-lint/releases/download/v{version}/golangci-lint-{version}-darwin-arm64.tar.gz",
-          "sha256": "5ef5f36a7147e91dc58ef9ef4d11bb7bad5ead0c76eb6c01327a73c641d1dcc3",
+          "sha256": "d1e409481a8ca846c4bc97e781eb5cb1bd5c23353a0b3977a1cbda1b1b6447d5",
           "files": [
             "golangci-lint-{version}-darwin-arm64/golangci-lint"
           ]
@@ -168,7 +168,7 @@
       ]
     },
     "uv": {
-      "version": "0.13.0",
+      "version": "0.13.1",
       "for": "python",
       "actions": [
         "astral-sh/setup-uv"
@@ -180,7 +180,7 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "1468ebd5a5541121837c5a2817b9972ba6090fa6caa3d142620850a47fb75154",
+          "sha256": "eadd9d27c134ab5ac1ffd4473b97a741407f3ea238288f03121fc4deddf90220",
           "files": [
             "uv-x86_64-unknown-linux-gnu/uv",
             "uv-x86_64-unknown-linux-gnu/uvx"
@@ -188,7 +188,7 @@
         },
         "linux-arm64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-unknown-linux-gnu.tar.gz",
-          "sha256": "3ccfb6af6e242433eb552f7d9676abd5412c6595c497e990d9c8cb7b5bd4d2c3",
+          "sha256": "9041c73c99fdc5892cf128140beb354eca9231d502068cc36e6cb53a8e59ad14",
           "files": [
             "uv-aarch64-unknown-linux-gnu/uv",
             "uv-aarch64-unknown-linux-gnu/uvx"
@@ -196,7 +196,7 @@
         },
         "darwin-arm64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-apple-darwin.tar.gz",
-          "sha256": "a9c1b29002cf3c83f07fa9cd8a887a3be0107d90e23189721221e7257db8e3d6",
+          "sha256": "cfe454573412ff7380d15fc7dae5997ab53ffce72fce0a78e91ddbc84001acd2",
           "files": [
             "uv-aarch64-apple-darwin/uv",
             "uv-aarch64-apple-darwin/uvx"
@@ -234,7 +234,7 @@
       }
     },
     "trivy": {
-      "version": "0.75.0",
+      "version": "0.76.0",
       "for": "ci",
       "actions": [
         "aquasecurity/trivy-action",
@@ -246,14 +246,14 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_Linux-64bit.tar.gz",
-          "sha256": "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f",
+          "sha256": "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7",
           "files": [
             "trivy"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_Linux-ARM64.tar.gz",
-          "sha256": "a1ee9f6ffb7d112b64ff726a2a0717c21175c1114361391f4a132956751a13b3",
+          "sha256": "aab21e677a7b7071fc79f1711480840754c18a1b9d9cefa7ccd06af63a0e8f4c",
           "files": [
             "trivy"
           ]
@@ -283,7 +283,7 @@
       }
     },
     "govulncheck": {
-      "version": "1.8.0",
+      "version": "1.9.0",
       "for": "ci",
       "releases": {
         "githubTags": "golang/vuln"
