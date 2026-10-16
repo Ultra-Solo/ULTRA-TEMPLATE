@@ -1,0 +1,9 @@
+# actionlint's runner-label data is generated from actions/runner-images, and the newest release
+# (1.7.12, March 2026) predates the ubuntu-26.04 labels' general availability (October 2026), so
+# it reports "label ... is unknown" for every job this template runs on them. Declaring the labels
+# here uses actionlint's own configuration for labels its data does not know; the rule still checks
+# everything else. Remove this file when a actionlint release knows the labels natively.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
+    - ubuntu-26.04-arm

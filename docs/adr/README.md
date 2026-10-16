@@ -36,8 +36,9 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025, amended by 0027 |
 | [0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) | Ship run and diagnose before the browser smoke test | Accepted, amends 0026, 0014, amended by 0028 |
 | [0028](0028-run-the-browser-smoke-test-through-the-e2e-slot.md) | Run the browser smoke test through the e2e slot | Accepted, amends 0027 |
-| [0029](0029-pin-the-runner-operating-system.md) | Pin the runner operating system in every workflow | Accepted |
+| [0029](0029-pin-the-runner-operating-system.md) | Pin the runner operating system in every workflow | Accepted, amended by 0034 |
 | [0030](0030-serve-mcp-over-streamable-http-beside-stdio.md) | Serve MCP over Streamable HTTP beside stdio | Accepted, amends 0007 |
 | [0031](0031-track-the-node-lts-line.md) | Track the Node LTS line | Accepted |
 | [0032](0032-track-the-current-stable-go-line.md) | Track the current stable Go line | Accepted |
 | [0033](0033-track-the-current-stable-python-line.md) | Track the current stable Python line | Accepted |
+| [0034](0034-move-the-runner-pin-to-ubuntu-26.04.md) | Move the runner pin to Ubuntu 26.04 | Accepted, amends 0029 |
