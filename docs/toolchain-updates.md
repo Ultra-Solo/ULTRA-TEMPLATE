@@ -35,13 +35,13 @@ Dependabot cannot see a tool a workflow downloads by version, so each is pinned 
 |---|---|---|---|
 | [actionlint](https://github.com/rhysd/actionlint/releases) | 1.7.12 | everywhere | the release's checksum file |
 | [shellcheck](https://github.com/koalaman/shellcheck/releases) | 0.11.0 | everywhere | the digest GitHub records for each asset |
-| [zizmor](https://github.com/zizmorcore/zizmor/releases) | 1.30.1 | everywhere | the digest GitHub records for each asset |
-| [golangci-lint](https://github.com/golangci/golangci-lint/releases) | 2.14.0 | with a Go module | the release's checksum file |
-| [uv](https://github.com/astral-sh/uv/releases) | 0.13.0 | with a Python module | the `.sha256` file beside each asset |
+| [zizmor](https://github.com/zizmorcore/zizmor/releases) | 1.31.1 | everywhere | the digest GitHub records for each asset |
+| [golangci-lint](https://github.com/golangci/golangci-lint/releases) | 2.15.0 | with a Go module | the release's checksum file |
+| [uv](https://github.com/astral-sh/uv/releases) | 0.13.1 | with a Python module | the `.sha256` file beside each asset |
 | [gitleaks](https://github.com/gitleaks/gitleaks/releases) | 8.30.1 | in CI only | the release's checksum file |
-| [trivy](https://github.com/aquasecurity/trivy/releases) | 0.75.0 | in CI only | the release's checksum file |
+| [trivy](https://github.com/aquasecurity/trivy/releases) | 0.76.0 | in CI only | the release's checksum file |
 | [mcp-publisher](https://github.com/modelcontextprotocol/registry/releases) | 1.8.1 | in CI only | the digest GitHub records for each asset |
-| [govulncheck](https://github.com/golang/vuln/tags) | 1.8.0 | in CI only | none: run as `go run golang.org/x/vuln/cmd/govulncheck@v1.8.0` |
+| [govulncheck](https://github.com/golang/vuln/tags) | 1.9.0 | in CI only | none: run as `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0` |
 | [pip-audit](https://pypi.org/project/pip-audit/) | 2.10.1 | in CI only | none: run as `uvx pip-audit==2.10.1` |
 | [devcontainer-cli](https://github.com/devcontainers/cli/tags) | 0.89.0 | in CI only | none: run as `devcontainer --version` |
 <!-- /generated -->
