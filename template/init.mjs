@@ -505,7 +505,9 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   const upstream = `https://github.com/${bootstrap.identity.owner}/${bootstrap.identity.repo}`;
   if (!values.source) {
     let response;
-    try { response = await fetch(`https://api.github.com/repos/${bootstrap.identity.owner}/${bootstrap.identity.repo}/releases/tags/${version}`, { signal: AbortSignal.timeout(15_000) }); }
+    // Unauthenticated api.github.com is rate-limited by IP, which 403s on shared CI runners; a token, when one is present, lifts the limit.
+    const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+    try { response = await fetch(`https://api.github.com/repos/${bootstrap.identity.owner}/${bootstrap.identity.repo}/releases/tags/${version}`, { signal: AbortSignal.timeout(15_000), headers: token ? { Authorization: `Bearer ${token}` } : undefined }); }
     catch { throw new InitError(`Cannot verify publication of ${version}. Retry online, or use an explicit verified local source. Nothing was written.`, 2); }
     if (!response.ok) throw new InitError(`${version} is not a verified published release (HTTP ${response.status}). Wait for publication or use an explicit local source commit. Nothing was written.`, 2);
     const release = await response.json();

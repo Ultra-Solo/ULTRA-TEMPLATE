@@ -311,6 +311,8 @@ jobs:
           SHA: ${{ github.sha }}
         run: node template/check-release.mjs
       - name: Default bootstrap resolves a known published upstream release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node template/check-publication.mjs
 
   # Full generated-project verification is part of the required gate, not a separate advisory run.
