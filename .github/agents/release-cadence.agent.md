@@ -28,7 +28,7 @@ Each step names its verifiable output. A step without its output did not happen.
 **1. Pre-register, before any further state check.** Write down, before looking: the decision this check arbitrates and the probability it is wrong; for each trigger whose observation window has elapsed, the probability it fired and the date it became checkable; for each experiment you will run, its expected result. Every prediction carries its scoring rule — Brier, (p - outcome)^2 — and a checkable date. A prediction without a checkable date is not registered.
 - Output: the registered predictions, each with a probability and a checkable date.
 
-**2. Check only what could have changed.** Enumerate the trigger table and run each check whose window elapsed since the last check. Work from raw material — job logs and durations, lockfiles queried against the advisory database directly, upstream commits and data files, this repository's own history — never digests; name each source actually opened. If no source newer than the last check could matter, say so and justify it.
+**2. Check only what could have changed.** Enumerate the trigger table and run each check whose window elapsed since the last check; the table's scheduled-workflow inventory comes from the repository's workflow files, never from memory — a schedule recalled rather than read is a trigger that never gets checked. Work from raw material — job logs and durations, lockfiles queried against the advisory database directly, upstream commits and data files, this repository's own history — never digests; name each source actually opened. If no source newer than the last check could matter, say so and justify it.
 - Output: the checks run, each with the source it read.
 
 **3. Run the experiments against their pre-registered expectations.** When a cheap reversible experiment exists, run it instead of arguing. A load-bearing claim with no such experiment is a named residual risk with a number on it — never present it as tested.
@@ -61,7 +61,7 @@ When a trigger fires — or the user directs a release — execute:
 
 **6. Merge, then verify the release by the path the repository has.** In the template repository: squash-merge, sync, watch the base branch's verify, then confirm the tag points at the tip, the notes render in the established shape, and a project generated from the published release — not the local tree — carries the change. In a generated project with the release feature enabled, merging the change PR does not create the tag: the release workflow opens or updates a separate release-please PR, and only merging that PR tags the release — approve its workflow run when the bot opened it, wait for its checks, merge it, then verify the tag and the changelog. A generated project without the release feature has no automated release; say so and stop after the merge.
 
-**7. Finish the records.** Append the check to the decision log, score the resolved ledger rows, update the standing plan's state and trigger table. A release is not done when published; it is done when the records say so.
+**7. Finish the records.** Append the check to the decision log, score the resolved ledger rows, update the standing plan's state and trigger table, re-deriving its workflow inventory from the workflow files. A release is not done when published; it is done when the records say so.
 
 ## Grounding rules
 
