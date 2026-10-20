@@ -42,3 +42,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0032](0032-track-the-current-stable-go-line.md) | Track the current stable Go line | Accepted |
 | [0033](0033-track-the-current-stable-python-line.md) | Track the current stable Python line | Accepted |
 | [0034](0034-move-the-runner-pin-to-ubuntu-26.04.md) | Move the runner pin to Ubuntu 26.04 | Accepted, amends 0029 |
+| [0035](0035-drive-releases-from-a-written-standing-plan.md) | Drive releases from a written standing plan | Accepted |
