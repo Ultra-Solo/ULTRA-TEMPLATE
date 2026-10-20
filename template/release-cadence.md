@@ -19,14 +19,20 @@ Each row is observed, judged against a number, and answered with a response writ
 | A preset fails to generate or verify | `.github/workflows/template-test.yml` — `17 6 * * 1`, Mondays 06:17Z. Template-only: initialization removes this workflow | The same preset failing two consecutive runs | The preset is broken for adopters: fix before any other work. A single flake is re-run once, then investigated |
 | A toolchain line moves | The upstream release announcement for Node, Go, Python, or the runner image — not this repository | A new LTS or stable line is generally available | Validate the whole gate on the new line first, then move every copy in one minor release: the version is declared once and each copy must agree ([ADR-0013](../docs/adr/0013-declare-each-fact-once.md), [ADR-0031](../docs/adr/0031-track-the-node-lts-line.md), [ADR-0032](../docs/adr/0032-track-the-current-stable-go-line.md), [ADR-0033](../docs/adr/0033-track-the-current-stable-python-line.md)) |
 
-### Triggers with no threshold yet
+### Backlog: a target release, and no threshold
 
-These are live questions with no observable number, so they are recorded as unfired rather than given an invented threshold. Each names the observation that would fire it; until that observation exists, a check reports them as unfired and moves on.
+These are live questions with no observable number. They are not given an invented threshold; they are given a target release and the observation that lets them ship.
 
-| Question | Why it has no threshold | The observation that fires it |
-|---|---|---|
-| Should the template ship a database, authentication, or deployment profile? | [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) deferred these to "a separate scope decision and maintained upgrade/testing ownership". The number is not in the repository because the cost is not only ours: a profile adopts a dependency's upgrade and test burden permanently, and [README.md](README.md) leaves deployment, databases and authentication to each project on purpose | Two or more separate adopters asking for the same profile, **and** a named owner committed to maintaining its upgrades and tests. One adopter is a request; both together are a scope decision |
-| Should update pull requests be opened automatically? | Deferred "until discovery proves useful", and usefulness is not measurable from here | An adopter asking for it, or a reported update that `template-update.mjs --check` detected and nobody applied |
+A target is a commitment to **decide**, not a promise to build. At the target check the item either ships, because its observation fired, or it moves out with an entry appended to the decision log. It never ships unfulfilled and it never quietly disappears. That distinction is the whole point: [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) planned a milestone of five and shipped one, then remapped the rest across two releases and split them again — each time after a release was already open. An item that cannot ship is moved in the open, at its target, where the move is visible.
+
+Both items are what [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) deferred: a database, authentication or deployment profile needed "a separate scope decision and maintained upgrade/testing ownership", and update pull requests waited "until discovery proves useful". Neither number is in the repository because neither cost is only ours — a profile adopts a dependency's upgrade and test burden permanently, and [README.md](README.md) leaves deployment, databases and authentication to each project on purpose.
+
+| Question | Target release | The observation that lets it ship | At the target, if it has not fired |
+|---|---|---|---|
+| Should the template ship a database, authentication, or deployment profile? | v3.15.0 | Two or more separate adopters asking for the same profile, **and** a named owner committed to maintaining its upgrades and tests. One adopter is a request; both together are a scope decision | Move to v3.16.0 and append a decision-log entry naming which condition was missing. Do not ship a profile to meet the target |
+| Should update pull requests be opened automatically? | v3.15.0 | An adopter asking for it, or a reported update that `template-update.mjs --check` detected and nobody applied | Move to v3.16.0 with a decision-log entry. If the same update is detected and unapplied twice, this fires on the second report rather than waiting |
+
+**Why v3.15.0.** A minor ships roughly daily here — thirteen in the fifteen days before this check — so v3.14.0 is the next minor already and cannot carry a decision that needs evidence first. The earliest evidence is the check on 2026-11-17, which is the horizon already in the prediction ledger below. v3.15.0 is the first minor that can be decided from something observed rather than something assumed. A later target would be a way of not deciding.
 
 ## Decision log
 
@@ -65,5 +71,6 @@ As of the check on 2026-10-20, from the repository rather than from memory:
 
 - Monday 2026-10-26 — code scanning 04:23Z, Scorecard 05:37Z, security scans 05:41Z, the preset matrix 06:17Z.
 - Tuesday 2026-10-27 — the pins report 06:23Z.
+- Tuesday 2026-11-17 — the horizon P3 is scored against, and the first check where the backlog above can be decided from evidence rather than assumed. Both items are due at v3.15.0.
 
-A check before those dates can confirm nothing that has not happened yet, and says so rather than inventing an update.
+A check before those dates can confirm nothing that has not happened yet, and says so rather than inventing an update. The one thing a check must never do is let a backlog target pass without either shipping the item or moving it in the decision log.
