@@ -19,20 +19,22 @@ Each row is observed, judged against a number, and answered with a response writ
 | A preset fails to generate or verify | `.github/workflows/template-test.yml` — `17 6 * * 1`, Mondays 06:17Z. Template-only: initialization removes this workflow | The same preset failing two consecutive runs | The preset is broken for adopters: fix before any other work. A single flake is re-run once, then investigated |
 | A toolchain line moves | The upstream release announcement for Node, Go, Python, or the runner image — not this repository | A new LTS or stable line is generally available | Validate the whole gate on the new line first, then move every copy in one minor release: the version is declared once and each copy must agree ([ADR-0013](../docs/adr/0013-declare-each-fact-once.md), [ADR-0031](../docs/adr/0031-track-the-node-lts-line.md), [ADR-0032](../docs/adr/0032-track-the-current-stable-go-line.md), [ADR-0033](../docs/adr/0033-track-the-current-stable-python-line.md)) |
 
-### Backlog: a target release, and no threshold
+### Backlog: a check date, and no threshold
 
-These are live questions with no observable number. They are not given an invented threshold; they are given a target release and the observation that lets them ship.
+These are live questions with no observable number. They are not given an invented threshold; they are given a date at which they are decided and the observation that lets them ship.
 
-A target is a commitment to **decide**, not a promise to build. At the target check the item either ships, because its observation fired, or it moves out with an entry appended to the decision log. It never ships unfulfilled and it never quietly disappears. That distinction is the whole point: [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) planned a milestone of five and shipped one, then remapped the rest across two releases and split them again — each time after a release was already open. An item that cannot ship is moved in the open, at its target, where the move is visible.
+A date here is a commitment to **decide**, not a promise to build. At that check the item either ships, because its observation fired, or it moves out with an entry appended to the decision log. It never ships unfulfilled and it never quietly disappears. That distinction is the whole point: [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) planned a milestone of five and shipped one, then remapped the rest across two releases and split them again — each time after a release was already open. An item that cannot ship is moved in the open, at its check, where the move is visible.
 
 Both items are what [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) deferred: a database, authentication or deployment profile needed "a separate scope decision and maintained upgrade/testing ownership", and update pull requests waited "until discovery proves useful". Neither number is in the repository because neither cost is only ours — a profile adopts a dependency's upgrade and test burden permanently, and [README.md](README.md) leaves deployment, databases and authentication to each project on purpose.
 
-| Question | Target release | The observation that lets it ship | At the target, if it has not fired |
+| Question | Decided at the check on | The observation that lets it ship | At that check, if it has not fired |
 |---|---|---|---|
-| Should the template ship a database, authentication, or deployment profile? | v3.15.0 | Two or more separate adopters asking for the same profile, **and** a named owner committed to maintaining its upgrades and tests. One adopter is a request; both together are a scope decision | Move to v3.16.0 and append a decision-log entry naming which condition was missing. Do not ship a profile to meet the target |
-| Should update pull requests be opened automatically? | v3.15.0 | An adopter asking for it, or a reported update that `template-update.mjs --check` detected and nobody applied | Move to v3.16.0 with a decision-log entry. If the same update is detected and unapplied twice, this fires on the second report rather than waiting |
+| Should the template ship a database, authentication, or deployment profile? | 2026-11-17 | Two or more separate adopters asking for the same profile, **and** a named owner committed to maintaining its upgrades and tests. One adopter is a request; both together are a scope decision | Move to the 2026-12-15 check with a decision-log entry naming which condition was missing. Do not ship a profile to meet a date |
+| Should update pull requests be opened automatically? | 2026-11-17 | An adopter asking for it, or a reported update that `template-update.mjs --check` detected and nobody applied | Move to the 2026-12-15 check with a decision-log entry. If the same update is detected and unapplied twice, this fires on the second report rather than waiting |
 
-**Why v3.15.0.** A minor ships roughly daily here — thirteen in the fifteen days before this check — so v3.14.0 is the next minor already and cannot carry a decision that needs evidence first. The earliest evidence is the check on 2026-11-17, which is the horizon already in the prediction ledger below. v3.15.0 is the first minor that can be decided from something observed rather than something assumed. A later target would be a way of not deciding.
+**Why a date, and not a release.** The first version of this section named v3.15.0 and claimed it was the first minor that could carry a decision from evidence. That was arithmetic done on two incompatible clocks. Measured from the tags, this repository cut 16 releases between 2026-10-05 and 2026-10-19 — nine of them minors — with a median gap of one day between minors, so v3.15.0 would arrive around 2026-10-22, twenty-six days before the 2026-11-17 check the sentence itself named as the earliest evidence. The target preceded its own justification, which means it was not a target at all: it was a deferral dressed as one, and it would have come due before anything could be observed.
+
+The versions here move faster than any evidence can accumulate, so a version cannot mark the point at which evidence should exist. A date can, and the ledger below already uses one. The item is decided at the 2026-11-17 check and released in whatever minor is open then — today's `3.13.4` is not that release, and neither is v3.14.0 or v3.15.0. What the row fixes is the check, not the number.
 
 ## Decision log
 
@@ -60,17 +62,16 @@ No row has resolved, so the ledger is too young to score. That is stated rather 
 
 As of the check on 2026-10-20, from the repository rather than from memory:
 
-- HEAD is `1852bd4`, tagged `v3.13.3`. `template/features.json` says `3.13.3`.
+- `origin/main` is `1852bd4`, tagged `v3.13.3`. `template/features.json` says <!-- generated:template-version -->3.13.4<!-- /generated -->, which is the next release and is not published: the work that writes it is this plan. The figure is generated from that file rather than copied, because a copy of it is what this line got wrong first.
 - [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md)'s ledger is closed: A1 in v3.3.0, A2r/A4r/A5 in v3.4.0, B1/B3/B4 in v3.5.0, B2 in v3.6.0. Nothing in it is open.
 - Releases v3.6.1 through v3.13.3 added no capability the ledger planned: a runner image pin, MCP Streamable HTTP, the Node, Go and Python lines, agent adapters, and the runner move to Ubuntu 26.04.
 - All 11 hand-pinned tools are `current` in the `pins` run of 2026-10-20T11:51:09Z, every platform checksum matching its release.
-- No open issue and no open pull request.
-- Nothing is waiting on a decision. The next event that can change this state is the scheduled runs below.
+- No open issue and no open pull request. Nothing is waiting on a decision from the repository side; the only work in flight is on an unpublished branch, which no schedule can see.
 
 ## Next checkable dates
 
 - Monday 2026-10-26 — code scanning 04:23Z, Scorecard 05:37Z, security scans 05:41Z, the preset matrix 06:17Z.
 - Tuesday 2026-10-27 — the pins report 06:23Z.
-- Tuesday 2026-11-17 — the horizon P3 is scored against, and the first check where the backlog above can be decided from evidence rather than assumed. Both items are due at v3.15.0.
+- Tuesday 2026-11-17 — the horizon P3 is scored against, and the first check where the backlog above can be decided from evidence rather than assumed. Both items are decided at this check, and released in whatever minor is open then.
 
-A check before those dates can confirm nothing that has not happened yet, and says so rather than inventing an update. The one thing a check must never do is let a backlog target pass without either shipping the item or moving it in the decision log.
+A check before those dates can confirm nothing that has not happened yet, and says so rather than inventing an update. The one thing a check must never do is let a backlog date pass without either shipping the item or moving it in the decision log.

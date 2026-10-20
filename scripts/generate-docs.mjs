@@ -161,6 +161,16 @@ export const GENERATORS = {
       ]),
     );
   },
+  /**
+   * The version template/features.json declares. A document that names the template's current version
+   * reads it here rather than restating it: ADR-0035's plan was written claiming the version it had just
+   * been bumped from, in the same commit that bumped it, and nothing compared either number to the file.
+   */
+  "template-version": (_, read) => {
+    const { version } = JSON.parse(read(FEATURES));
+    if (typeof version !== "string") throw new DocsError(`${FEATURES} has no version a reader could cite`);
+    return version;
+  },
   /** The template's features and what each gives a project. */
   "features-table": (_, read) =>
     table(
