@@ -37,7 +37,7 @@ Dependabot cannot see a tool a workflow downloads by version, so each is pinned 
 | [shellcheck](https://github.com/koalaman/shellcheck/releases) | 0.11.0 | everywhere | the digest GitHub records for each asset |
 | [zizmor](https://github.com/zizmorcore/zizmor/releases) | 1.31.1 | everywhere | the digest GitHub records for each asset |
 | [golangci-lint](https://github.com/golangci/golangci-lint/releases) | 2.15.0 | with a Go module | the release's checksum file |
-| [uv](https://github.com/astral-sh/uv/releases) | 0.13.1 | with a Python module | the `.sha256` file beside each asset |
+| [uv](https://github.com/astral-sh/uv/releases) | 0.13.3 | with a Python module | the `.sha256` file beside each asset |
 | [gitleaks](https://github.com/gitleaks/gitleaks/releases) | 8.30.1 | in CI only | the release's checksum file |
 | [trivy](https://github.com/aquasecurity/trivy/releases) | 0.76.0 | in CI only | the release's checksum file |
 | [mcp-publisher](https://github.com/modelcontextprotocol/registry/releases) | 1.8.1 | in CI only | the digest GitHub records for each asset |
