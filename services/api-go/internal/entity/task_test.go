@@ -45,6 +45,40 @@ func TestNewTask(t *testing.T) {
 	}
 }
 
+func TestNewTaskTrimsTheWhiteSpacePropertyAndNothingElse(t *testing.T) {
+	t.Parallel()
+
+	// The escapes stand for the characters themselves, so no invisible one is
+	// ever written into this file. U+0085, U+3000, U+2029 and U+00A0 are
+	// White_Space; U+001C to U+001F and U+FEFF are not, but Python's strip and
+	// JavaScript's trim take them, which is how the services once differed.
+	tests := []struct {
+		name    string
+		title   string
+		want    string
+		wantErr error
+	}{
+		{name: "trims the White_Space property from both sides", title: "\u0085\u3000a\u2029", want: "a"},
+		{name: "keeps what a wider trim would also take, which is not White_Space", title: "\u001fa\ufeff", want: "\u001fa\ufeff"},
+		{name: "refuses a title of only White_Space", title: "\u0085\u00a0", wantErr: entity.ErrEmptyTitle},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			task, err := entity.NewTask("id-1", tt.title, now)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tt.wantErr)
+			}
+
+			if err == nil && task.Title != tt.want {
+				t.Fatalf("title = %q, want %q", task.Title, tt.want)
+			}
+		})
+	}
+}
+
 func TestTransition(t *testing.T) {
 	t.Parallel()
 
