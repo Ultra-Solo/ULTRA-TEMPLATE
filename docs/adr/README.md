@@ -25,7 +25,7 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0015](0015-one-manifest-for-hand-pinned-tools.md) | Hand-pinned tools live in one manifest | Accepted, amends 0003, 0011, amended by 0017 |
 | [0016](0016-cloud-agents-get-the-same-toolchains.md) | Cloud agents get the same toolchains | Accepted, amends 0009, 0011 |
 | [0017](0017-prove-the-supply-chain-before-it-runs.md) | Prove every pin before it runs, not where it first runs | Accepted, amends 0003, 0011, 0015 |
-| [0018](0018-every-task-service-reads-and-answers-alike.md) | Every task service reads a request and answers it the same way | Accepted, amends 0010, 0013, amended by 0021 |
+| [0018](0018-every-task-service-reads-and-answers-alike.md) | Every task service reads a request and answers it the same way | Accepted, amends 0010, 0013, amended by 0021, 0036 |
 | [0019](0019-moves-are-compare-and-set-on-the-store.md) | Moves are compare-and-set on the store | Accepted, amends 0005 |
 | [0020](0020-require-generated-preset-verification.md) | Require generated preset verification in the template's gate | Accepted, amends 0002, amended by 0022 |
 | [0021](0021-bound-request-receive-time.md) | Bound request receive time | Accepted, amends 0018 |
@@ -43,3 +43,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0033](0033-track-the-current-stable-python-line.md) | Track the current stable Python line | Accepted |
 | [0034](0034-move-the-runner-pin-to-ubuntu-26.04.md) | Move the runner pin to Ubuntu 26.04 | Accepted, amends 0029 |
 | [0035](0035-drive-releases-from-a-written-standing-plan.md) | Drive releases from a written standing plan | Accepted |
+| [0036](0036-record-what-the-task-contract-leaves-free.md) | Record what the task contract leaves free | Accepted, amends 0018 |
