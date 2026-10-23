@@ -62,7 +62,7 @@ No row has resolved, so the ledger is too young to score. That is stated rather 
 
 As of the check on 2026-10-20, from the repository rather than from memory:
 
-- `origin/main` is `1852bd4`, tagged `v3.13.3`. `template/features.json` says <!-- generated:template-version -->3.13.5<!-- /generated -->, which is the next release and is not published: the work that writes it is this plan. The figure is generated from that file rather than copied, because a copy of it is what this line got wrong first.
+- `origin/main` is `1852bd4`, tagged `v3.13.3`. `template/features.json` says <!-- generated:template-version -->3.13.6<!-- /generated -->, which is the next release and is not published: the work that writes it is this plan. The figure is generated from that file rather than copied, because a copy of it is what this line got wrong first.
 - [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md)'s ledger is closed: A1 in v3.3.0, A2r/A4r/A5 in v3.4.0, B1/B3/B4 in v3.5.0, B2 in v3.6.0. Nothing in it is open.
 - Releases v3.6.1 through v3.13.3 added no capability the ledger planned: a runner image pin, MCP Streamable HTTP, the Node, Go and Python lines, agent adapters, and the runner move to Ubuntu 26.04.
 - All 11 hand-pinned tools are `current` in the `pins` run of 2026-10-20T11:51:09Z, every platform checksum matching its release.
