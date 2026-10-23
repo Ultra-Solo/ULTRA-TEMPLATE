@@ -93,6 +93,23 @@ test("a template change reaches the project, and the project's own changes stay"
   assert.equal(readOrigin(changelog).version, TO, "the next update starts from here");
 });
 
+test("the provenance record an update writes is the one init writes for the same release", () => {
+  git(template, "checkout", "-q", FROM);
+  const dir = project("same-record");
+  git(template, "checkout", "-q", "-");
+
+  run(dir);
+
+  // Byte for byte, including the order of the description's keys: a record must never
+  // tell whether the tree that holds it was made by init or reached its release by update.
+  const fresh = join(work, "same-record-fresh");
+  execFileSync(process.execPath, ["template/init.mjs", "--source", template, "--name", "demo-app", "--owner", "octo-org", "--preset", "minimal", "--out", fresh], {
+    cwd: join(work, "template"),
+    stdio: "ignore",
+  });
+  assert.equal(readFileSync(join(dir, PROVENANCE_FILE), "utf8"), readFileSync(join(fresh, PROVENANCE_FILE), "utf8"));
+});
+
 test("where the project changed the same lines, the conflict is left to resolve", () => {
   git(template, "checkout", "-q", FROM);
   const dir = project("conflict");
