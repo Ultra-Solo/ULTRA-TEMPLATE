@@ -43,6 +43,21 @@ const older = (a, b) => {
 /** The notes file a version must have: every minor and major release, which is every patch-0 version. */
 export const requiredNotes = (version) => (/^\d+\.\d+\.0$/.test(version) && !older(version, NOTES_SINCE) ? `${NOTES_DIR}/v${version}.md` : null);
 
+/**
+ * The newest release tag older than `to`: the lower bound of the notes for `to`. Read from the tags
+ * rather than from HEAD because once `to` is published it is itself the newest tag at HEAD, and
+ * re-running the one-liner would otherwise stop comparing the release against anything (#69). Null
+ * when no release came before `to`, which is when the first-release notes render instead.
+ */
+export function previousReleaseTag(tags, to) {
+  let previous = null;
+  for (const tag of tags) {
+    if (!/^v\d+\.\d+\.\d+$/.test(tag) || !older(tag.slice(1), to.slice(1))) continue;
+    if (previous === null || older(previous.slice(1), tag.slice(1))) previous = tag;
+  }
+  return previous;
+}
+
 // The same at both releases, so the identity cancels out of the comparison.
 const IDENTITY = ["--name", "demo-app", "--owner", "octo-org"];
 
@@ -93,7 +108,7 @@ export function groupByPreset(perPreset) {
 
 /**
  * The first release has nothing to compare against, so it says what the template is for instead of
- * what changed. `from` is null exactly then: no tag matches `v*` yet.
+ * what changed. `from` is null exactly then: no release tag came before `--to`.
  */
 function firstRelease(pullRequests) {
   const lines = [
@@ -178,14 +193,7 @@ function mergedPullRequests(repo, to, from) {
 function main() {
   const { values } = parseArgs({ options: { to: { type: "string" }, from: { type: "string" }, repo: { type: "string" } } });
   if (!/^v\d+\.\d+\.\d+$/.test(values.to ?? "")) throw new Error(`--to must be a version tag such as v1.4.1, got "${values.to ?? ""}"`);
-  // No tag matching v* means this is the first release: there is nothing to compare it against, and
-  // git describe fails rather than saying so.
-  let previous = null;
-  try {
-    previous = git("describe", "--tags", "--abbrev=0", "--match", "v*", "HEAD");
-  } catch {
-    previous = null;
-  }
+  const previous = previousReleaseTag(git("tag", "--list", "v*").split("\n").filter(Boolean), values.to);
   const from = values.from ?? previous;
   if (from === null) {
     process.stdout.write(render({ to: values.to, from, groups: [], pullRequests: mergedPullRequests(values.repo, values.to, null) }));
