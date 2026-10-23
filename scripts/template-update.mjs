@@ -188,11 +188,11 @@ function updateVerified({ project, to, add = [], remove = [], dryRun = false, te
 
     const beforeInputs = provenance?.inputs ?? {
       identity, features: origin.features,
-      description: { generated: true, sentence: defaultDescription(beforeSnapshot.manifest, origin.features) },
+      description: { sentence: defaultDescription(beforeSnapshot.manifest, origin.features), generated: true },
       year: Number(/^Copyright \(c\) (\d{4}) /m.exec((existsSync(join(project, "LICENSE")) ? readFileSync(join(project, "LICENSE"), "utf8") : ""))?.[1] ?? new Date().getUTCFullYear()),
     };
     const afterInputs = { ...beforeInputs, features,
-      description: beforeInputs.description.generated ? { generated: true, sentence: defaultDescription(afterSnapshot.manifest, features) } : beforeInputs.description,
+      description: beforeInputs.description.generated ? { sentence: defaultDescription(afterSnapshot.manifest, features), generated: true } : beforeInputs.description,
     };
     for (const [side, snapshot] of Object.entries(snapshots)) {
       const entries = git(clone, ["ls-tree", "-rz", snapshot.source.commit]).split("\0").filter(Boolean);
