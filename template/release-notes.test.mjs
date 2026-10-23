@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { ROOT } from "./init.mjs";
-import { diffTrees, groupByPreset, NOTES_DIR, render, requiredNotes, walk } from "./release-notes.mjs";
+import { diffTrees, groupByPreset, NOTES_DIR, previousReleaseTag, render, requiredNotes, walk } from "./release-notes.mjs";
 
 /** A generated project, as a directory of files. */
 function tree(t, files) {
@@ -96,4 +96,13 @@ test("this version has the notes it needs", () => {
   if (file === null) return;
   assert.ok(existsSync(join(ROOT, file)), `${file} is missing: a minor or major release says what adopters need to know`);
   assert.ok(readFileSync(join(ROOT, file), "utf8").trim().length > 0, `${file} is empty`);
+});
+
+test("the lower bound is the release before --to, before and after that release is tagged", () => {
+  const tags = ["v1.0.0", "v1.1.0", "v2.0.0"];
+  assert.equal(previousReleaseTag(tags, "v2.0.0"), "v1.1.0", "publishing --to must not move the bound onto --to itself");
+  assert.equal(previousReleaseTag(["v1.0.0", "v1.1.0"], "v2.0.0"), "v1.1.0", "--to is not tagged yet");
+  assert.equal(previousReleaseTag(tags, "v1.0.1"), "v1.0.0");
+  assert.equal(previousReleaseTag(tags, "v1.0.0"), null, "a first release has nothing before it");
+  assert.equal(previousReleaseTag(["v1.0.0", "v1.0.0-rc1"], "v1.0.1"), "v1.0.0", "a tag outside the release format orders nothing");
 });
