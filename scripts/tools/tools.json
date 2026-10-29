@@ -168,7 +168,7 @@
       ]
     },
     "uv": {
-      "version": "0.13.3",
+      "version": "0.13.6",
       "for": "python",
       "actions": [
         "astral-sh/setup-uv"
@@ -180,7 +180,7 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "e4f169ec380f1793b898a6f1fcbacd22db25cf7ca0349a6e96ffb85b69998d04",
+          "sha256": "f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645",
           "files": [
             "uv-x86_64-unknown-linux-gnu/uv",
             "uv-x86_64-unknown-linux-gnu/uvx"
@@ -188,7 +188,7 @@
         },
         "linux-arm64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-unknown-linux-gnu.tar.gz",
-          "sha256": "611ff684f193a84d2fdad29c5f12505d02ece94984c7c982cdde950eba5c95b9",
+          "sha256": "229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d",
           "files": [
             "uv-aarch64-unknown-linux-gnu/uv",
             "uv-aarch64-unknown-linux-gnu/uvx"
@@ -196,7 +196,7 @@
         },
         "darwin-arm64": {
           "url": "https://github.com/astral-sh/uv/releases/download/{version}/uv-aarch64-apple-darwin.tar.gz",
-          "sha256": "bf1e4fb6f5f5079a2902ad3f3a9e2d337575b226a1378f2449d8404353650608",
+          "sha256": "60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472",
           "files": [
             "uv-aarch64-apple-darwin/uv",
             "uv-aarch64-apple-darwin/uvx"
@@ -234,7 +234,7 @@
       }
     },
     "trivy": {
-      "version": "0.76.0",
+      "version": "0.76.1",
       "for": "ci",
       "actions": [
         "aquasecurity/trivy-action",
@@ -246,14 +246,14 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_Linux-64bit.tar.gz",
-          "sha256": "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7",
+          "sha256": "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0",
           "files": [
             "trivy"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_Linux-ARM64.tar.gz",
-          "sha256": "aab21e677a7b7071fc79f1711480840754c18a1b9d9cefa7ccd06af63a0e8f4c",
+          "sha256": "e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f",
           "files": [
             "trivy"
           ]
@@ -264,7 +264,7 @@
       }
     },
     "mcp-publisher": {
-      "version": "1.8.1",
+      "version": "1.8.5",
       "for": "ci",
       "releases": {
         "github": "modelcontextprotocol/registry"
@@ -272,7 +272,7 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/modelcontextprotocol/registry/releases/download/v{version}/mcp-publisher_linux_amd64.tar.gz",
-          "sha256": "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc",
+          "sha256": "2d151ac57275c9a6684d9d22b1cba81058bab195ea0a162e8fce3c6a5ec32812",
           "files": [
             "mcp-publisher"
           ]

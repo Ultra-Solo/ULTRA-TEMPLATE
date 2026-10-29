@@ -44,6 +44,7 @@ One entry per cadence check, newest last. A check appends; it never rewrites an 
 |---|---|---|---|
 | 1 | 2026-10-20 | Write this plan, and record it in [ADR-0035](../docs/adr/0035-drive-releases-from-a-written-standing-plan.md) | The ledger [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md) opened is closed, and v3.13.1 through v3.13.3 were maintenance only. The plan was being re-derived at every check, which the procedure names as a failure mode |
 | 2 | 2026-10-26 | Actuate trigger row 2 as written: close [GHSA-834v-8h66-3h79](https://github.com/advisories/GHSA-834v-8h66-3h79) with happy-dom 21.0.4 and ship it as the patch v3.13.7 | The trigger was observed by the check's direct lockfile-versus-advisory-database comparison, which step 2 of the procedure names as raw material, before any instrument the row names had reported it; actuating on that direct observation is within the plan, and this entry is the sentence a future firing cites. The fix was proven by the advisory's PoC — 21.0.3 reached the host filesystem, 21.0.4 did not — and the shipped tarball's integrity equals the registry's record |
+| 3 | 2026-10-29 | Actuate trigger row 1 as written and fold the two open Dependabot pull requests into the same patch: move uv 0.13.6, trivy 0.76.1 and mcp-publisher 1.8.5 with `node scripts/tools.mjs bump`, carry #74's codeql-action group and #73's `distroless/static-debian13` bump, and advance the template version to 3.13.8 | The pins run of Tuesday 2026-10-27 12:26:52Z reported three tools not `current`, read from the run's own table rather than a digest, and the response was written before it fired. #73 and #74 were pre-adjudicated at the 2026-10-26 check as awaiting the next release window, so the batch executes that row rather than re-deciding it; both were computed against pre-3.13.7 main and fail `template-release-check` for carrying no version advance, which the batch supplies. One pull request instead of three: a version advance is the mechanism that carries generated-output changes, so it carries all of them. P1, P2 and P4 scored with this entry — P1 failed, 0.4225, the plan's first calibration miss. The standing state had #73 and #74 described the wrong way round; corrected below |
 
 ## Prediction ledger
 
@@ -53,30 +54,34 @@ Score a row once its date has passed: the Brier term is `(p − outcome)²` with
 
 | # | Prediction | Checkable on | Probability it fails | Outcome | Score |
 |---|---|---|---|---|---|
-| P1 | Every tool in `scripts/tools/tools.json` is still `current`, so no pin moves | 2026-10-27 | 0.35 | — | — |
-| P2 | All four Monday scheduled runs succeed: code scanning, Scorecard, security scans, the preset matrix | 2026-10-26 | 0.15 | — | — |
+| P1 | Every tool in `scripts/tools/tools.json` is still `current`, so no pin moves | 2026-10-27 | 0.35 | 1 | 0.4225 |
+| P2 | All four Monday scheduled runs succeed: code scanning, Scorecard, security scans, the preset matrix | 2026-10-26 | 0.15 | 0 | 0.0225 |
 | P3 | Only pin moves and dependency updates are released in the next four weeks; no new capability is warranted | 2026-11-17 | 0.30 | — | — |
-| P4 | The Monday 2026-10-26 05:41Z security scans report no vulnerability in any of the five lockfiles, now that v3.13.7 closed the one they had not yet reported | 2026-10-26 | 0.10 | — | — |
+| P4 | The Monday 2026-10-26 05:41Z security scans report no vulnerability in any of the five lockfiles, now that v3.13.7 closed the one they had not yet reported | 2026-10-26 | 0.10 | 0 | 0.01 |
 | P5 | A project generated from the published v3.13.7 carries happy-dom 21.0.4 and audits clean | 2026-10-26 | 0.05 | 0 | 0.0025 |
 | P6 | The reading entry 2 records — actuation on the check's direct observation, not only on the named instruments — is upheld at the backlog check | 2026-11-17 | 0.20 | — | — |
+| P7 | All four Monday scheduled runs succeed: code scanning, Scorecard, security scans, the preset matrix | 2026-11-02 | 0.15 | — | — |
+| P8 | Every tool in `scripts/tools/tools.json` is `current` again in the pins run of Tuesday 2026-11-03, checksums matching | 2026-11-03 | 0.30 | — | — |
+| P9 | Dependabot closes #73 and #74 on its own once the batch merges, without a manual close | 2026-11-03 | 0.10 | — | — |
+| P10 | A project generated from the published v3.13.8 carries the batch's codeql-action SHA, distroless digest and three pin versions, and audits clean | 2026-10-30 | 0.05 | — | — |
 
-P5 was registered before the release it predicted, and resolved by the generation check that followed it: the project generated from the published tag carried 21.0.4 and audited clean, so its score is the only one the ledger holds. The other rows' dates have not passed, so they stay unmarked rather than scored as anything.
+P1, P2 and P4 resolved with the checks their dates named. P2 and P4 held: the four Monday 2026-10-26 runs all succeeded, and the security scans reported no vulnerability in any of the five lockfiles. P1 failed: the pins run of Tuesday 2026-10-27 reported three tools not `current` — uv 0.13.6, trivy 0.76.1 and mcp-publisher 1.8.5 — so pins move in this patch. P5 was registered before the release it predicted, and resolved by the generation check that followed it: the project generated from the published tag carried 21.0.4 and audited clean. Four rows are now scored — 0.4225, 0.0225, 0.01 and 0.0025 — a running mean of 0.114375. P3 and P6 wait for their 2026-11-17 date; P7 through P10 carry the coming week's runs and the release check.
 
 ## Standing state
 
-As of the check on 2026-10-26, from the repository rather than from memory:
+As of the check on **2026-10-29**, from the repository rather than from memory:
 
-- `origin/main` is `c08a0be`, tagged `v3.13.7` — the Latest release, published 2026-10-26T02:39:36Z by the `template-release` workflow on verify's own pass. `template/features.json` says <!-- generated:template-version -->3.13.7<!-- /generated -->, which is the release just shipped; the next version is not written yet. The figure is generated from that file rather than copied, because a copy of it is what this line got wrong first.
+- `template/features.json` says <!-- generated:template-version -->3.13.8<!-- /generated --> — the release the v3.13.8 batch ships when it merges. `template-release` publishes the tag on verify's own pass, as it published v3.13.7 at 2026-10-26T02:39:36Z; the merge SHA and timestamp belong to that workflow's record and are not written ahead of it. The figure is generated from that file rather than copied, because a copy of it is what this line got wrong first.
 - [ADR-0025](../docs/adr/0025-prioritize-verified-foundation-before-capability-expansion.md)'s ledger is closed: A1 in v3.3.0, A2r/A4r/A5 in v3.4.0, B1/B3/B4 in v3.5.0, B2 in v3.6.0. Nothing in it is open.
-- Releases v3.6.1 through v3.13.7 added no capability the ledger planned: a runner image pin, MCP Streamable HTTP, the Node, Go and Python lines, agent adapters, the runner move to Ubuntu 26.04, and a security patch no plan foresaw.
+- Releases v3.6.1 through **v3.13.8** added no capability the ledger planned: a runner image pin, MCP Streamable HTTP, the Node, Go and Python lines, agent adapters, the runner move to Ubuntu 26.04, and a security patch no plan foresaw.
 - [GHSA-834v-8h66-3h79](https://github.com/advisories/GHSA-834v-8h66-3h79) is closed in the repository's own lockfile: `npm audit` reports no vulnerability in any of the five lockfiles, and every one of the four selections that ship apps/web carries happy-dom 21.0.4.
-- All 11 hand-pinned tools are `current` in the `pins` run of 2026-10-20T11:51:09Z, every platform checksum matching its release. The next `pins` report is due Tuesday 2026-10-27.
-- No open issue. Two Dependabot pull requests are open — #73, the actions group across one directory, and #74, the `distroless/static-debian13` base image — both awaiting the next release window, neither part of the patch that just shipped.
+- The `pins` run of Tuesday 2026-10-27 12:26:52Z reported three of the 11 hand-pinned tools not `current`: uv 0.13.6 (from 0.13.3), trivy 0.76.1 (from 0.76.0) and mcp-publisher 1.8.5 (from 1.8.1). The batch moves each with `node scripts/tools.mjs bump`, checksums resolved from each release's record; the next `pins` report is due Tuesday 2026-11-03.
+- No open issue. Two Dependabot pull requests are open — **#74, the actions group across one directory, and #73, the `distroless/static-debian13` base image** — both folded into the v3.13.8 batch, which carries their exact versions; Dependabot closes them once it merges. The previous state of this plan listed those two numbers the wrong way round; this is the correction.
 
 ## Next checkable dates
 
-- Monday 2026-10-26 — code scanning 04:23Z, Scorecard 05:37Z, security scans 05:41Z, the preset matrix 06:17Z.
-- Tuesday 2026-10-27 — the pins report 06:23Z.
-- Tuesday 2026-11-17 — the horizon P3 is scored against, and the first check where the backlog above can be decided from evidence rather than assumed. Both items are decided at this check, and released in whatever minor is open then.
+- Monday 2026-11-02 — code scanning 04:23Z, Scorecard 05:37Z, security scans 05:41Z, the preset matrix 06:17Z.
+- Tuesday 2026-11-03 — the pins report 06:23Z, the first read after the batch's pin moves.
+- Tuesday 2026-11-17 — the horizon P3 and P6 are scored against, and the first check where the backlog above can be decided from evidence rather than assumed. Both items are decided at this check, and released in whatever minor is open then.
 
 A check before those dates can confirm nothing that has not happened yet, and says so rather than inventing an update. The one thing a check must never do is let a backlog date pass without either shipping the item or moving it in the decision log.
