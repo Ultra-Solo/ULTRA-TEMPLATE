@@ -43,7 +43,7 @@ jobs:
           DEVCONTAINER_CLI_VERSION: ${{ steps.devcontainer-version.outputs.version }}
         run: |
           curl -fsSL https://raw.githubusercontent.com/devcontainers/cli/v"${DEVCONTAINER_CLI_VERSION}"/scripts/install.sh -o install.sh
-          echo "3f7ff412801e382b944fbf300c4f1ff49cf2534fa6cc80995da0b2963924c9da  install.sh" | sha256sum -c -
+          echo "137e273aea49666a6ed9b5b0796153efc5873d8778f69ce552beb6ff3fab2d69  install.sh" | sha256sum -c -
           sh install.sh --version "${DEVCONTAINER_CLI_VERSION}"
           echo "$HOME/.devcontainers/bin" >> "$GITHUB_PATH"
       - name: Build devcontainer with Features
@@ -61,7 +61,12 @@ jobs:
         run: |
           # Record the source commit, base image digest, scanner version, platform, and final image identity
           base_ref="$(grep -oE '^FROM [^[:space:]]+' .devcontainer/Dockerfile | head -n 1 | cut -d' ' -f2)"
-          base_digest=$(docker inspect "$base_ref" --format '{{.RepoDigests}}')
+          # A digest-pinned base image lives in buildkit's store (devcontainer build), not the daemon,
+          # so `docker inspect` on the digest fails with "no such object"; resolve via buildx imagetools
+          # and fall back to the Dockerfile's pinned value (the source of truth for check-hygiene).
+          base_digest=$(docker buildx imagetools inspect "$base_ref" --format '{{index .RepoDigests 0}}' 2>/dev/null) || \
+            base_digest="$(echo "$base_ref" | sed -E 's/^.*(@sha256:).*$/\1/')"
+          [ -z "$base_digest" ] && base_digest="$base_ref"
           # A locally built image has no repo digest; its image ID is the identity the scan read.
           final_id=$(docker inspect devcontainer-scan:ci --format '{{.Id}}')
           scanner_version=$(trivy --version | head -n 1)

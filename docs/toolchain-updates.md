@@ -40,10 +40,10 @@ Dependabot cannot see a tool a workflow downloads by version, so each is pinned 
 | [uv](https://github.com/astral-sh/uv/releases) | 0.13.6 | with a Python module | the `.sha256` file beside each asset |
 | [gitleaks](https://github.com/gitleaks/gitleaks/releases) | 8.30.1 | in CI only | the release's checksum file |
 | [trivy](https://github.com/aquasecurity/trivy/releases) | 0.76.1 | in CI only | the release's checksum file |
-| [mcp-publisher](https://github.com/modelcontextprotocol/registry/releases) | 1.8.5 | in CI only | the digest GitHub records for each asset |
+| [mcp-publisher](https://github.com/modelcontextprotocol/registry/releases) | 1.8.6 | in CI only | the digest GitHub records for each asset |
 | [govulncheck](https://github.com/golang/vuln/tags) | 1.9.0 | in CI only | none: run as `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0` |
 | [pip-audit](https://pypi.org/project/pip-audit/) | 2.10.1 | in CI only | none: run as `uvx pip-audit==2.10.1` |
-| [devcontainer-cli](https://github.com/devcontainers/cli/tags) | 0.89.0 | in CI only | none: run as `devcontainer --version` |
+| [devcontainer-cli](https://github.com/devcontainers/cli/tags) | 0.90.0 | in CI only | none: run as `devcontainer --version` |
 <!-- /generated -->
 
 To move one, read its release notes, then:
