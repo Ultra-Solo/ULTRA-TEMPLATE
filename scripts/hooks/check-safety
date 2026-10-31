@@ -1,0 +1,9 @@
+#!/bin/sh
+# Pre-commit hook wrapper for the bounded-artifact mutation gate.
+# Runs `node scripts/check-safety.mjs` against staged work and hard-exits
+# (exit code 1) on any mass deletion; warnings are printed but not fatal.
+# Install with:
+#   cp scripts/hooks/check-safety .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# The gate is verify-only in the chassis (`scripts/verify.mjs`); this file exists
+# so teams can opt in locally. It is tracked, unlike the installed copy.
+exec node scripts/check-safety.mjs "$@"

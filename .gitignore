@@ -21,6 +21,9 @@ test-results/
 *.local
 *.local.*
 
+# check-safety gate: machine-readable audit report sidecar.
+scripts/safety-report.json
+
 # ultra:begin go-service
 # Go build output.
 services/api-go/bin/
