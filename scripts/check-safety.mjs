@@ -1,5 +1,5 @@
 /**
- * Bounded-artifact mutation gate — the ULTRA-TEMPLATE safety invariant.
+ * Bounded-artifact mutation gate — the repository's safety invariant.
  *
  * No agent may silently erase a large part of the repository in one pass. The gate is
  * diff-aware (not merely per-file): it compares HEAD against what has been staged or
