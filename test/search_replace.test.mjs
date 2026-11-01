@@ -78,6 +78,32 @@ describe("search_replace API", () => {
     assert.equal(r2.ok, true);
   });
 
+  it("Pass 3 skips a comment-only ellipsis line", () => {
+    const result = search_replace("line one\n// ...\nline three\n", "line one\nline three\n");
+    assert.equal(result.ok, true);
+    assert.equal(result.details.pass, "pass3");
+    assert.ok(!result.result.includes("// ..."));
+  });
+
+  it("Pass 3 does not skip a line that only resembles a comment ellipsis", () => {
+    // The trailing text after the ellipsis is not comment noise, so this line
+    // is real content and the block must not match across it.
+    const r = search_replace("line one\n# ... x\nline three\n", "line one\nline three\n");
+    assert.equal(r.ok, false);
+  });
+
+  it("Pass 3 handles a near-miss comment ellipsis in linear time", () => {
+    // `#...` then a run of slashes then one other character: the shape CodeQL
+    // js/redos reported. The previous pattern split the slash run between two
+    // quantified groups in exponentially many ways and took seconds here.
+    const hostile = `#...${"//".repeat(22)}x`;
+    const started = Date.now();
+    const r = search_replace(`line one\n${hostile}\nline three\n`, "line one\nline three\n");
+    const elapsed = Date.now() - started;
+    assert.equal(r.ok, false);
+    assert.ok(elapsed < 2000, `took ${elapsed}ms on a ${hostile.length}-character line`);
+  });
+
   it("Pass 4 unique substring match succeeds", () => {
     // A needle inside a longer line fails passes 1-3 (no whole-line equality)
     // and is long enough (> 5 chars) for the substring pass.

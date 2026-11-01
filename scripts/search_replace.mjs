@@ -77,7 +77,13 @@ const TRUNCATION_PATTERNS = [
   /^\[REST\]$/,
   /^\[DEL\]$/,
   /^\[ADD\]$/,
-  /^(#|\s|\/\*|\/\/)+\s*\.\.\.(\s|\*|\/|\/\/)*$/i,
+  // A comment-only line ending in an ellipsis. Written with character classes
+  // and without a redundant `\s*` before the ellipsis: the obvious
+  // `(\s|\*|\/|\/\/)*` tail lets a run of slashes be split between the two
+  // quantified groups in exponentially many ways, and a code line such as
+  // `#...` followed by slashes then any other character hung this matcher for
+  // seconds (CodeQL js/redos). The language accepted here is unchanged.
+  /^(?:#|\s|\/\*|\/\/)+\.\.\.[\s*/]*$/i,
 ];
 
 /** Does a line look like a truncated artifact (Pass 3 skip)? */

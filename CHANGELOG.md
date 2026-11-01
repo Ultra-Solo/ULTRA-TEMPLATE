@@ -37,3 +37,8 @@ Released sections are written by release-please from Conventional Commit titles;
   anchored to the original file rather than the resulting file, and widened the diff queries so that
   files deleted in the index are still visible and classified as deletions rather than accepted as
   silent mass mutations.
+- `scripts/search_replace.mjs`: the truncation-artifact pattern that recognises a comment-only ellipsis
+  backtracked exponentially on a line such as `#...` followed by slashes and any other character —
+  18 seconds on a 49-character line, reported by CodeQL as `js/redos`. It is now written with character
+  classes and accepts exactly the same lines, in linear time
+  ([test/search_replace.test.mjs](test/search_replace.test.mjs)).
