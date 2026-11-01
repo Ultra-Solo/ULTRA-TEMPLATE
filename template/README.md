@@ -58,8 +58,10 @@ The three are not interchangeable, and the public contract says where each one l
 ```bash
 node scripts/verify.mjs                          # the template as a project, every feature present
 node template/init.mjs --preset minimal --name demo-app --owner octo-org --out ../demo-minimal
-cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && node scripts/verify.mjs
+cd ../demo-minimal && git init -q && git add -A && node scripts/setup.mjs && git add -A && git commit -q -m "chore: initialize project" && node scripts/verify.mjs
 ```
+
+The commit precedes `verify` because `check-safety` measures the change against `HEAD`, and a repository with no commit yet has none.
 
 `template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup` and `verify`, which lints its workflows with the pinned actionlint and zizmor. The template's `verify.yml` calls that workflow and requires its result on pull requests, main pushes, and merge queue entries. Initialization removes the call and its dependency; the standalone weekly and manual preset runs remain available in the template.
 
