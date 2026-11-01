@@ -44,6 +44,18 @@ describe("search_replace API", () => {
     assert.equal(r.ok, false);
   });
 
+  it("Pass 1 accepts a Windows-authored search block against a Unix file", () => {
+    // A search block written on Windows carries \r\n, so splitting it on \n
+    // leaves a trailing \r on every line but the last. Pass 1 is the strict
+    // comparator and must still match: if it fell through to the
+    // whitespace-tolerant pass, a Windows checkout would lose the strictness
+    // this pass exists for and match indented text it should reject.
+    const result = search_replace("line one\nline two\nline three\n", "line one\r\nline two", "line ONE\nline TWO");
+    assert.equal(result.ok, true);
+    assert.equal(result.details.pass, "pass1");
+    assert.equal(result.result, "line ONE\nline TWO\nline three\n");
+  });
+
   it("Pass 2 whitespace-tolerant match succeeds", () => {
     const result = search_replace("line one\n   line two   \nline three\n", "line two");
     assert.equal(result.ok, true);

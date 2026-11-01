@@ -46,8 +46,8 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
     PASS node scripts/check-plan.mjs (plan schema OK, 5 entry/entries)
     PASS node --test template/*.test.mjs (97/97 pass)
     PASS npm audit signatures in the fresh clone: api-ts 3, mcp-server 10, apps/web 42, ts-library 13 packages with verified attestations, all exit 0
-    COMMIT the gate commit on release/3.14.0-check-safety (check-plan.mjs, search_replace.mjs, plan.md, chassis step, ADR-0037; the suite in test/agents-claims.test.mjs holds this invariant to those enforcers)
-    CLONE fresh clone of the commit runs node scripts/verify.mjs: OK (actionlint/zizmor skipped, no win32-x64 assets)
+    COMMIT 4b118c8 on release/3.15.0-self-upgrade-gate, the branch v3.15.0 is released from (scripts/check-plan.mjs, scripts/search_replace.mjs, data/plan.md, the chassis: plan step in scripts/verify.mjs, ADR-0037, test/check-plan.test.mjs, template/notes/v3.15.0.md; the suite in test/agents-claims.test.mjs holds this invariant to those enforcers)
+    CLONE a clean clone of b9f32f9 and a clean clone of the gate commit fail the same 8 chassis steps, so the gate adds no failure: actionlint and zizmor are skipped by name for want of win32-x64 assets, uv 0.12.5 sits below py-service's >=0.13.0 floor, and npm 12 rejects the --ignore-scripts default. A minimal-preset child generated from the gate commit runs node scripts/verify.mjs with exit 0 and verify: OK
 
 ### minimal-pr
 - id: minimal-pr
@@ -58,7 +58,8 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
   PR title follows Conventional Commits
 - evidence:
     FAIL node --test test/search_replace.test.mjs — catastrophic guard blocks a 31-line removal from a 100-line file (cap = max(25, floor(100*0.3)) = 30; 30 is allowed, 31 is blocked)
-    PASS node --test test/search_replace.mjs suite: 24/24 pass; mutation check: pass 1 broken → 15/24 red
+    PASS node --test test/search_replace.test.mjs — 25/25 pass
+    PASS ten mutants of the matcher, each confirmed landed and restored by SHA-256: pass 1 dropped 2 of 25 red, pass 1 disabled 2, rstripEndings no-op 1, pass 2 disabled 2, pass 3 disabled 2, pass 4 disabled 1, guard never blocks 2, guard always blocks 18, exactMatch always true 14, boundary > to >= 3
     PR pending — no hygiene repair has been required yet
 
 ### gate-repair
@@ -71,7 +72,7 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
   CI job exists to drift: the gate is a chassis step (ADR-0037)
 - evidence:
     PASS node scripts/verify.mjs --dry-run lists the chassis: plan step
-    PASS generated child project (minimal preset, --source at the gate commit) lists chassis: plan and its node scripts/verify.mjs exits 0
+    PASS generated child project (minimal preset, --source . --source-commit 4b118c80a009603a41762021fa1b331c48f75e8c) carries chassis: plan at scripts/verify.mjs:59, and after git init its node scripts/verify.mjs exits 0 with verify: OK (119 tracked files, 164 pass, 3 skipped)
 
 ### facts-routes
 - id: facts-routes
@@ -93,4 +94,6 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
   it reads the plan root from argv or cwd (fixed: argv was parsed but silently ignored)
 - evidence:
     PASS node scripts/check-plan.mjs on the well-formed plan — exit 0
+    PASS node --test test/check-plan.test.mjs — 24/24 pass
+    PASS seven mutants of scripts/check-plan.mjs, each confirmed landed and restored by SHA-256: status validation off 2 of 24 red, evidence prefix off 1, evidence required off 2, id validation off 2, empty-file check off 1, exit 1 to exit 0 15, fence skipping off 3
     FAIL node scripts/check-plan.mjs on an invalid entry (bad id, unknown status, unprefixed evidence) — exit 1 with three schema violations listed

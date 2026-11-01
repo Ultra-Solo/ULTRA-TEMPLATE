@@ -17,6 +17,18 @@ Released sections are written by release-please from Conventional Commit titles;
 - `scripts/verify.mjs`: the check-safety gate as a chassis step, so it runs like the other CI controls.
 - `scripts/hooks/check-safety`: an optional pre-commit hook wrapper that invokes the gate on staged work.
   Install with `cp scripts/hooks/check-safety .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`.
+- `scripts/check-plan.mjs`: the self-upgrade gate — validates every entry in `data/plan.md` (id, status,
+  trigger, verdict, evidence) on each run and fails on drift, so a repair outside a written entry is a
+  minimal pull request rather than a direct write ([ADR-0037](docs/adr/0037-bound-the-self-upgrade-gate-to-a-validated-plan.md),
+  [test/check-plan.test.mjs](test/check-plan.test.mjs)).
+- `scripts/search_replace.mjs`: the deterministic five-pass matcher those pull requests are computed with,
+  which blocks a catastrophic edit instead of applying it ([test/search_replace.test.mjs](test/search_replace.test.mjs)).
+- `scripts/verify.mjs`: the plan check as a `chassis: plan` step, so the gate runs like the other CI controls.
+- `data/plan.md`: what the gate may repair, as five entries each with a status, trigger, verdict and evidence.
+
+### Changed
+
+- `template/features.json`: 3.14.0 → 3.15.0, with its release notes in `template/notes/v3.15.0.md`.
 
 ### Fixed
 
