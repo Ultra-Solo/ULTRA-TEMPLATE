@@ -58,8 +58,18 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
   PR title follows Conventional Commits
 - evidence:
     FAIL node --test test/search_replace.test.mjs — catastrophic guard blocks a 31-line removal from a 100-line file (cap = max(25, floor(100*0.3)) = 30; 30 is allowed, 31 is blocked)
-    PASS node --test test/search_replace.test.mjs — 25/25 pass
-    PASS ten mutants of the matcher, each confirmed landed and restored by SHA-256: pass 1 dropped 2 of 25 red, pass 1 disabled 2, rstripEndings no-op 1, pass 2 disabled 2, pass 3 disabled 2, pass 4 disabled 1, guard never blocks 2, guard always blocks 18, exactMatch always true 14, boundary > to >= 3
+    PASS node --test test/search_replace.test.mjs — 28/28 pass
+    PASS ten mutants of the matcher, each confirmed landed and restored by SHA-256: pass 1 disabled 2 of 28 red, rstripEndings no-op 1, pass 2 disabled 2, pass 3 disabled 3, pass 4 disabled 1, pass 5 disabled 0, guard never blocks 2, guard always blocks 19, exactMatch always true 17, boundary > to >= 3
+  The one surviving mutant is equivalent, not a coverage gap. Pass 5 compares lines after
+  stripping trailing whitespace only, which is strictly weaker than Pass 2's trim of both
+  sides, and Pass 2 runs first — so every single-line input Pass 5 could match, Pass 2
+  already matched. The matcher was instrumented and run over an exhaustive 187,272-case
+  space (every one- and two-line block and search over a 17-string vocabulary, in both
+  line-ending styles) and a randomized 200,000-case corpus: Pass 5 was entered 364,661
+  times and returned a match 0 times. Pass 5 stays as port fidelity and defense-in-depth,
+  which test/search_replace.test.mjs already states in its "Pass 5 single-line anchor:
+  shadowed by Pass 2's trim" case, so no test can kill that mutant without deleting the
+  pass — and deleting it would break the five-pass port ADR-0037 describes.
     PR pending — no hygiene repair has been required yet
 
 ### gate-repair
