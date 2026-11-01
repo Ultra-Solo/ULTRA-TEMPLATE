@@ -15,6 +15,7 @@ const LEDGER = {
   "Repository shape.": { rules: [1, 2, 3, 4, 5, 6, 10, 11, 12] },
   "Independent modules.": { rules: [13], paths: ["scripts/modules.mjs"] },
   "One set of instructions.": { paths: ["scripts/check-docs.mjs"] },
+  "The self-upgrade gate stays inside its plan.": { paths: ["scripts/check-plan.mjs", "scripts/search_replace.mjs"] },
 };
 
 const invariants = () => {
