@@ -469,8 +469,9 @@ export async function renderMain(argv = process.argv.slice(2), root = ROOT, inpu
 
 Next:
   ${out === null ? "git status                      # review the result" : `cd ${out} && git init -b main && git add -A    # hygiene checks tracked files`}
-  node scripts/setup.mjs && node scripts/verify.mjs
-  git add -A && git commit -m "chore: initialize project"
+  node scripts/setup.mjs
+  git add -A && git commit -m "chore: initialize project"    # check-safety measures against HEAD
+  node scripts/verify.mjs
   git push && node scripts/configure-github.mjs   # squash-only merges, required verify check, security settings`);
   return 0;
 }
@@ -559,7 +560,18 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
       mkdirSync(dirname(join(destination, file)), { recursive: true });
       writeFileSync(join(destination, file), data);
     }
-    console.log(`Initialized ${summary}\n${out === null ? "Review with git diff." : `Written to ${out}; initialize Git and add the files.`}\nNext: node scripts/setup.mjs && node scripts/verify.mjs`);
+    const steps =
+      out === null
+        ? ["node scripts/setup.mjs", 'git add -A && git commit -m "chore: initialize project"', "node scripts/verify.mjs"]
+        : [
+            `cd ${out} && git init -b main && git add -A`,
+            "node scripts/setup.mjs",
+            'git add -A && git commit -m "chore: initialize project"',
+            "node scripts/verify.mjs",
+          ];
+    console.log(
+      `Initialized ${summary}\n${out === null ? "Review with git diff." : `Written to ${out}; initialize Git and commit before verifying.`}\nNext:\n  ${steps.join("\n  ")}`,
+    );
     return 0;
   } catch (err) {
     if (err instanceof SourceError) throw new InitError(err.message, 2);

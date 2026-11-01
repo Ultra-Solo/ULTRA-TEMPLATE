@@ -40,12 +40,15 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 
    Or pass everything, for scripts: `node template/init.mjs --preset fullstack-ts` or `--features go-service,release`, with `--name`/`--owner` to override the defaults, `--description "…"` for the sentence under the project's README title (without it, init writes one from the features), and `--dry-run` to see the plan only.
 
-4. Install, verify and commit:
+4. Install, commit and verify:
 
    ```bash
-   node scripts/setup.mjs && node scripts/verify.mjs
+   node scripts/setup.mjs
    git add -A && git commit -m "chore: initialize project"
+   node scripts/verify.mjs
    ```
+
+   The commit comes before `verify` because `check-safety` measures the change against `HEAD`, and a repository with no commit yet has none.
 
 5. Push, then apply the settings GitHub does not copy from a template: squash-only merging, a ruleset on `main` requiring a pull request and the **`verify`** check, Dependabot security updates, private vulnerability reporting and secret scanning. Preview with `--dry-run`; it needs the GitHub CLI signed in as a repository admin.
 

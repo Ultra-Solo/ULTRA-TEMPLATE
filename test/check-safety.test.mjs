@@ -102,6 +102,26 @@ test("new files are not rejected", () => {
   }
 });
 
+test("reports an unborn HEAD instead of throwing (fresh project, files added, nothing committed)", () => {
+  // Every generated project starts in exactly this state: `git init` plus `git add -A`
+  // with no commit. The gate measures a change against HEAD, so it has to say that
+  // rather than let `git rev-parse HEAD` exit 128 and throw a stack trace.
+  const root = mkdtempSync(join(tmpdir(), "safety-unborn-"));
+  lastRoot = root;
+  try {
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src/main.js"), BASE);
+    execFileSync("git", ["init", "-q"], { cwd: root, stdio: "ignore" });
+    execFileSync("git", ["add", "-A", "--force"], { cwd: root, stdio: "ignore" });
+    const result = checkSafety(root);
+    assert.equal(result.ok, false);
+    assert.match(result.fatal, /commit/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    lastRoot = null;
+  }
+});
+
 test("deleted files are ignored by the gate", () => {
   const root = fixture();
   try {
