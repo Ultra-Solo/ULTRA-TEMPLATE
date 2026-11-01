@@ -29,8 +29,18 @@ Released sections are written by release-please from Conventional Commit titles;
 ### Changed
 
 - `template/features.json`: 3.14.0 → 3.15.0, with its release notes in `template/notes/v3.15.0.md`.
+- `template/features.json`: 3.15.0 → 3.15.1, with its release notes in `template/notes/v3.15.1.md`.
 
 ### Fixed
+
+- `scripts/check-safety.mjs`: a repository with files added and nothing committed — the state every
+  generated project is in at its first check — ended in `Error: git rev-parse HEAD exited with 128`
+  instead of a verdict, because the `HEAD` lookup ran above the guard that reports a repository with
+  nothing tracked yet. The guard now resolves first and the lookup is defensive, so that state fails
+  with the sentence that names the remedy rather than with a stack trace
+  ([test/check-safety.test.mjs](test/check-safety.test.mjs)).
+- `template/init.mjs`, [README.md](README.md), [template/README.md](README.md): the first-run steps read
+  `setup → commit → verify`, the order their own commit step is a precondition for.
 
 - `scripts/check-safety.mjs`: corrected numstat parsing (addition/deletion columns and the uncounted
   `-` marks are now handled in the right order), fixed the compensating-rewrite measurement to be
