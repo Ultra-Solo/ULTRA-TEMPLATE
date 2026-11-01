@@ -39,8 +39,9 @@ Released sections are written by release-please from Conventional Commit titles;
   nothing tracked yet. The guard now resolves first and the lookup is defensive, so that state fails
   with the sentence that names the remedy rather than with a stack trace
   ([test/check-safety.test.mjs](test/check-safety.test.mjs)).
-- `template/init.mjs`, [README.md](README.md), [template/README.md](README.md): the first-run steps read
-  `setup → commit → verify`, the order their own commit step is a precondition for.
+- `template/init.mjs`: the steps it prints at the end of generation read `setup → commit → verify` in
+  both of its paths, the order their own commit step is a precondition for. The template's own
+  first-run instructions were reordered to match.
 
 - `scripts/check-safety.mjs`: corrected numstat parsing (addition/deletion columns and the uncounted
   `-` marks are now handled in the right order), fixed the compensating-rewrite measurement to be
