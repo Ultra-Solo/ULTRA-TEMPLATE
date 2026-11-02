@@ -11,6 +11,7 @@
  *   node scripts/knowledge.mjs stats [--today YYYY-MM-DD]
  *   node scripts/knowledge.mjs import-graphify <graph.json>   L3, from graphify's node-link output
  *   node scripts/knowledge.mjs export [--include-inferred]    MCP memory server JSONL on stdout
+ *   node scripts/knowledge.mjs unstaged                   list graph sources not fully staged (exit 1 if any); for the hook
  *
  * Exit 0 clean · 1 a check failed · 2 usage or the repository cannot be read.
  */
@@ -34,6 +35,7 @@ import {
   SEMANTIC_FILE,
   sourceDrift,
   sourceKind,
+  unstagedSources,
 } from "./knowledge/core.mjs";
 import { importGraphify, validateSemantic } from "./knowledge/graphify.mjs";
 import { DEFAULT_BUDGET, exportMemoryJsonl, explain, mergeLayers, query, shortestPath, stats } from "./knowledge/query.mjs";
@@ -153,6 +155,11 @@ export function main(argv, { root = ROOT, today = new Date().toISOString().slice
       out(result.ok ? `knowledge: ok (${result.graph.nodes.length} nodes, ${result.graph.edges.length} edges)` : `knowledge: ${result.problems.length} problem(s)`);
       return result.ok ? 0 : 1;
     }
+    if (command === "unstaged") {
+      const dirty = unstagedSources(root);
+      for (const p of dirty) out(p);
+      return dirty.length === 0 ? 0 : 1;
+    }
     if (command === "query") {
       const budget = flags.budget === undefined ? DEFAULT_BUDGET : Number(flags.budget);
       if (!Number.isInteger(budget) || budget < 50) throw new Error("--budget must be a whole number of at least 50");
@@ -196,7 +203,7 @@ export function main(argv, { root = ROOT, today = new Date().toISOString().slice
     err(`knowledge: ${e.message}`);
     return 2;
   }
-  err('usage: node scripts/knowledge.mjs <sync|check|query "<words>"|path <a> <b>|explain <node>|stats|import-graphify <file>|export>');
+  err('usage: node scripts/knowledge.mjs <sync|check|query "<words>"|path <a> <b>|explain <node>|stats|import-graphify <file>|export|unstaged>');
   return 2;
 }
 

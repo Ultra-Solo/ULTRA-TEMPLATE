@@ -378,3 +378,100 @@ describe("this repository's own memory", () => {
     assert.equal(/\/(home|Users)\/[^/\s"]+/.test(read(REPO, GRAPH_FILE)), false);
   });
 });
+
+describe("review findings stay fixed", () => {
+  const ep = (name) => `docs/knowledge/episodes/${name}.md`;
+
+  it("lets a superseded episode keep a reference to something since renamed, but not an active one", () => {
+    const root = synced({ "docs/old.md": "# Old\n", [ep("2026-02-01-first")]: episode("2026-02-01-first", { refs: "doc:docs/old.md" }) });
+    unlinkSync(join(root, "docs/old.md"));
+    put(root, "docs/new.md", "# New\n");
+    assert.match(buildGraph(root).problems.join("\n"), /doc:docs\/old\.md/);
+    put(root, ep("2026-03-01-second"), episode("2026-03-01-second", { refs: "doc:docs/new.md", supersedes: "2026-02-01-first" }));
+    assert.deepEqual(buildGraph(root).problems, []);
+    assert.equal(run(root, "sync").code, 0);
+    assert.equal(run(root, "check").code, 0);
+    put(root, ep("2026-04-01-third"), episode("2026-04-01-third", { refs: "doc:docs/old.md" }));
+    assert.match(buildGraph(root).problems.join("\n"), /2026-04-01-third\.md.*doc:docs\/old\.md/);
+  });
+
+  it("rejects an episode that names a file that does not exist", () => {
+    const root = fixture({ [ep("2026-02-01-first")]: episode("2026-02-01-first", { refs: "file:scripts/contract/gone.json" }) });
+    assert.match(buildGraph(root).problems.join("\n"), /file:scripts\/contract\/gone\.json/);
+  });
+
+  it("reads every clause of an ADR status, not only the first", () => {
+    const root = fixture({
+      "docs/adr/0003-three.md": adr("0003", "Three", "Accepted · Amends ADR-0001 · Supersedes ADR-0002"),
+      "docs/adr/0004-four.md": adr("0004", "Four", "Accepted · Amended by ADR-0003"),
+    });
+    const edges = buildGraph(root).graph.edges.filter((e) => e.source.startsWith("docs/adr/000"));
+    const has = (from, to, type) => edges.some((e) => e.from === from && e.to === to && e.type === type);
+    assert.ok(has("adr:0003", "adr:0001", "amends"));
+    assert.ok(has("adr:0003", "adr:0002", "supersedes"));
+    assert.ok(has("adr:0003", "adr:0004", "amends"));
+  });
+
+  it("reads imports that span lines", () => {
+    const root = fixture({ "scripts/c.mjs": 'import {\n  b,\n  type T,\n} from "./b.mjs";\nexport {\n  a,\n} from "./a.mjs";\n' });
+    const imports = buildGraph(root).graph.edges.filter((e) => e.from === "script:scripts/c.mjs" && e.type === "imports");
+    assert.deepEqual(imports.map((e) => [e.to, e.source]), [["script:scripts/a.mjs", "scripts/c.mjs:5"], ["script:scripts/b.mjs", "scripts/c.mjs:1"]]);
+  });
+
+  it("does not treat a quoted import in code as a dependency", () => {
+    const root = fixture({ "scripts/c.mjs": 'const text = "import x from \\"./a.mjs\\"";\nexport const c = { from: "./a.mjs" };\n' });
+    assert.deepEqual(buildGraph(root).graph.edges.filter((e) => e.from === "script:scripts/c.mjs"), []);
+  });
+
+  it("is idempotent when the generated files are missing", () => {
+    const root = synced({ "docs/README.md": "# Docs\n\n[ADRs](adr/README.md) [memory](knowledge/README.md) [episodes](knowledge/episodes/README.md)\n" });
+    unlinkSync(join(root, "docs/knowledge/README.md"));
+    unlinkSync(join(root, "docs/knowledge/episodes/README.md"));
+    assert.equal(run(root, "sync").code, 0);
+    assert.equal(run(root, "check").code, 0);
+    assert.match(run(root, "sync").out, /up to date/);
+  });
+
+  it("labels an inferred relationship in a path", () => {
+    const root = synced();
+    put(root, "g.json", JSON.stringify({ nodes: [{ id: "a", label: "A", file_type: "code", source_file: "scripts/a.mjs" }, { id: "b", label: "B", file_type: "code", source_file: "scripts/b.mjs" }], links: [{ source: "a", target: "b", relation: "requires", confidence: "AMBIGUOUS" }] }));
+    assert.equal(run(root, "import-graphify", join(root, "g.json")).code, 0);
+    const found = run(root, "path", "g:a", "g:b").out;
+    assert.match(found, /requires-> g:b\s+\(scripts\/a\.mjs:1, AMBIGUOUS\)/);
+    assert.match(found, /inferred and unreviewed/);
+    assert.doesNotMatch(run(root, "path", "adr:0001", "adr:0002").out, /inferred/);
+  });
+
+  it("hashes the file an inferred relationship cites, and refuses a source outside the repository", () => {
+    const root = synced({ "scripts/c.mjs": "export const c = 1;\n" });
+    put(root, "g.json", JSON.stringify({ nodes: [{ id: "a", label: "A", file_type: "code", source_file: "scripts/a.mjs" }, { id: "b", label: "B", file_type: "code", source_file: "scripts/b.mjs" }], links: [{ source: "a", target: "b", relation: "uses", confidence: "INFERRED", source_file: "scripts/c.mjs", source_location: "L1" }] }));
+    assert.equal(run(root, "import-graphify", join(root, "g.json")).code, 0);
+    assert.ok("scripts/c.mjs" in JSON.parse(read(root, SEMANTIC_FILE)).sources);
+    put(root, "scripts/c.mjs", "export const c = 2;\n");
+    assert.match(run(root, "check").out, /stale for 1 source\(s\): scripts\/c\.mjs/);
+
+    const doc = JSON.parse(read(root, SEMANTIC_FILE));
+    doc.sources["../outside.txt"] = "0".repeat(64);
+    const forged = validateSemantic(root, JSON.stringify(doc));
+    assert.match(forged.problems.join("\n"), /source \.\.\/outside\.txt is not a relative path/);
+    assert.deepEqual(forged.stale, ["scripts/c.mjs"]);
+    assert.match(validateSemantic(root, JSON.stringify({ ...doc, sources: { ...doc.sources, "scripts/a.mjs": "1" } })).problems.join("\n"), /contentHash/);
+  });
+
+  it("lists the graph sources that differ from the index, so the hook never commits a draft", () => {
+    const root = synced();
+    git(root, "init", "-q");
+    git(root, "add", "-A");
+    assert.equal(run(root, "unstaged").code, 0);
+    put(root, "docs/draft.md", "# Draft\n");
+    put(root, "scripts/b.mjs", "export const b = 2;\n");
+    put(root, "notes.txt", "scratch\n");
+    const dirty = run(root, "unstaged");
+    assert.equal(dirty.code, 1);
+    assert.match(dirty.out, /docs\/draft\.md/);
+    assert.match(dirty.out, /scripts\/b\.mjs/);
+    assert.doesNotMatch(dirty.out, /notes\.txt/);
+    git(root, "add", "docs/draft.md", "scripts/b.mjs");
+    assert.equal(run(root, "unstaged").code, 0);
+  });
+});

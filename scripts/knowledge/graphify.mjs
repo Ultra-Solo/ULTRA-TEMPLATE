@@ -28,8 +28,10 @@ const relativePath = (value) => {
   return clean.startsWith("..") ? null : clean;
 };
 
-/** The content hash that seals nodes and edges. */
-const seal = (nodes, edges) => sha256(JSON.stringify({ nodes, edges }));
+/** The content hash that seals nodes, edges and the source hashes they are bound to. */
+const seal = (nodes, edges, sources) => sha256(JSON.stringify({ nodes, edges, sources }));
+
+const provenancePath = (source) => /^(.*):\d+$/.exec(source)?.[1] ?? null;
 
 /**
  * graphify's `graph.json` (node-link: `nodes` and `links`) reduced to the engine's L3 schema. Only
@@ -75,7 +77,8 @@ export function importGraphify(root, input) {
     const key = `${from}\0${to}\0${type}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const sourceFile = relativePath(raw.source_file);
+    const cited = relativePath(raw.source_file);
+    const sourceFile = cited !== null && existsSync(join(root, cited)) ? cited : null;
     const line = /^L?(\d+)/.exec(String(raw.source_location ?? ""));
     edges.push({
       from,
@@ -87,14 +90,16 @@ export function importGraphify(root, input) {
   }
   edges.sort((a, b) => compare(a.from, b.from) || compare(a.to, b.to) || compare(a.type, b.type));
   const sources = {};
-  for (const path of [...new Set(nodes.map((n) => n.path))].sort(compare)) sources[path] = sha256(readFileSync(join(root, path)));
+  // The files that edges cite are evidence too: when one changes, the relationship it supports is stale.
+  const evidence = [...nodes.map((n) => n.path), ...edges.map((e) => provenancePath(e.source))].filter((p) => p !== null);
+  for (const path of [...new Set(evidence)].sort(compare)) sources[path] = sha256(readFileSync(join(root, path)));
   const doc = {
     schemaVersion: SCHEMA_VERSION,
     layer: "L3",
     trust: TRUST,
     generator: { name: "graphify", version: sanitize(input.graph?.graphify_version, 40) || "unknown" },
     sources,
-    contentHash: seal(nodes, edges),
+    contentHash: seal(nodes, edges, sources),
     nodes,
     edges,
   };
@@ -122,7 +127,7 @@ export function validateSemantic(root, text) {
   if (doc.trust !== TRUST) problems.push(`semantic.graph.json: trust must stay \`${TRUST}\``);
   if (!doc.generator?.name) problems.push("semantic.graph.json: generator.name is missing");
   if (!Array.isArray(doc.nodes) || !Array.isArray(doc.edges)) return { problems: [...problems, "semantic.graph.json: nodes and edges must be arrays"], warnings, doc: null };
-  if (doc.contentHash !== seal(doc.nodes, doc.edges)) problems.push("semantic.graph.json: contentHash does not match its nodes and edges. It is written only by `import-graphify`, never by hand");
+  if (doc.contentHash !== seal(doc.nodes, doc.edges, doc.sources)) problems.push("semantic.graph.json: contentHash does not match its nodes, edges and sources. It is written only by `import-graphify`, never by hand");
   const ids = new Set(doc.nodes.map((n) => n.id));
   for (const n of doc.nodes) {
     for (const key of ["id", "label", "path"]) if (typeof n[key] !== "string" || sanitize(n[key], 400) !== n[key]) problems.push(`semantic.graph.json: node ${n.id} has an unsafe or missing ${key}`);
@@ -132,9 +137,14 @@ export function validateSemantic(root, text) {
     if (!ids.has(e.from) || !ids.has(e.to)) problems.push(`semantic.graph.json: edge ${e.from} -> ${e.to} points at a missing node`);
     if (!CONFIDENCE.has(e.confidence)) problems.push(`semantic.graph.json: edge ${e.from} -> ${e.to} has no confidence label`);
     if (typeof e.source !== "string" || e.source === "") problems.push(`semantic.graph.json: edge ${e.from} -> ${e.to} has no provenance`);
+    else if (!Object.hasOwn(doc.sources ?? {}, provenancePath(e.source) ?? "")) problems.push(`semantic.graph.json: edge ${e.from} -> ${e.to} cites ${e.source}, which is not a hashed source`);
   }
   const stale = [];
   for (const [path, hash] of Object.entries(doc.sources ?? {})) {
+    if (relativePath(path) !== path) {
+      problems.push(`semantic.graph.json: source ${path} is not a relative path inside the repository`);
+      continue;
+    }
     if (!existsSync(join(root, path))) stale.push(`${path} (gone)`);
     else if (sha256(readFileSync(join(root, path))) !== hash) stale.push(path);
   }

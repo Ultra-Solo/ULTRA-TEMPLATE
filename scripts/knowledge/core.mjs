@@ -54,6 +54,13 @@ export function listFiles(root) {
     .sort(compare);
 }
 
+/** Graph sources whose working-tree content differs from the index, or that are not staged at all: what a partial commit would leave out. */
+export function unstagedSources(root) {
+  const run = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).split("\0").filter(Boolean);
+  const paths = new Set([...run("diff", "--name-only", "-z"), ...run("ls-files", "-z", "--others", "--exclude-standard")]);
+  return [...paths].filter((p) => sourceKind(p) !== null && existsSync(join(root, p))).sort(compare);
+}
+
 function walk(root, rel) {
   const out = [];
   for (const entry of readdirSync(join(root, rel), { withFileTypes: true })) {
@@ -177,12 +184,15 @@ function extractMarkdown(path, text, kind) {
     const at = all.findIndex((l) => l.startsWith("**Status:**"));
     const links = [];
     if (at !== -1) {
-      for (const match of all[at].split("·")[0].matchAll(/\b(supersedes|superseded by|amends|amended by)\b([^;]*)/gi)) {
-        const verb = match[1].toLowerCase();
-        for (const num of match[2].matchAll(/\b(\d{4})\b/g)) {
-          const other = `adr:${num[1]}`;
-          if (verb === "supersedes" || verb === "amends") links.push(link(id, other, verb, path, at + 1));
-          else links.push(link(other, id, verb === "superseded by" ? "supersedes" : "amends", path, at + 1));
+      // A status reads "Accepted · Amends ADR-0018 · **Date:** ...": every clause before the date can name a relationship.
+      for (const clause of all[at].split("**Date:**")[0].split("·")) {
+        for (const match of clause.matchAll(/\b(supersedes|superseded by|amends|amended by)\b([^;]*)/gi)) {
+          const verb = match[1].toLowerCase();
+          for (const num of match[2].matchAll(/\b(\d{4})\b/g)) {
+            const other = `adr:${num[1]}`;
+            if (verb === "supersedes" || verb === "amends") links.push(link(id, other, verb, path, at + 1));
+            else links.push(link(other, id, verb === "superseded by" ? "supersedes" : "amends", path, at + 1));
+          }
         }
       }
     }
@@ -282,10 +292,13 @@ function extractWorkflow(path, text) {
 function extractScript(path, text) {
   const id = `script:${path}`;
   const links = [];
-  lines(text).forEach((line, index) => {
-    const match = /^\s*(?:import|export)\b[^"']*\bfrom\s+["'](\.{1,2}\/[^"']+)["']/.exec(line) ?? /^\s*import\s+["'](\.{1,2}\/[^"']+)["']/.exec(line);
-    if (match) links.push(pathLink(id, posix.normalize(posix.join(posix.dirname(path), match[1])), "imports", path, index + 1));
-  });
+  // Whole-text matching, because a formatter wraps a long import over several lines. The clause between
+  // the keyword and `from` holds only identifier characters, so a quoted string in code never matches.
+  const declarations = [...text.matchAll(/^[ \t]*(?:import|export)\b[\w\s{},*$]*?\bfrom\s+["'](\.{1,2}\/[^"']+)["']/gm), ...text.matchAll(/^[ \t]*import\s+["'](\.{1,2}\/[^"']+)["']/gm)];
+  for (const match of declarations) {
+    const line = text.slice(0, match.index).split("\n").length;
+    links.push(pathLink(id, posix.normalize(posix.join(posix.dirname(path), match[1])), "imports", path, line));
+  }
   return { nodes: [node(id, "script", path, path, "L2")], links, problems: [] };
 }
 
@@ -305,7 +318,8 @@ export function buildGraph(root, files = listFiles(root)) {
   const fragments = [];
   const sources = {};
   const problems = [];
-  const present = new Set(files);
+  // The files `sync` itself writes count as present, so rebuilding after one is deleted gives the same graph.
+  const present = new Set([...files, ...GENERATED]);
   for (const path of files) {
     if (sourceKind(path) === null) continue;
     const fragment = extractFragment(path, readFileSync(join(root, path), "utf8"));
@@ -327,6 +341,7 @@ export function buildGraph(root, files = listFiles(root)) {
     const prior = edges.get(key);
     if (!prior || compare(e.source, prior.source) < 0) edges.set(key, e);
   };
+  const superseded = new Set(fragments.flatMap((f) => f.links).filter((l) => l.type === "supersedes").map((l) => l.to));
   const ensureFile = (path) => {
     if (!present.has(path)) return null;
     const id = `file:${path}`;
@@ -337,10 +352,12 @@ export function buildGraph(root, files = listFiles(root)) {
     for (const l of f.links) {
       let to = l.to;
       if (l.toPath !== undefined) to = byPath.get(l.toPath) ?? ensureFile(l.toPath);
-      else if (to.startsWith("file:")) to = ensureFile(to.slice(5));
+      else if (to.startsWith("file:")) to = ensureFile(to.slice(5)) ?? to;
       if (!to) continue;
       if (!nodes.has(to)) {
-        if (nodes.get(l.from)?.layer === "L4") problems.push(`${l.source}: \`${to}\` is not a node, so this episode points at nothing. Update its refs, or supersede it`);
+        // A superseded episode is immutable, so it keeps pointing at what has since moved; an active one may not.
+        // A supersession target is never exempt: episodes cannot be deleted, so it cannot have gone.
+        if (nodes.get(l.from)?.layer === "L4" && !(l.type === "about" && superseded.has(l.from))) problems.push(`${l.source}: \`${to}\` is not a node, so this episode points at nothing. Update its refs, or supersede it`);
         continue;
       }
       add({ from: l.from, to, type: l.type, source: l.source });

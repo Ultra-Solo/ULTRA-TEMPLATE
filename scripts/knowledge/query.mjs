@@ -80,7 +80,7 @@ export function shortestPath(memory, fromRef, toRef) {
   for (const e of memory.edges) {
     for (const [a, b, arrow] of [[e.from, e.to, `-${e.type}->`], [e.to, e.from, `<-${e.type}-`]]) {
       if (!adjacent.has(a)) adjacent.set(a, []);
-      adjacent.get(a).push({ to: b, arrow, source: e.source });
+      adjacent.get(a).push({ to: b, arrow, source: e.confidence ? `${e.source}, ${e.confidence}` : e.source });
     }
   }
   for (const list of adjacent.values()) list.sort((x, y) => compare(x.to, y.to) || compare(x.arrow, y.arrow));
@@ -97,7 +97,9 @@ export function shortestPath(memory, fromRef, toRef) {
   if (!previous.has(goal.id)) return `No path between ${start.id} and ${goal.id}.\n`;
   const chain = [];
   for (let at = goal.id; previous.get(at) !== null; at = previous.get(at).from) chain.unshift(previous.get(at));
-  return `${[start.id, ...chain.map((s) => `  ${s.arrow} ${s.to}  (${s.source})`)].join("\n")}\n`;
+  const lines = [start.id, ...chain.map((s) => `  ${s.arrow} ${s.to}  (${s.source})`)];
+  if ([start.id, ...chain.map((s) => s.to)].some((id) => memory.byId.get(id)?.layer === "L3")) lines.push("  inferred and unreviewed: check the source before relying on it.");
+  return `${lines.join("\n")}\n`;
 }
 
 /** One node and every edge it has, with where each came from. */

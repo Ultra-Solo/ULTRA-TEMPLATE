@@ -4,6 +4,14 @@
 #   cp scripts/hooks/knowledge .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 # Only the generated files are staged, never the whole directory, so a draft episode is not committed by accident.
 set -e
+# sync reads the working tree. A source that is not fully staged would put content in the committed graph
+# that the commit itself lacks, so stop and name it instead of publishing a graph the commit cannot reproduce.
+if ! partial=$(node scripts/knowledge.mjs unstaged); then
+  echo "knowledge: these graph sources are not fully staged, so the committed graph would describe files this commit lacks:" >&2
+  echo "$partial" | sed 's/^/  /' >&2
+  echo "Stage them, stash them, or commit with --no-verify and run 'node scripts/knowledge.mjs sync' in the next commit." >&2
+  exit 1
+fi
 node scripts/knowledge.mjs sync
 for f in docs/knowledge/graph.json docs/knowledge/README.md docs/knowledge/episodes/README.md; do
   [ -f "$f" ] && git add "$f"
