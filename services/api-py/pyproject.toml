@@ -9,10 +9,10 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "coverage>=7.16.2",
+    "coverage>=7.17.0",
     "mypy>=1.18.2",
     "pytest>=8.4.2",
-    "ruff>=0.16.9",
+    "ruff>=0.17.2",
 ]
 
 [tool.uv]
