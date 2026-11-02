@@ -58,7 +58,8 @@ export function listFiles(root) {
 export function unstagedSources(root) {
   const run = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).split("\0").filter(Boolean);
   const paths = new Set([...run("diff", "--name-only", "-z"), ...run("ls-files", "-z", "--others", "--exclude-standard")]);
-  return [...paths].filter((p) => sourceKind(p) !== null && existsSync(join(root, p))).sort(compare);
+  // A deletion that is not staged counts too: the commit would still hold the file the graph no longer lists.
+  return [...paths].filter((p) => sourceKind(p) !== null).sort(compare);
 }
 
 function walk(root, rel) {

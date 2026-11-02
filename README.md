@@ -183,7 +183,7 @@ node scripts/knowledge.mjs sync                                                 
 node scripts/knowledge.mjs check                                                    # what `verify` runs
 ```
 
-It needs only Node, makes no network call and has no dependency. Commit the result of `sync`; `verify` fails on a stale file. No command or agent writes an episode, so what it holds was reviewed. How it works, and its limits, are in [ADR-0038](docs/adr/0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md).
+It needs only Node, makes no network call and has no dependency. Commit the result of `sync`; `verify` fails on a stale file. No command or agent writes an episode, so what it holds was reviewed. An optional pre-commit hook (`scripts/hooks/knowledge`) runs `sync` for you; it refuses while a graph source is only partly staged, because the graph it would commit could not be reproduced. `node scripts/knowledge.mjs unstaged` lists those files, deletions included. How it works, and its limits, are in [ADR-0038](docs/adr/0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md).
 
 <!-- ultra:end knowledge -->
 ## Continuous integration
