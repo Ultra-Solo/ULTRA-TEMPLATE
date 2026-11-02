@@ -1,6 +1,6 @@
 {
   "$comment": "Read by template/init.mjs, and deleted with it. A feature's paths are deleted when it is not selected; content inside shared files is selected with marker lines instead. See template/README.md.",
-  "version": "3.16.2",
+  "version": "3.17.0",
   "provenanceSchema": 1,
   "identity": {
     "owner": "Ultra-Solo",
@@ -45,7 +45,9 @@
     },
     "knowledge": {
       "summary": "Second brain: an offline, self-checking knowledge graph of the repository and a layered memory (briefing, graph, optional inferred import, human-written episodes), queried with one command",
-      "paths": ["scripts/knowledge.mjs", "scripts/knowledge", "docs/knowledge", "test/knowledge.test.mjs", "scripts/hooks/knowledge", ".claude/skills/consult-knowledge", ".claude/skills/record-episode"]
+      "paths": ["scripts/knowledge.mjs", "scripts/knowledge", "docs/knowledge", "test/knowledge.test.mjs", "scripts/hooks/knowledge", ".claude/skills/consult-knowledge",             ".claude/skills/record-episode",
+      ".claude/skills/triage-and-fix",
+      ".github/prompts/triage-and-fix.prompt.md"]
     },
     "release": {
       "summary": "release-please: release pull requests, tags and `CHANGELOG.md` from Conventional Commits",
