@@ -18,12 +18,12 @@
     "probe": "node scripts/drive.ts probe"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.3.1",
+    "@modelcontextprotocol/server": "^2.4.0",
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "@modelcontextprotocol/client": "^2.3.1",
+    "@biomejs/biome": "2.6.3",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2"
   }
