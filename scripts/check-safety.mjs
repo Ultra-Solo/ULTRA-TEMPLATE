@@ -36,13 +36,27 @@ const spawn = (await import("node:child_process")).spawnSync; // top-level await
 
 /** Run the full audit and return a report object suitable for both console and JSON. */
 export function checkSafety(root = process.cwd()) {
-  const head = git(root, ["rev-parse", "HEAD"]).trim();
   const tracked = git(root, ["ls-files", "-z"])
     .split("\0")
     .map((p) => p.trim())
     .filter(Boolean);
   if (tracked.length === 0) {
     return { ok: false, fatal: "nothing is tracked yet — run `git add -A` first." };
+  }
+
+  // A fresh `git init` with files added but nothing committed has an unborn HEAD, and
+  // `git rev-parse HEAD` exits 128 there. That is the state every generated project
+  // starts in, so resolve HEAD defensively rather than letting git() throw a stack trace.
+  let head;
+  try {
+    head = git(root, ["rev-parse", "HEAD"]).trim();
+  } catch {
+    return {
+      ok: false,
+      fatal:
+        "no commit yet — this gate measures the change against HEAD, so commit the files first: " +
+        'git add -A && git commit -m "chore: initialize project"',
+    };
   }
 
   // The invariant is about the *change being reviewed*: diff HEAD against whatever

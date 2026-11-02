@@ -303,6 +303,23 @@ test("without --name, the project name comes from the repository being initializ
   assert.match(plan, /^my-service \(octo\/My\.Service\)/m);
 });
 
+test("the next steps init prints commit before verifying", (t) => {
+  const out = join(mkdtempSync(join(tmpdir(), "init-")), "project");
+  t.after(() => rmSync(dirname(out), { recursive: true, force: true }));
+  const printed = execFileSync(
+    "node",
+    ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", "minimal", "--out", out],
+    { cwd: ROOT, encoding: "utf8" },
+  );
+  // check-safety measures the change against HEAD, so a repository with no commit yet cannot pass
+  // verify. The order init prints is the order an adopter follows, so the commit has to come first.
+  const commit = printed.indexOf('git commit -m "chore: initialize project"');
+  const verify = printed.indexOf("node scripts/verify.mjs");
+  assert.ok(commit !== -1, `expected a commit step in:\n${printed}`);
+  assert.ok(verify !== -1, `expected a verify step in:\n${printed}`);
+  assert.ok(commit < verify, `expected the commit before verify in:\n${printed}`);
+});
+
 test("every preset generates a project that passes its own chassis checks and documents only what it has", (t) => {
   const manifest = loadManifest();
   const base = mkdtempSync(join(tmpdir(), "presets-"));
