@@ -151,3 +151,75 @@ test("the CLI rejects a mass deletion", () => {
     if (lastRoot) { rmSync(lastRoot, { recursive: true, force: true }); lastRoot = null; }
   }
 });
+
+// --- Contiguous-hunk cap (ADR-0039 port of mayo's <=10-line edit-block rule) ---
+// A hunk's size is the lines it removes plus the lines it adds; with -U0 every
+// hunk is one contiguous block, so two distant edits are two small hunks.
+
+test("rejects a single contiguous hunk over 10 lines (11-line deletion)", () => {
+  const root = fixture();
+  try {
+    const p = join(root, "src/main.js");
+    const lines = BASE.split("\n");
+    const kept = lines.filter((_, i) => i < 29 || i > 39); // drops lines 30-40: 11 contiguous
+    writeFileSync(p, kept.join("\n") + "\n");
+    execFileSync("git", ["add", "-A", "--force"], { cwd: root, stdio: "ignore" });
+    const report = checkSafety(root);
+    assert.equal(report.ok, false);
+    assert.equal(report.report.hardRejections.length, 1);
+    assert.equal(report.report.hardRejections[0].path, "src/main.js");
+    assert.match(report.report.hardRejections[0].reason, /hunk/);
+  } finally {
+    if (lastRoot) { rmSync(lastRoot, { recursive: true, force: true }); lastRoot = null; }
+  }
+});
+
+test("allows a contiguous hunk of exactly 10 lines", () => {
+  const root = fixture();
+  try {
+    const p = join(root, "src/main.js");
+    const lines = BASE.split("\n");
+    const kept = lines.filter((_, i) => i < 29 || i > 38); // drops lines 30-39: 10 contiguous
+    writeFileSync(p, kept.join("\n") + "\n");
+    execFileSync("git", ["add", "-A", "--force"], { cwd: root, stdio: "ignore" });
+    const report = checkSafety(root);
+    assert.equal(report.ok, true);
+    assert.equal(report.report.hardRejections.length, 0);
+  } finally {
+    if (lastRoot) { rmSync(lastRoot, { recursive: true, force: true }); lastRoot = null; }
+  }
+});
+
+test("does not reject two separate 6-line hunks (contiguity matters)", () => {
+  const root = fixture();
+  try {
+    const p = join(root, "src/main.js");
+    const lines = BASE.split("\n");
+    const kept = lines.filter((_, i) => !(i >= 4 && i <= 9) && !(i >= 59 && i <= 64));
+    writeFileSync(p, kept.join("\n") + "\n");
+    execFileSync("git", ["add", "-A", "--force"], { cwd: root, stdio: "ignore" });
+    const report = checkSafety(root);
+    assert.equal(report.ok, true);
+    assert.equal(report.report.hardRejections.length, 0);
+  } finally {
+    if (lastRoot) { rmSync(lastRoot, { recursive: true, force: true }); lastRoot = null; }
+  }
+});
+
+test("rejects a contiguous rewrite whose removed+added span exceeds 10 lines", () => {
+  const root = fixture();
+  try {
+    const p = join(root, "src/main.js");
+    const lines = BASE.split("\n");
+    // replace lines 30-35 (6 removed) with 6 new lines: one hunk, span 6+6=12
+    lines.splice(29, 6, ...Array.from({ length: 6 }, (_, i) => `// rewritten ${i + 1}`));
+    writeFileSync(p, lines.join("\n") + "\n");
+    execFileSync("git", ["add", "-A", "--force"], { cwd: root, stdio: "ignore" });
+    const report = checkSafety(root);
+    assert.equal(report.ok, false);
+    assert.equal(report.report.hardRejections.length, 1);
+    assert.match(report.report.hardRejections[0].reason, /hunk/);
+  } finally {
+    if (lastRoot) { rmSync(lastRoot, { recursive: true, force: true }); lastRoot = null; }
+  }
+});

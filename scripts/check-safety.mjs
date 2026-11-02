@@ -10,7 +10,11 @@
  * visible in `git status` and goes through the pull request like anything else, so
  * deletions and additions with no shared line count (a rename or a wholesale delete)
  * are reported as changes, not rejections. Below the hard band, deletions above
- * WARNING_PCT % are soft warnings.
+ * WARNING_PCT % are soft warnings. Independently of the file-level bands, no single
+ * contiguous changed hunk (a `-U0` hunk) may span more than MAX_HUNK_LINES lines
+ * counted as removed plus added; a larger hunk is a hard rejection unless the
+ * file-level compensating-rewrite guard already classifies the change as a genuine
+ * replacement.
  *
  * The gate is invoked from scripts/verify.mjs and can be installed into a pre-commit
  * hook; a machine-readable copy of the report is written to scripts/safety-report.json.
@@ -30,6 +34,8 @@ export const MAX_DELETION_PCT = 30;
 export const MIN_DELETED_LINES = 25;
 export const WARNING_PCT = 20;
 export const ADDITION_PCT = 20; // compensating rewrite guard, Mayo-true rewrite
+// Mayo line: no contiguous edit block over MAX_HUNK_LINES (removed+added in one -U0 hunk).
+export const MAX_HUNK_LINES = 10;
 export const REPORT = "scripts/safety-report.json";
 
 const spawn = (await import("node:child_process")).spawnSync; // top-level await on module load
@@ -115,6 +121,35 @@ export function checkSafety(root = process.cwd()) {
     if (path) status.set(path, op);
   }
 
+  // Per-hunk sizes from -U0 diffs: with zero context every hunk is one contiguous
+  // block, and its size is the lines it removes plus the lines it adds. Cached
+  // diff first, then the working tree, mirroring the numstat fallback above.
+  // New files (+++ /dev/null) carry no measurable hunk; the file-level rules
+  // already skip them, and outright deletions are reported as changes.
+  let rawHunks = "";
+  try {
+    rawHunks = git(root, ["diff", "--cached", "-U0", head, "--"]);
+    if (!rawHunks.trim()) rawHunks = git(root, ["diff", "-U0", head, "--"]);
+  } catch {
+    rawHunks = "";
+  }
+  const hunkSize = new Map(); // path -> largest contiguous hunk (removed+added)
+  let hunkPath = null;
+  for (const line of rawHunks.split(/\r?\n/)) {
+    if (line.startsWith("+++ ")) {
+      const p = line.slice(4).replace(/^"|"$/g, "");
+      hunkPath = p === "/dev/null" ? null : p.replace(/^b\//, "");
+      continue;
+    }
+    const m = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+    if (m && hunkPath) {
+      const removed = m[1] === undefined ? 1 : parseInt(m[1], 10);
+      const added = m[2] === undefined ? 1 : parseInt(m[2], 10);
+      const size = removed + added;
+      hunkSize.set(hunkPath, Math.max(hunkSize.get(hunkPath) || 0, size));
+    }
+  }
+
   const changes = [];
   const warnings = [];
   const hardRejections = [];
@@ -138,6 +173,7 @@ export function checkSafety(root = process.cwd()) {
     const isWarn = pct >= WARNING_PCT && del > MIN_DELETED_LINES;
 
     const entry = { path, originalLines, deleted: del, additions: add, pct: pct.toFixed(2) };
+    const hunk = hunkSize.get(path) || 0;
 
     if (isHard) {
       // Compensating rewrite: if ADDITION_PCT % or more of the *original* file is
@@ -163,6 +199,14 @@ export function checkSafety(root = process.cwd()) {
           `deletions (${del} lines, ${pct.toFixed(2)}% of file) exceed ` +
           `${MAX_DELETION_PCT}% and ${MIN_DELETED_LINES} lines without compensating additions.`,
       });
+    } else if (hunk > MAX_HUNK_LINES) {
+      hardRejections.push({
+        ...entry,
+        severity: "reject",
+        reason:
+          `a single contiguous hunk changes ${hunk} lines (removed+added), over the ` +
+          `${MAX_HUNK_LINES}-line block cap.`,
+      });
     } else if (isWarn) {
       warnings.push({
         ...entry,
@@ -187,6 +231,7 @@ export function checkSafety(root = process.cwd()) {
       thresholdPct: MAX_DELETION_PCT,
       minDeletedLines: MIN_DELETED_LINES,
       warningPct: WARNING_PCT,
+      maxHunkLines: MAX_HUNK_LINES,
     },
   };
 }export function writeReport(report, root = process.cwd()) {

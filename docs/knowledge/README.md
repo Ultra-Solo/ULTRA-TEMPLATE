@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 39 decisions, 58 documents, 9 skills, 13 workflows, 40 jobs, 11 pinned tools, 61 scripts, 437 edges, 0 active episodes.
+Now: 7 modules, 40 decisions, 59 documents, 10 skills, 13 workflows, 40 jobs, 11 pinned tools, 61 scripts, 444 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
@@ -30,6 +30,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
+- [ADR-0039](../adr/0039-port-only-verifiable-mechanisms-from-external-engines.md) Port only verifiable mechanisms from external self-improving engines (Accepted)
 - [ADR-0038](../adr/0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) Keep a layered, self-checking memory of the repository in docs/knowledge (Accepted)
 - [ADR-0037](../adr/0037-bound-the-self-upgrade-gate-to-a-validated-plan.md) Bound the self-upgrade gate to a validated plan (Accepted, amends 0011, 0020)
 - [ADR-0036](../adr/0036-record-what-the-task-contract-leaves-free.md) Record what the task contract leaves free (Accepted)
@@ -41,8 +42,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 - [ADR-0030](../adr/0030-serve-mcp-over-streamable-http-beside-stdio.md) Serve MCP over Streamable HTTP beside stdio (Accepted)
 - [ADR-0029](../adr/0029-pin-the-runner-operating-system.md) Pin the runner operating system in every workflow (Accepted)
 - [ADR-0028](../adr/0028-run-the-browser-smoke-test-through-the-e2e-slot.md) Run the browser smoke test through the e2e slot (Accepted)
-- [ADR-0027](../adr/0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) Ship run and diagnose before the browser smoke test (Accepted)
-- 27 older: see the [decision index](../adr/README.md).
+- 28 older: see the [decision index](../adr/README.md).
 
 ## Active episodes
 

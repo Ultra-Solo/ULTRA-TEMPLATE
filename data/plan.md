@@ -54,7 +54,8 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
 - status: pending
 - trigger: a hygiene check fails on the template itself and is self-upgradeable
 - verdict: write a PR whose diff is limited by scripts/check-safety.mjs caps
-  (30% deletion / >25 lines / 20% rewrite) and by catastrophic-edit blocking;
+  (30% deletion / >25 lines / 20% rewrite / contiguous hunk over 10 lines) and by
+  catastrophic-edit blocking;
   PR title follows Conventional Commits
 - evidence:
     FAIL node --test test/search_replace.test.mjs — catastrophic guard blocks a 31-line removal from a 100-line file (cap = max(25, floor(100*0.3)) = 30; 30 is allowed, 31 is blocked)
