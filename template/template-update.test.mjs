@@ -266,7 +266,7 @@ test("a selection change and a release move are one update", () => {
   assert.equal(existsSync(join(dir, ".github/workflows/release.yml")), true);
   const origin = readOrigin(readFileSync(join(dir, "CHANGELOG.md"), "utf8"));
   assert.equal(origin.version, TO);
-  assert.deepEqual(origin.features, ["release"]);
+  assert.deepEqual(origin.features, ["knowledge", "release"]);
 });
 
 test("a dry run of a selection change lists the files and writes nothing", () => {

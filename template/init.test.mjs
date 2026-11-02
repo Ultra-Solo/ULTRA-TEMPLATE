@@ -147,7 +147,7 @@ test("identity placeholders cannot collide with ordinary text such as a digest",
 test("selection takes exactly one of preset or features and rejects unknown names", () => {
   const manifest = loadManifest();
   assert.deepEqual([...resolveSelection(manifest, { features: "web, release" })], ["web", "release"]);
-  assert.equal(resolveSelection(manifest, { preset: "minimal" }).size, 0);
+  assert.deepEqual([...resolveSelection(manifest, { preset: "minimal" })], ["knowledge"]);
   assert.throws(() => resolveSelection(manifest, {}), /exactly one/);
   assert.throws(() => resolveSelection(manifest, { preset: "all", features: "web" }), /exactly one/);
   assert.throws(() => resolveSelection(manifest, { features: "web,kubernetes" }), /Unknown feature\(s\): kubernetes/);
@@ -410,7 +410,9 @@ test("prose about the template still names the template after init, not the new 
   for (const file of tracked) {
     readFileSync(join(out, file), "utf8").split("\n").forEach((line, i) => {
       const bare = line.replaceAll("github.com/zz-owner/Zz.Repo", "");
-      if (bare.includes("Zz.Repo") && !(file === "README.md" && line === "# Zz.Repo")) stray.push(`${file}:${i + 1}`);
+      // The graph labels the README node with its title, which is that same sentence.
+      const titled = (file === "README.md" && line === "# Zz.Repo") || (file === "docs/knowledge/graph.json" && line.includes('"path":"README.md"'));
+      if (bare.includes("Zz.Repo") && !titled) stray.push(`${file}:${i + 1}`);
     });
   }
   assert.deepEqual(stray, []);
@@ -441,8 +443,20 @@ test("init --out writes a project with no template residue", (t) => {
   const { version } = loadManifest();
   assert.match(
     readFileSync(join(out, "CHANGELOG.md"), "utf8"),
-    new RegExp(`- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with no features\\.`),
+    new RegExp(`- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with knowledge\\.`),
   );
   assert.match(readFileSync(join(out, "README.md"), "utf8"), /^# demo-app/);
   assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /ultra:|go-service/);
+});
+
+test("every preset's generated project starts with a current second brain, whatever it dropped or renamed", (t) => {
+  for (const preset of Object.keys(loadManifest().presets)) {
+    const out = join(mkdtempSync(join(tmpdir(), "init-")), "project");
+    t.after(() => rmSync(dirname(out), { recursive: true, force: true }));
+    execFileSync("node", ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", preset, "--out", out], { cwd: ROOT, stdio: "pipe" });
+    const run = (...args) => execFileSync("node", ["scripts/knowledge.mjs", ...args], { cwd: out, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    assert.match(run("check"), /knowledge: ok/, preset);
+    // The copied graph described the template; without the regeneration this is the failure a new project would meet first.
+    assert.equal(/ULTRA-TEMPLATE/.test(readFileSync(join(out, "docs/knowledge/graph.json"), "utf8")), false, preset);
+  }
 });

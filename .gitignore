@@ -40,6 +40,11 @@ Thumbs.db
 .idea/
 *.swp
 
+# ultra:begin knowledge
+# graphify scratch output; only docs/knowledge is kept
+graphify-out/
+# ultra:end knowledge
+
 # ultra:begin py-service
 __pycache__/
 *.py[cod]

@@ -45,3 +45,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0035](0035-drive-releases-from-a-written-standing-plan.md) | Drive releases from a written standing plan | Accepted |
 | [0036](0036-record-what-the-task-contract-leaves-free.md) | Record what the task contract leaves free | Accepted, amends 0018 |
 | [0037](0037-bound-the-self-upgrade-gate-to-a-validated-plan.md) | Bound the self-upgrade gate to a validated plan | Accepted, amends 0011, 0020 |
+| [0038](0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) | Keep a layered, self-checking memory in docs/knowledge | Accepted |

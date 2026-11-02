@@ -465,6 +465,17 @@ export async function renderMain(argv = process.argv.slice(2), root = ROOT, inpu
     for (const { file, data, changed } of result.files) if (changed) writeFileSync(join(root, file), data);
   }
 
+  // The copied graph describes the template, not this project: regenerate it from what was just written, so
+  // the first verify finds it current. The engine is the project's own copy, and deterministic.
+  if (selected.has("knowledge")) {
+    const target = out ?? root;
+    try {
+      execFileSync(process.execPath, [join(target, "scripts/knowledge.mjs"), "sync"], { cwd: target, stdio: ["ignore", "pipe", "pipe"] });
+    } catch (error) {
+      throw new InitError(`The knowledge graph could not be generated: ${String(error.stderr ?? error.message).trim().split("\n").at(-1)}`, 1);
+    }
+  }
+
   console.log(`Initialized ${summary}${out === null ? "" : `\nWritten to ${out}`}
 
 Next:

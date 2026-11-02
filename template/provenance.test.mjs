@@ -136,7 +136,7 @@ test("unreleased local generation records a commit without a published-release c
   git(out, "init", "-q"); save(out);
   update({ project: out, add: ["devcontainer"], template: source, log: () => {} });
   assert.equal(readProvenance(out).source.tag, null);
-  assert.deepEqual(readProvenance(out).inputs.features, ["devcontainer"]);
+  assert.deepEqual(readProvenance(out).inputs.features, ["knowledge", "devcontainer"]);
 });
 
 test("updates retain original inputs after package and repository renames", (t) => {

@@ -9,3 +9,10 @@
 # are still reviewable, and should be reviewed — a lockfile change is a dependency change.
 package-lock.json linguist-generated=true
 go.sum linguist-generated=true
+
+# ultra:begin knowledge
+docs/knowledge/graph.json linguist-generated=true
+docs/knowledge/semantic.graph.json linguist-generated=true
+docs/knowledge/README.md linguist-generated=true
+docs/knowledge/episodes/README.md linguist-generated=true
+# ultra:end knowledge
