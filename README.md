@@ -61,12 +61,12 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 <!-- generated:presets-table -->
 | Preset | Features |
 |---|---|
-| `minimal` | none: the chassis only |
-| `go-api` | `go-service`, `architecture`, `release`, `devcontainer` |
-| `py-api` | `py-service`, `architecture`, `release`, `devcontainer` |
-| `fullstack-ts` | `ts-service`, `web`, `architecture`, `release`, `devcontainer` |
-| `library` | `ts-library`, `release`, `devcontainer` |
-| `mcp` | `mcp-server`, `release`, `devcontainer` |
+| `minimal` | `knowledge` |
+| `go-api` | `knowledge`, `go-service`, `architecture`, `release`, `devcontainer` |
+| `py-api` | `knowledge`, `py-service`, `architecture`, `release`, `devcontainer` |
+| `fullstack-ts` | `knowledge`, `ts-service`, `web`, `architecture`, `release`, `devcontainer` |
+| `library` | `knowledge`, `ts-library`, `release`, `devcontainer` |
+| `mcp` | `knowledge`, `mcp-server`, `release`, `devcontainer` |
 | `all` | every feature |
 <!-- /generated -->
 
@@ -80,6 +80,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 | `web` | React + Vite app organised by feature (bulletproof-react), import boundaries checked on every file, unit and component tests |
 | `ts-library` | TypeScript library for npm: one `exports` entry, publint and are-the-types-wrong checks on the packed tarball, which is also installed into an empty project and imported, tokenless trusted publishing with provenance |
 | `architecture` | LikeC4 model of the system, with model rules as tests and an opt-in GitHub Pages site |
+| `knowledge` | Second brain: an offline, self-checking knowledge graph of the repository and a layered memory (briefing, graph, optional inferred import, human-written episodes), queried with one command |
 | `release` | release-please: release pull requests, tags and `CHANGELOG.md` from Conventional Commits |
 | `devcontainer` | Dev Container with the toolchains of the features you selected |
 <!-- /generated -->
@@ -159,6 +160,9 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 <!-- ultra:begin architecture -->
 - `architecture/` — LikeC4 model of the system. `npm run dev` there previews every view. [README](architecture/README.md)
 <!-- ultra:end architecture -->
+<!-- ultra:begin knowledge -->
+- `docs/knowledge/` — the repository's memory: a generated briefing, a graph extracted from the checkout, and episodes people write. [Working with the memory](#the-second-brain)
+<!-- ultra:end knowledge -->
 - `docs/` — [the documentation index](docs/README.md) and the rules for keeping it true; `docs/adr/` holds the architecture decision records.
 - `.claude/skills/` — step-by-step procedures coding agents follow for recurring tasks. `.github/prompts/` holds Copilot prompt files that wrap one of them; `AGENTS.md` holds the rules all of them follow.
 - `.github/` — workflows, issue forms, pull request template, Dependabot and code owners.
@@ -167,6 +171,21 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 
 [AGENTS.md](AGENTS.md) holds the rules every coding agent follows here; `CLAUDE.md`, `GEMINI.md` and Copilot's instructions point to it rather than repeating it. For a recurring task, such as recording a decision, changing the task contract or taking a template update, the matching procedure in `.claude/skills/` is the one to follow. Ask the agent to run `node scripts/verify.mjs` and to say what it ran before it reports a change as done. In a Claude Code cloud session, `.claude/settings.json` has the session prepare itself first — the Node `.node-version` names, the pinned tools, then setup — so the agent's first `verify` checks what CI checks.
 
+<!-- ultra:begin knowledge -->
+## The second brain
+
+`docs/knowledge/` keeps what this repository knows about itself, in layers: a briefing under 8 KB to read first, a graph of modules, decisions, docs, workflows and scripts, an optional import of an inferred graph (graphify or any producer, always labelled inferred), and episodes: lessons and incidents a person wrote, each with a review date.
+
+```bash
+node scripts/knowledge.mjs query "why is the task contract shared" --budget 1500   # ask
+node scripts/knowledge.mjs path adr:0013 adr:0010                                      # how two things connect
+node scripts/knowledge.mjs sync                                                     # after changing docs, scripts, workflows or modules
+node scripts/knowledge.mjs check                                                    # what `verify` runs
+```
+
+It needs only Node, makes no network call and has no dependency. Commit the result of `sync`; `verify` fails on a stale file. No command or agent writes an episode, so what it holds was reviewed. How it works, and its limits, are in [ADR-0038](docs/adr/0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md).
+
+<!-- ultra:end knowledge -->
 ## Continuous integration
 
 - **`verify.yml`** — on every pull request, every push to `main`, and in a merge queue: repository hygiene, chassis tests on Linux and on Windows, the pinned actionlint and zizmor run through `verify.mjs`, zizmor's online audit of the workflows ([zizmor](https://docs.zizmor.sh)), a blocking gitleaks scan of the commits the change adds, the agent environment run from the oldest Node it supports, and one job per module, which runs what the module's `module.json` names through the same `verify.mjs` a contributor runs — its checks, the API contract, its facts, its end-to-end check — then writes its test coverage to the job summary, reported and never gated, and starts its container image and holds it to the contract's defaults and clean shutdown. All of them feed the aggregate **`verify`** job, the only required check ([ADR-0002](docs/adr/0002-one-required-check.md), [ADR-0011](docs/adr/0011-what-local-verify-guarantees.md), [ADR-0014](docs/adr/0014-modules-describe-themselves.md)).

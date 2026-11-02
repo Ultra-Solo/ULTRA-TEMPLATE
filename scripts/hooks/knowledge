@@ -1,0 +1,11 @@
+#!/bin/sh
+# Optional pre-commit hook: refresh the generated memory, then run the safety gate.
+# Install with:
+#   cp scripts/hooks/knowledge .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Only the generated files are staged, never the whole directory, so a draft episode is not committed by accident.
+set -e
+node scripts/knowledge.mjs sync
+for f in docs/knowledge/graph.json docs/knowledge/README.md docs/knowledge/episodes/README.md; do
+  [ -f "$f" ] && git add "$f"
+done
+if [ -f scripts/check-safety.mjs ]; then node scripts/check-safety.mjs "$@"; fi

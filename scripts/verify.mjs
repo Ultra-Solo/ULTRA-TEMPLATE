@@ -57,6 +57,7 @@ function chassis() {
   step("chassis: docs", ["node", "scripts/check-docs.mjs"]);
   step("chassis: check-safety", ["node", "scripts/check-safety.mjs"]);
   step("chassis: plan", ["node", "scripts/check-plan.mjs"]);
+  if (existsSync(join(ROOT, "scripts/knowledge.mjs"))) step("chassis: knowledge", ["node", "scripts/knowledge.mjs", "check"]);
   const suites = ["test/*.test.mjs"];
   if (existsSync(join(ROOT, "template"))) suites.push("template/*.test.mjs");
   step("chassis: tests", ["node", "--test", ...suites]);

@@ -1,6 +1,6 @@
 {
   "$comment": "Read by template/init.mjs, and deleted with it. A feature's paths are deleted when it is not selected; content inside shared files is selected with marker lines instead. See template/README.md.",
-  "version": "3.15.2",
+  "version": "3.16.0",
   "provenanceSchema": 1,
   "identity": {
     "owner": "Ultra-Solo",
@@ -43,6 +43,10 @@
       "summary": "LikeC4 model of the system, with model rules as tests and an opt-in GitHub Pages site",
       "paths": ["architecture", ".github/workflows/architecture.yml", "biome.jsonc", "scripts/check-architecture.mjs", "test/check-architecture.test.mjs"]
     },
+    "knowledge": {
+      "summary": "Second brain: an offline, self-checking knowledge graph of the repository and a layered memory (briefing, graph, optional inferred import, human-written episodes), queried with one command",
+      "paths": ["scripts/knowledge.mjs", "scripts/knowledge", "docs/knowledge", "test/knowledge.test.mjs", "scripts/hooks/knowledge", ".claude/skills/consult-knowledge", ".claude/skills/record-episode"]
+    },
     "release": {
       "summary": "release-please: release pull requests, tags and `CHANGELOG.md` from Conventional Commits",
       "paths": [".github/workflows/release.yml", "release-please-config.json", ".release-please-manifest.json"]
@@ -53,12 +57,12 @@
     }
   },
   "presets": {
-    "minimal": [],
-    "go-api": ["go-service", "architecture", "release", "devcontainer"],
-    "py-api": ["py-service", "architecture", "release", "devcontainer"],
-    "fullstack-ts": ["ts-service", "web", "architecture", "release", "devcontainer"],
-    "library": ["ts-library", "release", "devcontainer"],
-    "mcp": ["mcp-server", "release", "devcontainer"],
-    "all": ["go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"]
+    "minimal": ["knowledge"],
+    "go-api": ["knowledge", "go-service", "architecture", "release", "devcontainer"],
+    "py-api": ["knowledge", "py-service", "architecture", "release", "devcontainer"],
+    "fullstack-ts": ["knowledge", "ts-service", "web", "architecture", "release", "devcontainer"],
+    "library": ["knowledge", "ts-library", "release", "devcontainer"],
+    "mcp": ["knowledge", "mcp-server", "release", "devcontainer"],
+    "all": ["knowledge", "go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"]
   }
 }
