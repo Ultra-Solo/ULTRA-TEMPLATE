@@ -58,5 +58,13 @@ for (const module of present.filter((m) => requested.length === 0 || requested.i
     console.error(`setup: ${module.id} failed to install.${why}`);
   }
 }
-if (failed === 0) console.log("\nsetup: OK — next, node scripts/verify.mjs");
+if (failed === 0) {
+  // check-safety measures the change against HEAD, so verify cannot run before the first commit.
+  const unborn = run("git", ["rev-parse", "--verify", "--quiet", "HEAD"], { capture: true }).status !== 0;
+  console.log(
+    unborn
+      ? '\nsetup: OK — next, commit, then verify: git add -A && git commit -m "chore: initialize project" && node scripts/verify.mjs'
+      : "\nsetup: OK — next, node scripts/verify.mjs",
+  );
+}
 process.exitCode = failed === 0 ? 0 : 1;
