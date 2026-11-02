@@ -264,7 +264,7 @@
       }
     },
     "mcp-publisher": {
-      "version": "1.8.6",
+      "version": "1.8.7",
       "for": "ci",
       "releases": {
         "github": "modelcontextprotocol/registry"
@@ -272,7 +272,7 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/modelcontextprotocol/registry/releases/download/v{version}/mcp-publisher_linux_amd64.tar.gz",
-          "sha256": "1fbe93fc0783c2394d8012c8d6e50a59e98cb2cc2d216264cc69f405d0e21340",
+          "sha256": "00b21004149a4ce66f0782508ae4a2bce67d1bea395a8da0bd8028159fb59579",
           "files": [
             "mcp-publisher"
           ]
