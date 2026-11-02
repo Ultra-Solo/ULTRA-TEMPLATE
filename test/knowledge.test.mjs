@@ -474,4 +474,27 @@ describe("review findings stay fixed", () => {
     git(root, "add", "docs/draft.md", "scripts/b.mjs");
     assert.equal(run(root, "unstaged").code, 0);
   });
+  it("blocks the hook when a tracked source was deleted but the deletion is not staged", () => {
+    const root = synced({ "docs/gone.md": "# Gone\n" });
+    git(root, "init", "-q");
+    git(root, "add", "-A");
+    unlinkSync(join(root, "docs/gone.md"));
+    assert.match(run(root, "unstaged").out, /docs\/gone\.md/);
+    git(root, "add", "-A");
+    assert.equal(run(root, "unstaged").code, 0);
+  });
+
+  it("strips every character the repository's hygiene check refuses, so an import cannot fail verify", () => {
+    const hidden = ["\u115f", "\u1160", "\u3164", "\uffa0", "\ufe00", "\ufe0f", "\u{e0041}", "\u{e0100}", "\u200d"];
+    for (const ch of hidden) assert.equal(sanitize(`a${ch}b`), "a b", `U+${ch.codePointAt(0).toString(16)}`);
+  });
+
+  it("keeps an edge's cited file when its line number is missing", () => {
+    const root = fixture({ "scripts/c.mjs": "export const c = 1;\n" });
+    const graph = { nodes: [{ id: "a", label: "A", file_type: "code", source_file: "scripts/a.mjs" }, { id: "b", label: "B", file_type: "code", source_file: "scripts/b.mjs" }], links: [{ source: "a", target: "b", relation: "uses", confidence: "INFERRED", source_file: "scripts/c.mjs" }] };
+    const { doc } = importGraphify(root, graph);
+    assert.equal(doc.edges[0].source, "scripts/c.mjs:1");
+    assert.ok("scripts/c.mjs" in doc.sources);
+  });
+
 });

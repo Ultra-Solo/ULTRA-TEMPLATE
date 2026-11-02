@@ -12,9 +12,10 @@ export const MAX_SEMANTIC_BYTES = 1_500_000;
 export const TRUST = "llm-inferred";
 const CONFIDENCE = new Set(["EXTRACTED", "INFERRED", "AMBIGUOUS"]);
 const FILE_TYPES = new Set(["code", "document", "paper", "image", "video"]);
-// Control, zero-width, bidirectional and other invisible format characters.
+// Control, zero-width, bidirectional and other invisible format characters, plus the fillers, variation
+// selectors and Unicode tag block that scripts/check-hygiene.mjs refuses, so an import cannot fail verify.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the purpose
-const INVISIBLE = /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff\ufff9-\ufffb]/g;
+const INVISIBLE = /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u115f\u1160\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffb\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]/gu;
 
 /** A producer's string made safe to store and to print: visible characters only, one line, bounded. */
 export function sanitize(value, max = 200) {
@@ -79,13 +80,13 @@ export function importGraphify(root, input) {
     seen.add(key);
     const cited = relativePath(raw.source_file);
     const sourceFile = cited !== null && existsSync(join(root, cited)) ? cited : null;
-    const line = /^L?(\d+)/.exec(String(raw.source_location ?? ""));
+    const line = /^L?(\d+)/.exec(String(raw.source_location ?? ""))?.[1] ?? "1";
     edges.push({
       from,
       to,
       type,
       confidence: CONFIDENCE.has(raw.confidence) ? raw.confidence : "AMBIGUOUS",
-      source: sourceFile && line ? `${sourceFile}:${line[1]}` : (nodes.find((n) => n.id === from)?.path ?? "unknown") + ":1",
+      source: sourceFile ? `${sourceFile}:${line}` : `${nodes.find((n) => n.id === from)?.path ?? "unknown"}:1`,
     });
   }
   edges.sort((a, b) => compare(a.from, b.from) || compare(a.to, b.to) || compare(a.type, b.type));
