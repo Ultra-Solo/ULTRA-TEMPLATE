@@ -132,7 +132,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 
 ## What's here
 
-- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
+- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, `check-safety.mjs` refuses a change that erases most of a file, `check-plan.mjs` holds the self-upgrade plan in `data/plan.md` to its schema, `tools.mjs` installs and verifies the pinned tools, `template-update.mjs` takes template releases (below), and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
 <!-- ultra:begin go-service|ts-service|py-service -->
 - `scripts/check-contract.mjs` — holds every task service to the one API contract, whose cases are in `scripts/contract/` beside the OpenAPI document it holds to them.
 <!-- ultra:end go-service|ts-service|py-service -->

@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 39 decisions, 57 documents, 9 skills, 13 workflows, 40 jobs, 11 pinned tools, 60 scripts, 437 edges, 0 active episodes.
+Now: 7 modules, 39 decisions, 58 documents, 9 skills, 13 workflows, 40 jobs, 11 pinned tools, 61 scripts, 437 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
