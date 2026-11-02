@@ -51,7 +51,9 @@ jobs:
   # checked on Linux, where CI and the container images run them.
   chassis-windows:
     runs-on: windows-latest
-    timeout-minutes: 15
+    # The chassis took 6.6 minutes before the knowledge feature and 9.8 to 11.4 after it; a run on main
+    # then hit the old 15-minute limit and was cancelled, which kept that release from publishing.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
