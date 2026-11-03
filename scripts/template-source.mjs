@@ -12,7 +12,8 @@ const git = (root, args) => execFileSync("git", args, { cwd: root, encoding: "ut
 export function validateProvenance(record) {
   const { source, inputs } = record ?? {};
   const identity = inputs?.identity;
-  if (record?.schemaVersion !== 1 || [source?.url, source?.version, source?.commit, identity?.name, identity?.owner, identity?.repo].some((value) => typeof value !== "string") ||
+  const schema = record?.schemaVersion;
+  if ((schema !== 1 && schema !== 2) || [source?.url, source?.commit, identity?.name, identity?.owner, identity?.repo].some((value) => typeof value !== "string") ||
       !/^https:\/\/github\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(source?.url ?? "") ||
       !RELEASE.test(source?.version ?? "") || !COMMIT.test(source?.commit ?? "") ||
       (source.tag !== null && source.tag !== source.version) ||
