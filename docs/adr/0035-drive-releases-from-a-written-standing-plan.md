@@ -1,10 +1,10 @@
 # ADR-0035: Drive releases from a written standing plan
 
-**Status:** Accepted · **Date:** 2026-10-20
+**Status:** Accepted · Superseded by [ADR-0041](0041-remove-template-self-versioning.md) · **Date:** 2026-10-20
 
 ## Context
 
-[`.github/agents/release-cadence.agent.md`](../../.github/agents/release-cadence.agent.md) is this repository's own procedure for deciding what the next release is. It says what a cadence check must do, and it says what it must start from: "The standing plan is the prior" (line 17), and for a repository that has none, "the first check writes one: the live triggers, each with its pre-made response, and the standing state as of today" (line 19). It also names the failure that follows from not having one: "re-deriving an unchanged plan is a failure mode, not thoroughness".
+`.github/agents/release-cadence.agent.md` (removed by ADR-0041) was this repository's own procedure for deciding what the next release is. It says what a cadence check must do, and it says what it must start from: "The standing plan is the prior" (line 17), and for a repository that has none, "the first check writes one: the live triggers, each with its pre-made response, and the standing state as of today" (line 19). It also names the failure that follows from not having one: "re-deriving an unchanged plan is a failure mode, not thoroughness".
 
 No such plan existed. Neither did the decision log or the prediction ledger the same file's later steps append to and score, although the agent's own `description` promises it "keeps the prediction ledger and decision records honest". So every cadence check began by working out from scratch which triggers exist and what each would mean — the step the procedure explicitly calls a failure mode — and had nowhere to write what it concluded.
 

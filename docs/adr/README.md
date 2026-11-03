@@ -29,8 +29,8 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0019](0019-moves-are-compare-and-set-on-the-store.md) | Moves are compare-and-set on the store | Accepted, amends 0005 |
 | [0020](0020-require-generated-preset-verification.md) | Require generated preset verification in the template's gate | Accepted, amends 0002, amended by 0022 |
 | [0021](0021-bound-request-receive-time.md) | Bound request receive time | Accepted, amends 0018 |
-| [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020, amended by 0023 |
-| [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022 |
+| [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020, amended by 0023, superseded by 0041 |
+| [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022, amended by 0041 |
 | [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |
 | [0025](0025-prioritize-verified-foundation-before-capability-expansion.md) | Prioritize verified foundation before capability expansion | Accepted, amended by 0026 |
 | [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025, amended by 0027 |
@@ -42,9 +42,10 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0032](0032-track-the-current-stable-go-line.md) | Track the current stable Go line | Accepted |
 | [0033](0033-track-the-current-stable-python-line.md) | Track the current stable Python line | Accepted |
 | [0034](0034-move-the-runner-pin-to-ubuntu-26.04.md) | Move the runner pin to Ubuntu 26.04 | Accepted, amends 0029 |
-| [0035](0035-drive-releases-from-a-written-standing-plan.md) | Drive releases from a written standing plan | Accepted |
+| [0035](0035-drive-releases-from-a-written-standing-plan.md) | Drive releases from a written standing plan | Accepted, superseded by 0041 |
 | [0036](0036-record-what-the-task-contract-leaves-free.md) | Record what the task contract leaves free | Accepted, amends 0018 |
 | [0037](0037-bound-the-self-upgrade-gate-to-a-validated-plan.md) | Bound the self-upgrade gate to a validated plan | Accepted, amends 0011, 0020 |
 | [0038](0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) | Keep a layered, self-checking memory in docs/knowledge | Accepted |
 | [0039](0039-port-only-verifiable-mechanisms-from-external-engines.md) | Port only verifiable mechanisms from external engines | Accepted |
-| [0040](0040-clean-generated-projects-of-template-meta-history.md) | Clean a generated project of the template's meta-history at generation time | Proposed |
+| [0040](0040-clean-generated-projects-of-template-meta-history.md) | Clean a generated project of the template's meta-history at generation time | Proposed, amended by 0041 |
+| [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Proposed, amends 0023, 0040, supersedes 0022, 0035 |
