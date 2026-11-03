@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { sourceFixture } from "./test-source.mjs";
 import { presentModules } from "../scripts/modules.mjs";
+import { PROVENANCE_FILE } from "../scripts/template-source.mjs";
 import { checkGate } from "../scripts/check-hygiene.mjs";
 import {
   applyMarkers, DESCRIPTION_ANCHOR, describeProject, InitError, loadManifest, MARKER_RE, originDefaults, originIdentity, plan, recordDescription,
@@ -13,7 +14,7 @@ import {
 } from "./init.mjs";
 
 let source;
-before(() => { source = sourceFixture(ROOT, loadManifest().version); });
+before(() => { source = sourceFixture(ROOT); });
 after(() => rmSync(source, { recursive: true, force: true }));
 
 test("the template's own remote is never used as the project's identity", () => {
@@ -207,7 +208,7 @@ test("the real manifest is consistent and every marker in the tree is well forme
 });
 
 test("a path may belong to several features, but not to one inside another's or the template's", () => {
-  const manifest = (features, templateOnly = []) => ({ version: "1.0.0", features, templateOnly, presets: {} });
+  const manifest = (features, templateOnly = []) => ({ features, templateOnly, presets: {} });
   const exists = () => true;
   // The same path under two features is how a file both of them need is expressed.
   assert.deepEqual(validateManifest(manifest({ a: { paths: ["svc"] }, b: { paths: ["svc"] } }), exists), []);
