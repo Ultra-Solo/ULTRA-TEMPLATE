@@ -15,8 +15,9 @@ export function validateProvenance(record) {
   const schema = record?.schemaVersion;
   if ((schema !== 1 && schema !== 2) || [source?.url, source?.commit, identity?.name, identity?.owner, identity?.repo].some((value) => typeof value !== "string") ||
       !/^https:\/\/github\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(source?.url ?? "") ||
-      !RELEASE.test(source?.version ?? "") || !COMMIT.test(source?.commit ?? "") ||
-      (source.tag !== null && source.tag !== source.version) ||
+      !COMMIT.test(source?.commit ?? "") ||
+      (schema === 1 && (!RELEASE.test(source?.version ?? "") || (source.tag !== null && source.tag !== source.version))) ||
+      (schema === 2 && (source.version !== undefined || source.tag !== undefined)) ||
       !/^[a-z][a-z0-9-]{0,62}[a-z0-9]$/.test(identity?.name ?? "") ||
       !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(identity?.owner ?? "") ||
       !/^[A-Za-z0-9._-]{1,100}$/.test(identity?.repo ?? "") ||
