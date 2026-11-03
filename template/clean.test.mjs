@@ -5,11 +5,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { adrRecordDrops, resetChangelog, rewriteDroppedAdrLinks } from "./clean.mjs";
-import { loadManifest, ROOT } from "./init.mjs";
+import { ROOT } from "./init.mjs";
+import { PROVENANCE_FILE } from "../scripts/template-source.mjs";
 import { sourceFixture } from "./test-source.mjs";
 
 let source;
-before(() => { source = sourceFixture(ROOT, loadManifest().version); });
+before(() => { source = sourceFixture(ROOT); });
 after(() => rmSync(source, { recursive: true, force: true }));
 
 test("adrRecordDrops keeps the seed files and drops every numbered record", () => {
@@ -51,7 +52,7 @@ test("rewriteDroppedAdrLinks leaves URLs, anchors, images and other links alone"
 });
 
 for (const preset of ["minimal", "all"]) {
-  test(`preset ${preset}: generated project has a fresh decision log, changelog and no template meta residue`, (t) => {
+  test(`preset ${preset}: generated project has a fresh decision log and no template meta residue`, (t) => {
     const out = join(mkdtempSync(join(tmpdir(), "clean-")), "project");
     t.after(() => rmSync(dirname(out), { recursive: true, force: true }));
     execFileSync("node", ["template/init.mjs", "--source", source, "--name", "demo-app", "--owner", "octo", "--preset", preset, "--out", out], { cwd: ROOT, stdio: "pipe" });
@@ -69,17 +70,17 @@ for (const preset of ["minimal", "all"]) {
       assert.doesNotMatch(readFileSync(join(out, file), "utf8"), /\]\([^)]*docs\/adr\/(?!0000-)\d{4}[^)]*\)/, `${file} links a dropped ADR`);
     }
 
-    // The changelog records only the project's origin, not the template's pending work.
-    const changelog = readFileSync(join(out, "CHANGELOG.md"), "utf8");
-    assert.equal(changelog.match(/^## \[/gm).length, 1, "CHANGELOG has more than the Unreleased section");
-    assert.doesNotMatch(changelog, /^### /m, "CHANGELOG keeps template entries");
-    assert.match(changelog, /^- Initialized from \[ULTRA-TEMPLATE v/m, "CHANGELOG lost its origin line");
+    // No changelog is created; the provenance record is the origin (ADR-0041).
+    assert.equal(existsSync(join(out, "CHANGELOG.md")), false, "init must not create a CHANGELOG");
+    const provenance = JSON.parse(readFileSync(join(out, PROVENANCE_FILE), "utf8"));
+    assert.equal(provenance.schemaVersion, 2);
+    assert.match(provenance.source.commit, /^[0-9a-f]{40}$/);
 
     // The template's own agent adapters do not ship.
     assert.equal(existsSync(join(out, ".github/agents")), false, ".github/agents survived");
 
     // Identity survives only where it is the provenance record itself.
-    const allowed = new Set([".template-provenance.json", "CHANGELOG.md", "LICENSE"]);
+    const allowed = new Set([".template-provenance.json", "LICENSE"]);
     for (const file of tracked) {
       if (allowed.has(file)) continue;
       const text = readFileSync(join(out, file), "utf8");

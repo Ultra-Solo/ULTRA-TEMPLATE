@@ -63,12 +63,11 @@ function templateSource(root) {
     return { check: check("template-source", "fail", err.message), baseline: null };
   }
   if (record !== null) {
+    const at = record.source.version === undefined
+      ? `commit ${record.source.commit}`
+      : `${record.source.version} (commit ${record.source.commit})`;
     return {
-      check: check(
-        "template-source",
-        "pass",
-        `${PROVENANCE_FILE} records the template at ${record.source.version} (commit ${record.source.commit}).`,
-      ),
+      check: check("template-source", "pass", `${PROVENANCE_FILE} records the template at ${at}.`),
       baseline: "provenance",
     };
   }

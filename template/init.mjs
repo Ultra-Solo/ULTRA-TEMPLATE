@@ -216,15 +216,18 @@ export function replaceIdentity(text, from, to) {
 /**
  * Records which template release, and which features, a project started from. A repository created from
  * a template has none of its history or tags, so without this line nobody can tell later which template
- * changes a project already has. Added after identity replacement, so the link keeps naming the template.
+ * changes a project already has. The template itself has no version (ADR-0041): a versionless manifest
+ * links the repository, not a release. Added after identity replacement, so the link keeps naming it.
  */
 export function recordOrigin(changelog, manifest, selected, file = "CHANGELOG.md") {
   const heading = "## [Unreleased]";
-  if (!changelog.includes(heading)) throw new InitError(`${file} has no "${heading}" heading to record the template version under.`);
+  if (!changelog.includes(heading)) throw new InitError(`${file} has no "${heading}" heading to record the template source under.`);
   const { owner, repo } = manifest.identity;
-  const tag = `v${manifest.version}`;
+  const at = manifest.version === undefined
+    ? `[${repo}](https://github.com/${owner}/${repo})`
+    : `[${repo} v${manifest.version}](https://github.com/${owner}/${repo}/releases/tag/v${manifest.version})`;
   const features = [...selected].join(", ") || "no features";
-  return changelog.replace(heading, `${heading}\n\n- Initialized from [${repo} ${tag}](https://github.com/${owner}/${repo}/releases/tag/${tag}) with ${features}.`);
+  return changelog.replace(heading, `${heading}\n\n- Initialized from ${at} with ${features}.`);
 }
 
 /** The README line init replaces with a sentence on what the project is. Invisible where Markdown renders. */
