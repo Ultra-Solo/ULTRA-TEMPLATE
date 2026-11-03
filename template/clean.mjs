@@ -24,7 +24,7 @@ export function resetChangelog(changelog, file = "CHANGELOG.md") {
   return `${changelog.slice(0, at)}${UNRELEASED}\n`;
 }
 
-const LINK_RE = /\[([^\]\n]*)\]\(([^)\s]+)(?:\s+"[^"\n]*")?\)/g;
+const LINK_RE = /(?<!!)\[([^\]\n]*)\]\(([^)\s]+)(?:\s+"[^"\n]*")?\)/g;
 const CODE_SPAN_RE = /`[^`\n]*`/g;
 const FENCE_RE = /^\s*(```|~~~)/;
 const ADR_INDEX = `${ADR_DIR}/README.md`;

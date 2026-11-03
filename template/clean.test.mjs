@@ -25,7 +25,7 @@ test("resetChangelog keeps the header and the Unreleased heading, drops pending 
 
 test("rewriteDroppedAdrLinks keeps the label as plain text outside the index", () => {
   const drops = new Set(["docs/adr/0005-x.md"]);
-  const out = rewriteDroppedAdrLinks("See [ADR-0005](docs/adr/0005-x.md) and [ADR-0005 again](docs/adr/0005-x.md#section).", "docs/guide.md", drops);
+  const out = rewriteDroppedAdrLinks("See [ADR-0005](adr/0005-x.md) and [ADR-0005 again](adr/0005-x.md#section).", "docs/guide.md", drops);
   assert.equal(out, "See ADR-0005 and ADR-0005 again.");
 });
 
@@ -39,14 +39,14 @@ test("rewriteDroppedAdrLinks drops a whole index row but leaves code alone", () 
   const drops = new Set(["docs/adr/0009-z.md"]);
   const index = "| [0008](0008-a.md) | kept | Accepted |\n| [0009](0009-z.md) | dropped | Proposed |\n";
   assert.equal(rewriteDroppedAdrLinks(index, "docs/adr/README.md", drops), "| [0008](0008-a.md) | kept | Accepted |\n");
-  const doc = "text [ADR-0009](docs/adr/0009-z.md)\n\n```\n[ADR-0009](docs/adr/0009-z.md)\n```\n\ninline `[ADR-0009](docs/adr/0009-z.md)` stays\n";
+  const doc = "text [ADR-0009](adr/0009-z.md)\n\n```\n[ADR-0009](adr/0009-z.md)\n```\n\ninline `[ADR-0009](adr/0009-z.md)` stays\n";
   const out = rewriteDroppedAdrLinks(doc, "docs/README.md", drops);
-  assert.equal(out, "text ADR-0009\n\n```\n[ADR-0009](docs/adr/0009-z.md)\n```\n\ninline `[ADR-0009](docs/adr/0009-z.md)` stays\n");
+  assert.equal(out, "text ADR-0009\n\n```\n[ADR-0009](adr/0009-z.md)\n```\n\ninline `[ADR-0009](adr/0009-z.md)` stays\n");
 });
 
 test("rewriteDroppedAdrLinks leaves URLs, anchors, images and other links alone", () => {
   const drops = new Set(["docs/adr/0005-x.md"]);
-  const input = "[ext](https://example.com/docs/adr/0005-x.md) [anchor](#docs/adr/0005-x.md) ![img](docs/adr/0005-x.md) [keep](docs/adr/0000-template.md) [rel](./other.md \"title\")";
+  const input = "[ext](https://example.com/docs/adr/0005-x.md) [anchor](#adr/0005-x.md) ![img](adr/0005-x.md) [keep](adr/0000-template.md) [rel](./other.md \"title\")";
   assert.equal(rewriteDroppedAdrLinks(input, "docs/README.md", drops), input);
 });
 
@@ -66,7 +66,7 @@ for (const preset of ["minimal", "all"]) {
 
     // No kept document links a dropped record.
     for (const file of tracked.filter((f) => f.endsWith(".md"))) {
-      assert.doesNotMatch(readFileSync(join(out, file), "utf8"), /\]\([^)]*docs\/adr\/\d{4}[^)]*\)/, `${file} links a dropped ADR`);
+      assert.doesNotMatch(readFileSync(join(out, file), "utf8"), /\]\([^)]*docs\/adr\/(?!0000-)\d{4}[^)]*\)/, `${file} links a dropped ADR`);
     }
 
     // The changelog records only the project's origin, not the template's pending work.
