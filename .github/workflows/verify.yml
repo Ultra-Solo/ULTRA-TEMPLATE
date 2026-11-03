@@ -290,15 +290,6 @@ jobs:
   # ultra:end devcontainer
 
   # ultra:begin template
-        with:
-          node-version-file: .node-version
-      - name: Check generated output against the event's base
-        env:
-          EVENT: ${{ github.event_name }}
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD: ${{ github.event.pull_request.head.sha }}
-          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
-          QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: node template/check-release.mjs
