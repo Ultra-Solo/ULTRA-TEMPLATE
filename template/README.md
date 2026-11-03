@@ -10,11 +10,11 @@ It needs Git and has no package dependencies beyond Node <!-- generated:version 
 
 ## Exact source and reconstruction
 
-Initialization resolves the copied manifest version from its stable upstream GitHub release and renders that committed source, rather than the template copy's files or its new history. Missing publication stops before project files change. The result records `.template-provenance.json` schema 1 with upstream URL, version, tag, full SHA and original identity, feature selection, description and copyright year. Keep that file committed.
+Initialization renders the committed template source at the exact commit it resolves upstream — the default branch's HEAD, or a commit pinned with `--source-commit` — rather than the template copy's files or its new history ([ADR-0041](../docs/adr/0041-remove-template-self-versioning.md): the template has no releases to wait for). The result records `.template-provenance.json` schema 2 with upstream URL, full SHA and the original identity, feature selection, description and copyright year. Keep that file committed.
 
-For an offline release mirror, pass `--source <local-git-path>`. For an unpublished candidate, pass `--source <local-git-path> --source-commit <full-sha>`; its record has a null tag and its origin is explicitly source rather than a released baseline. Commit the candidate first: neither mode renders uncommitted edits. Explicit sources are code trust decisions. Hash checks identify committed code and detect repointed recorded tags; they do not authenticate the publisher.
+For an offline mirror, pass `--source <local-git-path>`; `--source <local-git-path> --source-commit <full-sha>` pins an exact candidate commit. Commit the source first: neither mode renders uncommitted edits. Explicit sources are code trust decisions. The recorded SHA identifies committed code and detects a repointed source; it does not authenticate the publisher.
 
-The updater verifies the saved baseline before either renderer runs, including already-current checks, and uses the recorded inputs after project renames. Its `--check` reports, without touching anything, which release the project is on and which is the newest, and exits 1 when a newer release exists. Legacy version-only projects require a reviewed `--legacy-commit`; ambiguous main-derived projects need a manual repair. See [ADR-0023](../docs/adr/0023-reconstruct-projects-from-exact-source.md) and [v3.0.0 migration notes](notes/v3.0.0.md).
+The updater verifies the saved baseline commit before either renderer runs, including already-current checks, and uses the recorded inputs after project renames. Its `--check` reports, without touching anything, whether a newer commit exists upstream, and exits 1 when one does. Legacy projects whose only baseline is a `CHANGELOG.md` origin line require a reviewed `--legacy-commit <full-sha>`; ambiguous main-derived projects need a manual repair. See [ADR-0023](../docs/adr/0023-reconstruct-projects-from-exact-source.md), amended by [ADR-0041](../docs/adr/0041-remove-template-self-versioning.md).
 
 ## The mechanisms
 
@@ -44,7 +44,7 @@ A marker is a whole line, and in Markdown it is an HTML comment, which ends a ta
 
 The three are not interchangeable, and the public contract says where each one lands. `--owner` and `--repo` are the GitHub repository: every link, every badge, and the README title, which is what a reader sees at the top of that repository. `--name` is the project: `package.json` names and the npm scope, which is `@owner/name` lowercased because npm rejects capitals. They differ whenever a repository is named for its deployment and the package for its import, so neither may stand in for the other.
 
-**Fresh meta-history.** A generated project starts without the template's own history, per [ADR-0040](../docs/adr/0040-clean-generated-projects-of-template-meta-history.md): `docs/adr/` keeps only `README.md` and `0000-template.md`, links that pointed at dropped records keep their label as plain text (a row in the ADR index goes entirely), `CHANGELOG.md` is reset to its `Unreleased` heading with only the origin line, and the template-operational agent adapters are `templateOnly` paths, so they never ship. The template's identity survives only where attribution belongs: `.template-provenance.json`, the changelog origin line and the license notice.
+**Fresh meta-history.** A generated project starts without the template's own history, per [ADR-0040](../docs/adr/0040-clean-generated-projects-of-template-meta-history.md): `docs/adr/` keeps only `README.md` and `0000-template.md`, links that pointed at dropped records keep their label as plain text (a row in the ADR index goes entirely), no `CHANGELOG.md` is created for the template, and the template-operational agent adapters are `templateOnly` paths, so they never ship. The template's identity survives only where attribution belongs: `.template-provenance.json` and the license notice.
 
 ## Adding a feature
 
@@ -67,7 +67,7 @@ The commit precedes `verify` because `check-safety` measures the change against 
 
 `template/init.test.mjs` checks the marker grammar, identity replacement, argument validation, that the manifest matches the tree, and that an initialized project has no template residue. `.github/workflows/template-test.yml` generates every preset in CI and runs each project's own `setup` and `verify`, which lints its workflows with the pinned actionlint and zizmor. The template's `verify.yml` calls that workflow and requires its result on pull requests, main pushes, and merge queue entries. Initialization removes the call and its dependency; the standalone weekly and manual preset runs remain available in the template.
 
-`node template/check-release.mjs --base <base-ref> --head <head-ref>` checks committed release baselines. If the version stays unchanged, it generates every preset, each feature alone, and all features at both revisions and rejects changed output. A version cannot move backwards. The template-only `template-release-check` job is required by `verify`; initialization removes it. Run the command after committing a candidate change, since uncommitted files are not the revisions being compared.
+There is no release check to run: the template carries no version, so the `template-test` preset matrix on the pull request is the gate for a candidate change.
 
 ## Scope
 
