@@ -546,14 +546,13 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
     const inputs = { identity, features, description, year: new Date().getUTCFullYear() };
     const generated = join(work, "generated");
     generateSource(clone, snapshot, inputs, generated);
-    writeProvenance(generated, { schemaVersion: 1, source: snapshot.source, inputs });
+    writeProvenance(generated, { schemaVersion: 2, source: snapshot.source, inputs });
+    // Only legacy sources ship a CHANGELOG.md; prepend the source line there, never create one.
     const changelog = join(generated, "CHANGELOG.md");
-    let text = readFileSync(changelog, "utf8");
-    if (snapshot.source.tag === null) {
-      text = text.replace(`](${snapshot.source.url}/releases/tag/${version})`, ` source](${snapshot.source.url}/tree/${snapshot.source.commit})`);
+    if (existsSync(changelog)) {
+      writeFileSync(changelog, readFileSync(changelog, "utf8").replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(snapshot.source)}`));
     }
-    writeFileSync(changelog, text.replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(snapshot.source)}`));
-    const summary = `${identity.name} (${identity.owner}/${identity.repo}) from ${version} at ${snapshot.source.commit}, features: ${features.join(", ") || "none"}.`;
+    const summary = `${identity.name} (${identity.owner}/${identity.repo}) from commit ${snapshot.source.commit}, features: ${features.join(", ") || "none"}.`;
     if (values["dry-run"]) { console.log(`Dry run — nothing written.\n${summary}`); return 0; }
     if (confirm && !(await confirm(summary))) { console.log("Nothing written."); return 0; }
     const files = [];
