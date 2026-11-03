@@ -345,6 +345,12 @@ function readOrigin(root) {
 function lsRemoteHead(source) {
   try {
     const sha = execFileSync("git", ["ls-remote", source, "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim().split(/\s+/)[0];
+    if (!COMMIT.test(sha ?? "")) throw new Error("unresolvable HEAD");
+    return sha;
+  } catch {
+    throw new InitError(`Cannot resolve the default source's HEAD from ${source}. Retry online, or pass --source <local-git-path> --source-commit <sha>. Nothing was written.`, 2);
+  }
+}
 
 /**
  * Asks for what the command line left out. Only in a terminal: a script or CI that forgets an argument
