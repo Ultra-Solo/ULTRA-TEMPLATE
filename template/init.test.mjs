@@ -445,10 +445,6 @@ test("init --out writes a project with no template residue", (t) => {
   assert.equal(provenance.schemaVersion, 2);
   assert.equal(provenance.source.commit, sha);
   assert.equal(existsSync(join(out, "CHANGELOG.md")), false, "init must not create a CHANGELOG");
-  assert.match(
-    readFileSync(join(out, "CHANGELOG.md"), "utf8"),
-    new RegExp(`- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with knowledge\\.`),
-  );
   assert.match(readFileSync(join(out, "README.md"), "utf8"), /^# demo-app/);
   assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /ultra:|go-service/);
 });
