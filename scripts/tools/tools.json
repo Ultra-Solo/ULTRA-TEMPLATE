@@ -83,7 +83,7 @@
       ]
     },
     "zizmor": {
-      "version": "1.31.1",
+      "version": "1.32.0",
       "for": "chassis",
       "releases": {
         "github": "zizmorcore/zizmor"
@@ -91,21 +91,21 @@
       "platforms": {
         "linux-x64": {
           "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-x86_64-unknown-linux-gnu.tar.gz",
-          "sha256": "d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99",
+          "sha256": "bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b",
           "files": [
             "zizmor"
           ]
         },
         "linux-arm64": {
           "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-unknown-linux-gnu.tar.gz",
-          "sha256": "37eebbd5762a44f262d94875431b14a6d2402991e90a685113ea97b8b41be833",
+          "sha256": "cb152b207f815116d7fa1c1ee4614f61578803351395052908095e79adfd9fd0",
           "files": [
             "zizmor"
           ]
         },
         "darwin-arm64": {
           "url": "https://github.com/zizmorcore/zizmor/releases/download/v{version}/zizmor-aarch64-apple-darwin.tar.gz",
-          "sha256": "ad5aa633cd56215b11e6c51d51f90c7e6b22904a75047d1215abbd422f61d698",
+          "sha256": "6efed18c4539a663fd3c851a2be9533fd8456c4e646d9416206da059154a0d3c",
           "files": [
             "zizmor"
           ]
