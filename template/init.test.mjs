@@ -237,10 +237,8 @@ test("the preset workflow is called by verify and cannot be left outside its gat
 
 test("the public contract only grows: no feature or preset is removed or renamed", () => {
   // Feature ids and preset names are what adopters type, and what template-update replays from a
-  // project's CHANGELOG. Taking one away breaks every project that used it, which is a major version.
-  // 2.0.0 was major for the storage port and kept every one of them; a major that drops one moves this line.
+  // project's provenance record. Taking one away breaks every project that used it.
   const manifest = loadManifest();
-  if (Number(manifest.version.split(".")[0]) > 2) return;
   const features = ["go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"];
   const presets = ["minimal", "go-api", "py-api", "fullstack-ts", "library", "mcp", "all"];
   assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed within 1.x or 2.x");
