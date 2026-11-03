@@ -536,8 +536,8 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   const work = mkdtempSync(join(tmpdir(), "template-source-"));
   try {
     const clone = join(work, "source");
-    cloneSource(values.source ?? `${upstream}.git`, clone);
-    const snapshot = resolveSource(clone, { version, commit: values["source-commit"], tag: values["source-commit"] ? null : version });
+    cloneSource(source, clone);
+    const snapshot = resolveSource(clone, { commit });
     checkoutSource(clone, snapshot);
     const features = [...resolveSelection(snapshot.manifest, values)];
     const description = values.description === undefined
