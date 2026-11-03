@@ -73,11 +73,10 @@ export function resolveSource(clone, { commit }) {
   let manifest;
   try { manifest = JSON.parse(git(clone, ["show", `${sha}:template/features.json`])); }
   catch { throw new SourceError(`Source commit ${sha} has no valid template manifest. No initializer ran.`); }
-  if (manifest.provenanceSchema !== undefined && manifest.provenanceSchema !== 1) throw new SourceError("The source has an unsupported generation protocol. No initializer ran.");
-  if (`v${manifest.version}` !== version) throw new SourceError(`Source commit ${sha} declares v${manifest.version}, not ${version}. No initializer ran.`);
+  if (manifest.provenanceSchema !== 1 && manifest.provenanceSchema !== 2) throw new SourceError("The source has an unsupported generation protocol. No initializer ran.");
   const url = `https://github.com/${manifest.identity?.owner}/${manifest.identity?.repo}`;
   if (!/^https:\/\/github\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(url)) throw new SourceError("The source manifest has no valid upstream GitHub identity.");
-  return { manifest, source: { url, version, commit: sha, tag } };
+  return { manifest, source: { url, commit: sha } };
 }
 
 export function checkoutSource(clone, snapshot) {
