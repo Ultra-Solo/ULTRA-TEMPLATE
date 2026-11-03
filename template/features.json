@@ -7,7 +7,7 @@
     "repo": "ULTRA-TEMPLATE",
     "name": "ultra-template"
   },
-  "templateOnly": ["template", ".github/workflows/template-test.yml", ".github/workflows/template-release.yml"],
+  "templateOnly": ["template", ".github/workflows/template-test.yml", ".github/workflows/template-release.yml", ".github/agents/release-cadence.agent.md", ".github/agents/synthesis-architect-pro.agent.md"],
   "features": {
     "go-service": {
       "summary": "Go HTTP service in Clean Architecture layers, standard library only; a test enforces the layer rules; golangci-lint; distroless image",

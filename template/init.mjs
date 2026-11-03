@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { checkoutSource, cloneSource, defaultDescription, generateSource, resolveSource, sourceLine, writeProvenance, SourceError } from "../scripts/template-source.mjs";
+import { adrRecordDrops, resetChangelog, rewriteDroppedAdrLinks } from "./clean.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -276,9 +277,12 @@ function assertClean(root) {
 export function plan(root, manifest, selected, identity, description = { sentence: describeProject(manifest, selected), generated: true }, year = new Date().getUTCFullYear()) {
   const removed = removedPaths(manifest, selected);
   const known = new Set(Object.keys(manifest.features));
+  // ADR-0040: the template's own decision records are its memory, not the adopter's; a generated
+  // project starts an empty log, so the records go and links to them keep only their label.
+  const droppedAdrs = adrRecordDrops(gitTracked(root));
   const result = { deleted: [], files: [] };
   for (const file of gitTracked(root)) {
-    if (removed.some((path) => isUnder(file, path))) {
+    if (droppedAdrs.has(file) || removed.some((path) => isUnder(file, path))) {
       result.deleted.push(file);
       continue;
     }
@@ -290,7 +294,8 @@ export function plan(root, manifest, selected, identity, description = { sentenc
     }
     const text = bytes.toString("utf8");
     let next = replaceIdentity(applyMarkers(text, selected, known, file), manifest.identity, identity);
-    if (file === "CHANGELOG.md") next = recordOrigin(next, manifest, selected, file);
+    if (file.endsWith(".md")) next = rewriteDroppedAdrLinks(next, file, droppedAdrs);
+    if (file === "CHANGELOG.md") next = recordOrigin(resetChangelog(next, file), manifest, selected, file);
     if (file === "README.md") next = recordDescription(next, description.sentence, description.generated, file);
     // The MIT notice must retain the upstream attribution; add the adopter's notice without rewriting it.
     if (file === "LICENSE") next = text.replace(/^(Copyright \(c\) \d{4} .+)$/m, `Copyright (c) ${year} ${identity.owner}\n$1`);
