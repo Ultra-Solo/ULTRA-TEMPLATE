@@ -241,8 +241,8 @@ test("the public contract only grows: no feature or preset is removed or renamed
   const manifest = loadManifest();
   const features = ["go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"];
   const presets = ["minimal", "go-api", "py-api", "fullstack-ts", "library", "mcp", "all"];
-  assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed within 1.x or 2.x");
-  assert.deepEqual(presets.filter((id) => !(id in manifest.presets)), [], "presets removed within 1.x or 2.x");
+  assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed");
+  assert.deepEqual(presets.filter((id) => !(id in manifest.presets)), [], "presets removed");
   for (const preset of presets.filter((id) => id !== "all")) {
     for (const feature of manifest.presets[preset]) assert.ok(manifest.presets.all.includes(feature), `${preset}: ${feature} is not in all`);
   }
@@ -439,7 +439,12 @@ test("init --out writes a project with no template residue", (t) => {
   }
   // A new project's copyright starts the year it is created, not the year the template was written.
   assert.match(readFileSync(join(out, "LICENSE"), "utf8"), new RegExp(`^Copyright \\(c\\) ${new Date().getUTCFullYear()} octo$`, "m"));
-  const { version } = loadManifest();
+  // ADR-0041: the template keeps no version, so the record of origin is the commit, not a release tag.
+  const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: source, encoding: "utf8" }).trim();
+  const provenance = JSON.parse(readFileSync(join(out, PROVENANCE_FILE), "utf8"));
+  assert.equal(provenance.schemaVersion, 2);
+  assert.equal(provenance.source.commit, sha);
+  assert.equal(existsSync(join(out, "CHANGELOG.md")), false, "init must not create a CHANGELOG");
   assert.match(
     readFileSync(join(out, "CHANGELOG.md"), "utf8"),
     new RegExp(`- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with knowledge\\.`),
