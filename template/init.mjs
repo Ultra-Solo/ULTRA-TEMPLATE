@@ -533,11 +533,6 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   const upstream = `https://github.com/${bootstrap.identity.owner}/${bootstrap.identity.repo}`;
   const source = values.source ?? `${upstream}.git`;
   const commit = values["source-commit"] ?? lsRemoteHead(source);
-    catch { throw new InitError(`Cannot verify publication of ${version}. Retry online, or use an explicit verified local source. Nothing was written.`, 2); }
-    if (!response.ok) throw new InitError(`${version} is not a verified published release (HTTP ${response.status}). Wait for publication or use an explicit local source commit. Nothing was written.`, 2);
-    const release = await response.json();
-    if (release.draft || release.prerelease || release.tag_name !== version) throw new InitError(`${version} is not a stable published release. Nothing was written.`, 2);
-  }
   const work = mkdtempSync(join(tmpdir(), "template-source-"));
   try {
     const clone = join(work, "source");
