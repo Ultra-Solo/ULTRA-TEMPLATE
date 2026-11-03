@@ -341,6 +341,11 @@ function readOrigin(root) {
   }
 }
 
+/** The default source is the upstream default branch's HEAD via git ls-remote — no release API (ADR-0041). */
+function lsRemoteHead(source) {
+  try {
+    const sha = execFileSync("git", ["ls-remote", source, "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim().split(/\s+/)[0];
+
 /**
  * Asks for what the command line left out. Only in a terminal: a script or CI that forgets an argument
  * gets the same error as before rather than a prompt it cannot answer.
