@@ -507,7 +507,7 @@ Next:
 /** A GitHub template copy has new history; always resolve the upstream snapshot independently. */
 export async function main(argv = process.argv.slice(2), root = ROOT) {
   // Spawned by generateSource as the verified snapshot's own renderer: render in place, never re-clone.
-  if (process.env.TEMPLATE_RENDER_WORKER === "1") return renderMain(argv, root);
+  if (process.env.TEMPLATE_RENDER_WORKER === "1") return renderMain(argv, root, process.env.TEMPLATE_RENDER_INPUTS === undefined ? undefined : JSON.parse(process.env.TEMPLATE_RENDER_INPUTS));
   const { values } = parseArgs({ args: argv, strict: true, options: {
     name: { type: "string" }, owner: { type: "string" }, repo: { type: "string" }, description: { type: "string" },
     preset: { type: "string" }, features: { type: "string" }, out: { type: "string" },

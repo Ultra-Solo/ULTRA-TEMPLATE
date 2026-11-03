@@ -102,7 +102,7 @@ await renderer.renderMain(JSON.parse(args), root, JSON.parse(inputs));`;
   const result = snapshot.manifest.provenanceSchema === 1
     ? spawnSync(process.execPath, ["--input-type=module", "-e", worker, root, JSON.stringify(args), JSON.stringify(inputs)], { cwd: root, encoding: "utf8" })
     // The worker renders the verified checkout in place; the env flag keeps main() from re-verifying a source.
-    : spawnSync(process.execPath, ["template/init.mjs", ...args], { cwd: root, encoding: "utf8", env: { ...process.env, TEMPLATE_RENDER_WORKER: "1" } });
+    : spawnSync(process.execPath, ["template/init.mjs", ...args], { cwd: root, encoding: "utf8", env: { ...process.env, TEMPLATE_RENDER_WORKER: "1", TEMPLATE_RENDER_INPUTS: JSON.stringify(inputs) } });
   if (result.status !== 0) throw new SourceError(`Initializer at ${snapshot.source.commit} failed: ${(result.stderr || result.stdout).trim().split("\n").at(-1)}`);
 }
 
