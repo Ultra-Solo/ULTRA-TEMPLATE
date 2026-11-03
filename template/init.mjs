@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Resolve a published upstream snapshot independently of a GitHub template copy's new history.
+ * Resolve an upstream commit snapshot independently of a GitHub template copy's new history.
  * Render that source, then record its commit and original generation inputs for exact updates.
  * Explicit local mirrors and source commits provide offline and unpublished candidate paths.
  * renderMain is the committed-source worker; it is called only after source verification.
@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
-import { checkoutSource, cloneSource, defaultDescription, generateSource, resolveSource, sourceLine, writeProvenance, SourceError } from "../scripts/template-source.mjs";
+import { COMMIT, checkoutSource, cloneSource, defaultDescription, generateSource, resolveSource, sourceLine, writeProvenance, SourceError } from "../scripts/template-source.mjs";
 import { adrRecordDrops, resetChangelog, rewriteDroppedAdrLinks } from "./clean.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -503,7 +503,7 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   } });
   if (values.list || values.help) {
     const code = await renderMain([values.help ? "--help" : "--list"], root);
-    if (values.help) console.log("\nSources: default = published upstream release. --source <mirror> uses its verified tag;\n  --source <local-git-path> --source-commit <40-character-sha> is explicit offline/unreleased generation.");
+    if (values.help) console.log("\nSources: default = the upstream default branch's HEAD, resolved with git ls-remote;\n  --source <local-git-path> --source-commit <40-character-sha> is explicit offline/unreleased generation.");
     return code;
   }
   if (values["source-commit"] && !values.source) throw new InitError("--source-commit requires an explicit --source local Git checkout.");
