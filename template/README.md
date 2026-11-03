@@ -16,7 +16,7 @@ For an offline release mirror, pass `--source <local-git-path>`. For an unpublis
 
 The updater verifies the saved baseline before either renderer runs, including already-current checks, and uses the recorded inputs after project renames. Its `--check` reports, without touching anything, which release the project is on and which is the newest, and exits 1 when a newer release exists. Legacy version-only projects require a reviewed `--legacy-commit`; ambiguous main-derived projects need a manual repair. See [ADR-0023](../docs/adr/0023-reconstruct-projects-from-exact-source.md) and [v3.0.0 migration notes](notes/v3.0.0.md).
 
-## The three mechanisms
+## The mechanisms
 
 **Feature paths.** `features.json` lists, for each feature, the paths it owns. Paths of unselected features are deleted, and so is every `templateOnly` path.
 
@@ -43,6 +43,8 @@ A marker is a whole line, and in Markdown it is an HTML comment, which ends a ta
 **Identity.** The template is a working project under a real identity — owner `Ultra-Solo`, repository `ULTRA-TEMPLATE`, name `ultra-template` — so it verifies green before anyone initializes it. Init replaces those three strings in text files, through placeholders so no replacement can rewrite another's output. Registry namespaces use lowercase owners. The license is the exception: its original copyright notice is preserved, and init adds the adopter's notice. Never write the active identity in a form that should survive initialization outside that attribution.
 
 The three are not interchangeable, and the public contract says where each one lands. `--owner` and `--repo` are the GitHub repository: every link, every badge, and the README title, which is what a reader sees at the top of that repository. `--name` is the project: `package.json` names and the npm scope, which is `@owner/name` lowercased because npm rejects capitals. They differ whenever a repository is named for its deployment and the package for its import, so neither may stand in for the other.
+
+**Fresh meta-history.** A generated project starts without the template's own history, per [ADR-0040](../docs/adr/0040-clean-generated-projects-of-template-meta-history.md): `docs/adr/` keeps only `README.md` and `0000-template.md`, links that pointed at dropped records keep their label as plain text (a row in the ADR index goes entirely), `CHANGELOG.md` is reset to its `Unreleased` heading with only the origin line, and the template-operational agent adapters are `templateOnly` paths, so they never ship. The template's identity survives only where attribution belongs: `.template-provenance.json`, the changelog origin line and the license notice.
 
 ## Adding a feature
 
