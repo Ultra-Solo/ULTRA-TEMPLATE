@@ -235,7 +235,7 @@ test("the preset workflow is called by verify and cannot be left outside its gat
   assert.match(checkGate("verify.yml", verify.replace(/^      - template-presets\n/m, "")).join("\n"), /template-presets.*missing/);
 });
 
-test("the public contract only grows: no feature or preset of 1.x or 2.x is removed or renamed", () => {
+test("the public contract only grows: no feature or preset is removed or renamed", () => {
   // Feature ids and preset names are what adopters type, and what template-update replays from a
   // project's CHANGELOG. Taking one away breaks every project that used it, which is a major version.
   // 2.0.0 was major for the storage port and kept every one of them; a major that drops one moves this line.
