@@ -61,9 +61,9 @@ export function cloneSource(source, into) {
 }
 
 /** Resolve and inspect objects before checkout, and before executing either initializer. */
-export function resolveSource(clone, { version, commit, tag = version }) {
-  if (!RELEASE.test(version ?? "") || (commit !== undefined && !COMMIT.test(commit)) || (tag === null && commit === undefined) || (tag !== null && tag !== version)) {
-    throw new SourceError("Source version must be vMAJOR.MINOR.PATCH and its expected commit must be a full lowercase 40-character SHA.");
+export function resolveSource(clone, { commit }) {
+  if (!COMMIT.test(commit ?? "")) {
+    throw new SourceError("The source commit must be a full lowercase 40-character SHA.");
   }
   const resolve = (ref) => {
     try { return git(clone, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`]).trim(); }
