@@ -45,7 +45,8 @@ export function loadManifest(root = ROOT) {
 /** Every inconsistency in the manifest, as messages. Empty means usable. */
 export function validateManifest(manifest, exists) {
   const problems = [];
-  if (!/^\d+\.\d+\.\d+$/.test(manifest.version ?? "")) problems.push(`version "${manifest.version}" is not MAJOR.MINOR.PATCH.`);
+  // No version field: the template has no version (ADR-0041); a source is addressed by commit.
+  if ("version" in manifest) problems.push(`"version" is not a manifest field: the template has no version (ADR-0041).`);
   for (const [id, feature] of Object.entries(manifest.features)) {
     if (id === TEMPLATE_ONLY_ID || !/^[a-z0-9-]+$/.test(id)) problems.push(`"${id}" is not a usable feature id.`);
     for (const path of feature.paths) {
