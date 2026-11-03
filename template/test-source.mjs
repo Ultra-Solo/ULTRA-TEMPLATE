@@ -16,6 +16,5 @@ export function sourceFixture(root) {
   git(source, "config", "core.autocrlf", "false");
   git(source, "add", "-A");
   git(source, "-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", "candidate");
-  git(source, "tag", `v${version}`);
   return source;
 }
