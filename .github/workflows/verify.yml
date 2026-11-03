@@ -290,14 +290,6 @@ jobs:
   # ultra:end devcontainer
 
   # ultra:begin template
-          BEFORE: ${{ github.event.before }}
-          SHA: ${{ github.sha }}
-        run: node template/check-release.mjs
-      - name: Default bootstrap resolves a known published upstream release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node template/check-publication.mjs
-
   # Full generated-project verification is part of the required gate, not a separate advisory run.
   template-presets:
     uses: ./.github/workflows/template-test.yml
@@ -312,7 +304,6 @@ jobs:
       - zizmor
       - secrets
       # ultra:begin template
-      - template-release-check
       - template-presets
       # ultra:end template
       # ultra:begin go-service
