@@ -67,10 +67,9 @@ export function resolveSource(clone, { commit }) {
   }
   const resolve = (ref) => {
     try { return git(clone, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`]).trim(); }
-    catch { throw new SourceError(`There is no release ${version} or expected source commit ${commit ?? "(unresolved)"} in the template source. No initializer ran.`); }
+    catch { throw new SourceError(`There is no source commit ${commit} in the template source. No initializer ran.`); }
   };
-  const sha = tag === null ? resolve(commit) : resolve(`refs/tags/${tag}`);
-  if (commit !== undefined && sha !== commit) throw new SourceError(`The ${tag} tag moved: expected commit ${commit}, found ${sha}. No initializer ran; restore the original source or review a separate migration.`);
+  const sha = resolve(commit);
   let manifest;
   try { manifest = JSON.parse(git(clone, ["show", `${sha}:template/features.json`])); }
   catch { throw new SourceError(`Source commit ${sha} has no valid template manifest. No initializer ran.`); }
