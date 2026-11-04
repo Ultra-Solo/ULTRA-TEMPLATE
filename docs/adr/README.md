@@ -4,7 +4,9 @@ Each record captures one decision that shapes this repository: the context that 
 
 Records are amended, not rewritten. When a decision changes, a new record supersedes or amends the old one, and the old one's status points to it (`Superseded by`, `Amended by`), so the reasoning behind every past state stays readable and no old record reads as current. `scripts/check-docs.mjs` fails a pointer that is missing at either end.
 
-A record states its own status, on its `**Status:**` line. The table below repeats it short, each linked record as its number: `Accepted · Amends [ADR-0006](…)` is `Accepted, amends 0006`. `scripts/check-docs.mjs` fails a row that says anything else, so change the record first and then its row.
+A record states its own status, on its `**Status:**` line — `Proposed`, `Accepted`, `Deprecated`, `Rejected`, or `Superseded by` a later record. The table below repeats it short, each linked record as its number: `Accepted · Amends [ADR-0006](…)` is `Accepted, amends 0006`. `scripts/check-docs.mjs` fails a row that says anything else, so change the record first and then its row.
+
+From ADR-0042 on, every record also carries an `## Enforcement` section naming the check or test that fails when the decision is undone; `scripts/check-docs.mjs` fails a record without one.
 
 | ADR | Decision | Status |
 |---|---|---|
@@ -49,3 +51,5 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0039](0039-port-only-verifiable-mechanisms-from-external-engines.md) | Port only verifiable mechanisms from external engines | Accepted |
 | [0040](0040-clean-generated-projects-of-template-meta-history.md) | Clean a generated project of the template's meta-history at generation time | Accepted, amended by 0041 |
 | [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Accepted, amends 0017, 0023, 0040, supersedes 0022, 0035 |
+| [0042](0042-make-every-adr-falsifiable.md) | Make every ADR falsifiable: a full status grammar and a required Enforcement section | Proposed |
+| [0043](0043-rules-ship-failing-cases.md) | Every architecture rule ships a failing case; a structural PR carries the whole set | Proposed |
