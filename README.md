@@ -93,7 +93,7 @@ Deployment targets and infrastructure, databases and migrations, authentication,
 
 ## Read more
 
-[docs/README.md](docs/README.md) indexes the documentation, [AGENTS.md](AGENTS.md) holds the rules every contributor and coding agent follows, and [template/README.md](template/README.md) covers how the template is versioned and released.
+[docs/README.md](docs/README.md) indexes the documentation, [AGENTS.md](AGENTS.md) holds the rules every contributor and coding agent follows, and [template/README.md](template/README.md) covers how the template works and how projects track its commits.
 
 ---
 <!-- ultra:end template -->
@@ -221,20 +221,20 @@ Dependabot proposes grouped updates weekly for every ecosystem present, SHA-pinn
 
 ## Taking template updates
 
-This project was generated from a repository template, and `CHANGELOG.md` records which one and the release it came from. When a later release fixes something you want, `scripts/template-update.mjs` brings the change in: it regenerates the project as the old and the new release would have made it, with this project's name and features, and applies the difference as a three-way merge. What you changed yourself is kept, and a conflict is left to resolve like any merge conflict.
+This project was generated from a repository template, and `.template-provenance.json` records the exact template commit it was generated from. When a later commit fixes something you want, `scripts/template-update.mjs` brings the change in: it regenerates the project as the recorded commit and the target commit would have made it, with this project's name and features, and applies the difference as a three-way merge. What you changed yourself is kept, and a conflict is left to resolve like any merge conflict.
 
 ```bash
-node scripts/template-update.mjs --check                 # is a newer release out?
-node scripts/template-update.mjs --to vX.Y.Z --dry-run   # what would change
-node scripts/template-update.mjs --to vX.Y.Z             # apply, then review, verify and commit
-node scripts/template-update.mjs --to latest             # the newest release
+node scripts/template-update.mjs --check                     # is a newer commit out?
+node scripts/template-update.mjs --to <full-sha> --dry-run   # what would change
+node scripts/template-update.mjs --to <full-sha>             # apply, then review, verify and commit
+node scripts/template-update.mjs --to latest                 # the newest upstream commit
 ```
 
-`--check` works on a dirty tree, because it only reads: it reports as JSON the release the project is on, the newest one the template has, and the command that would move the project to it, and exits 1 when a newer release exists — so a script can ask without parsing the report.
+`--check` works on a dirty tree, because it only reads: it reports as JSON the commit the project is on, the newest one the template has, and the command that would move the project to it, and exits 1 when a newer commit exists — so a script can ask without parsing the report.
 
-Updates only move forward: a release older than the one the project is on is refused. It works on the whole repository from any directory in it, and prints each release's tag with the commit it names before running that release's code.
+Updates only move forward: a target commit that does not descend from the recorded one is refused. It works on the whole repository from any directory in it, and prints the baseline and target commits before running.
 
-The same script changes which features the project has, by the same means: the "after" side is generated with the new selection. Without `--to` it stays on the release the project is on; with it, the release and the selection move in one change. The new selection is recorded in `CHANGELOG.md`, where the next update reads it.
+The same script changes which features the project has, by the same means: the "after" side is generated with the new selection. Without `--to` it stays on the commit the project is on; with it, the commit and the selection move in one change. The new selection is recorded in `.template-provenance.json`, where the next update reads it.
 
 ```bash
 node scripts/template-update.mjs --add web --dry-run      # what adding the web app would bring
