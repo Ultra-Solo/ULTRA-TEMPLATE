@@ -1,6 +1,6 @@
 # ADR-0041: Remove the template's self-versioning; address a template by commit
 
-**Status:** Proposed · Amends [ADR-0023](0023-reconstruct-projects-from-exact-source.md) and [ADR-0040](0040-clean-generated-projects-of-template-meta-history.md) · Supersedes [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) and [ADR-0035](0035-drive-releases-from-a-written-standing-plan.md) · **Date:** 2026-11-03
+**Status:** Proposed · Amends [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md), [ADR-0023](0023-reconstruct-projects-from-exact-source.md) and [ADR-0040](0040-clean-generated-projects-of-template-meta-history.md) · Supersedes [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) and [ADR-0035](0035-drive-releases-from-a-written-standing-plan.md) · **Date:** 2026-11-03
 
 ## Context
 
@@ -17,6 +17,7 @@ Security pins are not a version of the template and stay: action commit-SHA pins
 - `resolveSource(clone, { commit })` resolves only `commit^{commit}` and accepts a source manifest whose `provenanceSchema` is 1 or 2; the version-equality check goes. `init`'s default source is the upstream repository's current default-branch HEAD, resolved with `git ls-remote` — no release API, no publication check. `--source <local-path> --source-commit <sha>` remains the explicit offline and unpublished-candidate path.
 - `scripts/template-update.mjs` is commit-only: `--to <40-hex|latest>` where `latest` is the source's HEAD (`git ls-remote`), `--check` compares the project's commit with upstream HEAD and exits 1 when they differ, and forward-only is enforced with `git merge-base --is-ancestor` inside the source clone, which also works for a legacy schema-1 baseline given `--legacy-commit`. CHANGELOG origin/update lines are written only when a `CHANGELOG.md` exists (legacy projects); provenance is the sole record for new projects.
 - A new guard test fails if `version` returns to `template/features.json`, if `template/notes/` or any deleted release file reappears, or if a tracked file references a release tag of the template.
+- `scripts/configure-github.mjs` applies the `release-tags` ruleset (amends ADR-0017) only to generated projects that release — `release.yml` present, `template/` gone — never to the template itself, so the 44 historical `v*` tags can be deleted once and no new ones exist.
 - Supersedes ADR-0022 (advance the release when generated output changes) and ADR-0035 (drive releases from a written standing plan); amends ADR-0023 (exact-source reconstruction becomes commit-only) and ADR-0040 (the template ships no CHANGELOG, so the origin line exists only for legacy sources).
 
 ## Alternatives considered

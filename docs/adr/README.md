@@ -24,7 +24,7 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0014](0014-modules-describe-themselves.md) | Modules describe themselves in `module.json` | Accepted, amends 0004, 0008, 0011, amended by 0027 |
 | [0015](0015-one-manifest-for-hand-pinned-tools.md) | Hand-pinned tools live in one manifest | Accepted, amends 0003, 0011, amended by 0017 |
 | [0016](0016-cloud-agents-get-the-same-toolchains.md) | Cloud agents get the same toolchains | Accepted, amends 0009, 0011 |
-| [0017](0017-prove-the-supply-chain-before-it-runs.md) | Prove every pin before it runs, not where it first runs | Accepted, amends 0003, 0011, 0015 |
+| [0017](0017-prove-the-supply-chain-before-it-runs.md) | Prove every pin before it runs, not where it first runs | Accepted, amends 0003, 0011, 0015, amended by 0041 |
 | [0018](0018-every-task-service-reads-and-answers-alike.md) | Every task service reads a request and answers it the same way | Accepted, amends 0010, 0013, amended by 0021, 0036 |
 | [0019](0019-moves-are-compare-and-set-on-the-store.md) | Moves are compare-and-set on the store | Accepted, amends 0005 |
 | [0020](0020-require-generated-preset-verification.md) | Require generated preset verification in the template's gate | Accepted, amends 0002, amended by 0022 |
@@ -48,4 +48,4 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0038](0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) | Keep a layered, self-checking memory in docs/knowledge | Accepted |
 | [0039](0039-port-only-verifiable-mechanisms-from-external-engines.md) | Port only verifiable mechanisms from external engines | Accepted |
 | [0040](0040-clean-generated-projects-of-template-meta-history.md) | Clean a generated project of the template's meta-history at generation time | Proposed, amended by 0041 |
-| [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Proposed, amends 0023, 0040, supersedes 0022, 0035 |
+| [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Proposed, amends 0017, 0023, 0040, supersedes 0022, 0035 |

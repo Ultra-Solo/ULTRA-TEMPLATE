@@ -1,6 +1,6 @@
 # ADR-0017: Prove every pin before it runs, not where it first runs
 
-**Status:** Accepted · Amends [ADR-0003](0003-pin-third-party-code.md), [ADR-0011](0011-what-local-verify-guarantees.md) and [ADR-0015](0015-one-manifest-for-hand-pinned-tools.md) · **Date:** 2026-09-26
+**Status:** Accepted · Amends [ADR-0003](0003-pin-third-party-code.md), [ADR-0011](0011-what-local-verify-guarantees.md) and [ADR-0015](0015-one-manifest-for-hand-pinned-tools.md) · Amended by [ADR-0041](0041-remove-template-self-versioning.md) · **Date:** 2026-09-26
 
 ## Context
 
@@ -22,7 +22,7 @@ A pin is proven where it is declared, before anything depends on it:
 - A tool in `tools.json` lists the setup actions that would install it outside its pin (`actions`), and hygiene rule 16 fails a workflow that uses one.
 - Hygiene rule 19 fails an action pinned at two SHAs, and a directory holding an `action.yml` that Dependabot's github-actions entry does not list. Every update entry waits seven days (`cooldown`), which zizmor checks.
 - Hygiene rule 14 covers the Dev Container: its base image comes from `.devcontainer/Dockerfile`, by digest, and Dependabot's docker entry proposes new ones.
-- `configure-github.mjs` adds a ruleset that keeps release tags from being moved or deleted, and limits each deployment environment a workflow names to the default branch.
+- `configure-github.mjs` adds a ruleset that keeps release tags from being moved or deleted — in a generated project that releases, per ADR-0041; the template itself carries no tags — and limits each deployment environment a workflow names to the default branch.
 - The `secrets` job in `verify.yml` runs the pinned gitleaks over the commits each change adds, and blocks. The history scan in `security.yml` stays report-only.
 - CI's `chassis` job installs the chassis tools and runs them through `verify`, where a missing one fails in CI unless the manifest has no asset for that platform. There is no separate actionlint job.
 
