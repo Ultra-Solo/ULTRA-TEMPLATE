@@ -88,15 +88,6 @@ The template carries no version and publishes no releases ([ADR-0041](../docs/ad
 `scripts/template-update.mjs` verifies the recorded baseline commit, renders what init would produce at that commit and at the target commit with the project's own identity and feature selection, and applies the difference as a three-way merge.
 
 
-Before merging a release pull request:
-
-1. **Choose the bump** from the table above, and set `version` in `features.json` in the same pull request.
-2. **Every preset generates and verifies.** `template-test` does this on the pull request, initializing in place from the committed candidate SHA, without claiming it is published. Do not merge on a red preset.
-3. **Nothing of the template survives initialization.** Checked in every preset by `check-hygiene` (no marker lines) and by the `template-test` step that fails if `template/` remains.
-4. **The README's steps still work.** If the release changes anything *Start a project* or *Getting started* describes, follow those steps once from a fresh clone.
-5. **`configure-github.mjs` does what its header says.** If the release touches it, run `--dry-run` against a scratch repository and read the requests, then apply them there.
-6. **Manual pins are current.** `pins.yml` lists every tool pinned by hand beside its latest release; move one with `node scripts/tools.mjs bump`, as [docs/toolchain-updates.md](../docs/toolchain-updates.md) describes, at every minor release.
-7. **The notes will read right.** A minor or major release carries `template/notes/v<version>.md`, which the notes put first: every check that can now turn an adopter's build red, and every file an update is likely to conflict on and why. A template test fails such a version without it. `node template/release-notes.mjs --to v<version>` prints the notes locally.
 
 After it merges, read the published release once. An `Updated to` or `Initialized from` line in a project is only as useful as the notes it points at.
 
