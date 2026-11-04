@@ -35,7 +35,19 @@ const LEDGER = {
     paths: ["apps/web/scripts/check-boundaries.mjs", "packages/ts-library/scripts/check-install.mjs"],
   },
   "An MCP server for agents": { paths: ["services/mcp-server/test/mcp.test.ts"] },
-  "Architecture as code.": { paths: ["architecture/rules.mjs", "architecture/test/model.test.mjs"] },
+  "Versionless by construction.": {
+    paths: ["template/no-version.test.mjs", "template/init.mjs", "docs/adr/0041-remove-template-self-versioning.md"],
+  },
+  "Falsifiable decisions and architecture.": {
+    paths: [
+      "scripts/check-docs.mjs",
+      "architecture/rules.mjs",
+      "architecture/test/model.test.mjs",
+      "docs/adr/0042-make-every-adr-falsifiable.md",
+      "docs/adr/0043-rules-ship-failing-cases.md",
+      "docs/adr/0044-model-the-repositorys-own-machinery.md",
+    ],
+  },
   "One set of instructions for agents.": { paths: ["scripts/check-docs.mjs"] },
   "Selectable features, tested.": {
     paths: [".github/workflows/template-test.yml", "template/init.test.mjs", "template/template-update.test.mjs"],
