@@ -1,6 +1,6 @@
 # ADR-0044: Model the repository's own machinery in the architecture model
 
-**Status:** Proposed · **Date:** 2026-11-04
+**Status:** Accepted · **Date:** 2026-11-04
 
 ## Context
 
