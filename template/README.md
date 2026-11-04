@@ -81,17 +81,12 @@ A new feature has to meet the five requirements in [ADR-0008](../docs/adr/0008-a
 
 The template carries no version and publishes no releases ([ADR-0041](../docs/adr/0041-remove-template-self-versioning.md)). Provenance is a commit: init records the exact template commit it rendered from in `.template-provenance.json` (schema 2 — upstream URL, full SHA, original identity, feature selection, description, copyright year), and `scripts/template-update.mjs` moves a project forward commit to commit, refusing any target that does not descend from the recorded one.
 
-A behaviour change a project's users would notice — an API status code, a stricter check — is at least minor, even when it fixes a bug, and its release notes say so.
+**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`, `--source`, `--source-commit`), `template-update.mjs`'s flags (`--to` with a commit or `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`, `--legacy-commit`, `--to-commit`), the machine-readable provenance schema, and the required check's name, `verify`.
 
-## Releasing the template
+## Updating a project from a later commit
 
-"Use this template" copies `main` as it is. The bootstrap resolves the manifest's version from a stable published upstream snapshot before rendering; it records that exact commit and the generation inputs. A change to generated output must advance that version; `template-release-check` enforces it on pull requests and merge queue entries. This also applies to dependency updates. A dependency PR can carry the bump, or its changes can be combined into a versioned release PR before merge. Template-only changes with unchanged output need no release.
+`scripts/template-update.mjs` verifies the recorded baseline commit, renders what init would produce at that commit and at the target commit with the project's own identity and feature selection, and applies the difference as a three-way merge.
 
-Publication happens **after** the merge, once the `verify` workflow has passed on the merged commit: `.github/workflows/template-release.yml` releases that exact commit and publishes its notes. It is asynchronous and can fail, so main can contain a candidate version whose release is not yet available. Default initialization checks publication and fails clearly in that window. Inspect the workflow and `gh release view v<version>` when diagnosing it. If publication fails, repair and rerun the workflow; do not move an existing release tag to cover later source changes.
-
-GitHub copies have new history; their HEAD does not identify an upstream release. Default generation resolves upstream independently. A local release mirror or an explicitly pinned unreleased candidate provides the offline path; do not substitute the adopter repository's HEAD. The required release check still prevents generated-output changes under an unchanged version ([ADR-0022](../docs/adr/0022-advance-the-release-when-generated-output-changes.md), amended by [ADR-0023](../docs/adr/0023-reconstruct-projects-from-exact-source.md)).
-
-Release notes compare every preset generated at both releases with each release's own init, then explain how to update and list the merged pull requests. Diffing generated projects rather than template paths reflects changes inside marker blocks and changes in file ownership.
 
 Before merging a release pull request:
 
