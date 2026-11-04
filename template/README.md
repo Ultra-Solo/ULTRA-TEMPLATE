@@ -87,8 +87,6 @@ The template carries no version and publishes no releases ([ADR-0041](../docs/ad
 
 `scripts/template-update.mjs` verifies the recorded baseline commit, renders what init would produce at that commit and at the target commit with the project's own identity and feature selection, and applies the difference as a three-way merge.
 
-
-
-After it merges, read the published release once. An `Updated to` or `Initialized from` line in a project is only as useful as the notes it points at.
+A template change lands as a merge on `main`; projects pick it up with `node scripts/template-update.mjs --to latest` when they want it.
 
 The template repository runs no release-please of its own: `RELEASE_ENABLED` stays unset here, because release-please is for projects generated from it.
