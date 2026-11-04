@@ -8,4 +8,10 @@ views {
     title 'Containers'
     include *
   }
+
+  // ADR-0044: the repository machinery without the system a project builds.
+  view machinery {
+    title 'Repository machinery'
+    include chassis, chassis.*, contributor
+  }
 }

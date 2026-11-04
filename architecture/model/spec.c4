@@ -26,4 +26,16 @@ specification {
       shape component
     }
   }
+
+  // ADR-0044: the repository's own machinery, drawn beside the system a project builds.
+  element script {
+    notation "Chassis script"
+    style {
+      shape component
+    }
+  }
+
+  element records {
+    notation "Records"
+  }
 }
