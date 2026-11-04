@@ -30,8 +30,8 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
-- [ADR-0041](../adr/0041-remove-template-self-versioning.md) Remove the template's self-versioning; address a template by commit (Proposed)
-- [ADR-0040](../adr/0040-clean-generated-projects-of-template-meta-history.md) Clean a generated project of the template's meta-history at generation time (Proposed)
+- [ADR-0041](../adr/0041-remove-template-self-versioning.md) Remove the template's self-versioning; address a template by commit (Accepted)
+- [ADR-0040](../adr/0040-clean-generated-projects-of-template-meta-history.md) Clean a generated project of the template's meta-history at generation time (Accepted)
 - [ADR-0039](../adr/0039-port-only-verifiable-mechanisms-from-external-engines.md) Port only verifiable mechanisms from external self-improving engines (Accepted)
 - [ADR-0038](../adr/0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) Keep a layered, self-checking memory of the repository in docs/knowledge (Accepted)
 - [ADR-0037](../adr/0037-bound-the-self-upgrade-gate-to-a-validated-plan.md) Bound the self-upgrade gate to a validated plan (Accepted, amends 0011, 0020)

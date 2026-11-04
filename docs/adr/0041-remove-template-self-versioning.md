@@ -1,6 +1,6 @@
 # ADR-0041: Remove the template's self-versioning; address a template by commit
 
-**Status:** Proposed · Amends [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md), [ADR-0023](0023-reconstruct-projects-from-exact-source.md) and [ADR-0040](0040-clean-generated-projects-of-template-meta-history.md) · Supersedes [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) and [ADR-0035](0035-drive-releases-from-a-written-standing-plan.md) · **Date:** 2026-11-03
+**Status:** Accepted · Amends [ADR-0017](0017-prove-the-supply-chain-before-it-runs.md), [ADR-0023](0023-reconstruct-projects-from-exact-source.md) and [ADR-0040](0040-clean-generated-projects-of-template-meta-history.md) · Supersedes [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) and [ADR-0035](0035-drive-releases-from-a-written-standing-plan.md) · **Date:** 2026-11-03
 
 ## Context
 

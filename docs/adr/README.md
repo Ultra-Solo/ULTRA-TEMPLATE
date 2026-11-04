@@ -47,5 +47,5 @@ A record states its own status, on its `**Status:**` line. The table below repea
 | [0037](0037-bound-the-self-upgrade-gate-to-a-validated-plan.md) | Bound the self-upgrade gate to a validated plan | Accepted, amends 0011, 0020 |
 | [0038](0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) | Keep a layered, self-checking memory in docs/knowledge | Accepted |
 | [0039](0039-port-only-verifiable-mechanisms-from-external-engines.md) | Port only verifiable mechanisms from external engines | Accepted |
-| [0040](0040-clean-generated-projects-of-template-meta-history.md) | Clean a generated project of the template's meta-history at generation time | Proposed, amended by 0041 |
-| [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Proposed, amends 0017, 0023, 0040, supersedes 0022, 0035 |
+| [0040](0040-clean-generated-projects-of-template-meta-history.md) | Clean a generated project of the template's meta-history at generation time | Accepted, amended by 0041 |
+| [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Accepted, amends 0017, 0023, 0040, supersedes 0022, 0035 |
