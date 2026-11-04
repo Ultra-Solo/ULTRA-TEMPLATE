@@ -52,7 +52,9 @@ test("release tags can be created but never moved or deleted, by anyone", () => 
   assert.deepEqual(TAG_RULESET.rules.map((r) => r.type).sort(), ["deletion", "non_fast_forward", "update"]);
   assert.equal(TAG_RULESET.rules.some((r) => r.type === "creation"), false, "releasing creates them");
   assert.deepEqual(TAG_RULESET.bypass_actors, []);
-  assert.ok(plan("octo/app", { release: false }).some((s) => s.upsertRuleset === TAG_RULESET));
+  // Only generated projects release (ADR-0041: the template itself has no versions), so only they get the tag ruleset.
+  assert.ok(plan("octo/app", { release: true }).some((s) => s.upsertRuleset === TAG_RULESET));
+  assert.ok(!plan("octo/app", { release: false }).some((s) => s.upsertRuleset === TAG_RULESET));
 });
 
 test("each deployment environment a workflow names is limited to the default branch", () => {
