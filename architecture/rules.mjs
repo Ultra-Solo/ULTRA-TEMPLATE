@@ -22,3 +22,21 @@ export function clientDependencies(model) {
     .filter((r) => r.source.kind === "service" && r.target.kind === "webapp")
     .map((r) => `${r.source.id} depends on the web app ${r.target.id}`);
 }
+
+/**
+ * One hand-built model per rule, keyed by the rule's export name, that breaks exactly that rule.
+ * test/model.test.mjs fails when a rule has no entry here or does not fire on it, so a rule proven
+ * only against a clean model cannot pass while broken (ADR-0043).
+ */
+export const violating = {
+  undocumented: (() => {
+    const element = (id, kind, technology, description) => ({ id, kind, technology, description: { isEmpty: description === "" } });
+    return { elements: () => [element("product.api", "service", null, "")], relationships: () => [] };
+  })(),
+  clientDependencies: (() => {
+    const element = (id, kind) => ({ id, kind, technology: "x", description: { isEmpty: false } });
+    const api = element("product.api", "service");
+    const web = element("product.web", "webapp");
+    return { elements: () => [api, web], relationships: () => [{ source: api, target: web }] };
+  })(),
+};

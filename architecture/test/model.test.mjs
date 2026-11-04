@@ -2,27 +2,25 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { LikeC4 } from "likec4";
-import { clientDependencies, undocumented } from "../rules.mjs";
+import * as rules from "../rules.mjs";
 
 const workspace = fileURLToPath(new URL("../model", import.meta.url));
 // throwIfInvalid: a model with a syntax or reference error fails here, not later in a diagram.
 const model = await (await LikeC4.fromWorkspace(workspace, { throwIfInvalid: true })).computedModel();
 
-test("every service and web app states its technology and purpose", () => {
-  assert.deepEqual(undocumented(model), []);
+const ruleEntries = Object.entries(rules).filter(([, value]) => typeof value === "function");
+
+test("the model satisfies every rule", () => {
+  for (const [name, check] of ruleEntries) {
+    assert.deepEqual(check(model), [], `${name} found violations in the real model`);
+  }
 });
 
-test("no service depends on a web app", () => {
-  assert.deepEqual(clientDependencies(model), []);
-});
-
-// A rule proven only against a clean model passes just as well when it is broken.
-test("the rules fire on a model that breaks them", () => {
-  const element = (id, kind, technology, description) => ({ id, kind, technology, description: { isEmpty: description === "" } });
-  const api = element("product.api", "service", null, "");
-  const web = element("product.web", "webapp", "React", "Lists tasks");
-  const broken = { elements: () => [api, web], relationships: () => [{ source: api, target: web }] };
-
-  assert.deepEqual(undocumented(broken), ["product.api has no technology", "product.api has no description"]);
-  assert.deepEqual(clientDependencies(broken), ["product.api depends on the web app product.web"]);
+// A rule proven only against a clean model passes just as well when it is broken (ADR-0043).
+test("every rule ships a failing case and fires on it", () => {
+  for (const [name, check] of ruleEntries) {
+    const broken = rules.violating?.[name];
+    assert.ok(broken, `rule "${name}" has no entry in rules.mjs \`violating\`; add a hand-built model that breaks it`);
+    assert.ok(check(broken).length > 0, `rule "${name}" does not fire on its \`violating\` model`);
+  }
 });

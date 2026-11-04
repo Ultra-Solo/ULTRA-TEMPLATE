@@ -32,6 +32,10 @@
  *  12. A record that a later one amends or supersedes says so on its own status line ("Amended by",
  *      "Superseded by"), and every such pointer is answered by the later record. Records are amended,
  *      not rewritten: without the pointer, the old record reads as current to anyone who opens it.
+ *  13. A record's status is in the grammar of 0000-template.md (Proposed | Accepted | Deprecated |
+ *      Rejected | Superseded), and from ADR-0042 on every record carries an `## Enforcement` section
+ *      naming, in backticks, the check or test that fails when the decision is undone — a command or
+ *      a tracked file. A decision nothing enforces decays into prose (ADR-0042).
  *
  *   node scripts/check-docs.mjs
  *
@@ -79,6 +83,63 @@ export function indexStatus(status) {
 
 const RELATIONS = ["amends", "supersedes", "amended by", "superseded by"];
 const INVERSE = { amends: "amended by", supersedes: "superseded by", "amended by": "amends", "superseded by": "supersedes" };
+
+/** The first words a record's status may start with (ADR-0042); anything else is not a status. */
+const STATUS_WORDS = ["Proposed", "Accepted", "Deprecated", "Rejected", "Superseded"];
+/** Records from this number on must carry an `## Enforcement` section; earlier ones are grandfathered (ADR-0042). */
+const ENFORCEMENT_FROM = "0042";
+
+/** A `## Section` of a Markdown document, as its body text, or null when the heading is absent. */
+function section(text, heading) {
+  const lines = normalize(text).split("\n");
+  const start = lines.findIndex((line) => line.trim() === heading);
+  if (start === -1) return null;
+  const body = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^#{1,6}\s/.test(line)) break;
+    body.push(line);
+  }
+  return body.join("\n").trim();
+}
+
+/** Rule 13: the status is in the grammar, and from ADR-0042 on the record names what enforces it. */
+function checkAdrGrammar(root, tracked, failures) {
+  for (const path of tracked.filter((p) => p.startsWith(`${ADR_DIR}/`) && /^\d{4}-[^/]+\.md$/.test(p.slice(ADR_DIR.length + 1)))) {
+    const file = basename(path);
+    const number = file.slice(0, 4);
+    const text = readFileSync(join(root, path), "utf8");
+    const status = recordStatus(text);
+    if (status === null) continue; // rule 11 already reports the missing status line
+    const firstWord = status.match(/^[A-Za-z]+/)?.[0] ?? "";
+    if (!STATUS_WORDS.includes(firstWord)) {
+      failures.push(`\`${ADR_DIR}/${file}\` status "${status}" is outside the grammar: ${STATUS_WORDS.join(" | ")} (see 0000-template.md).`);
+    }
+    if (number < ENFORCEMENT_FROM) continue;
+    const body = section(text, "## Enforcement");
+    if (body === null) {
+      failures.push(`\`${ADR_DIR}/${file}\` has no \`## Enforcement\` section naming the check or test that fails when this decision is undone (required from ADR-0042 on).`);
+      continue;
+    }
+    if (body === "") {
+      failures.push(`\`${ADR_DIR}/${file}\`'s \`## Enforcement\` section is empty; name the check or test in backticks.`);
+      continue;
+    }
+    const refs = [...body.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    if (refs.length === 0) {
+      failures.push(`\`${ADR_DIR}/${file}\`'s \`## Enforcement\` section names nothing in backticks; name the command or tracked file that fails without this decision.`);
+      continue;
+    }
+    for (const ref of refs) {
+      const target = ref.replace(/^\.\//, "");
+      if (/^[\w.-]+(?:\/[\w.-]+)+\.(?:mjs|py|ts|json|ya?ml|md)$/.test(target) && !tracked.includes(target)) {
+        failures.push(`\`${ADR_DIR}/${file}\`'s \`## Enforcement\` names \`${target}\`, which is not a tracked file.`);
+      }
+    }
+    if (!refs.some((ref) => /^(?:node|npm|npx) /.test(ref) || tracked.includes(ref.replace(/^\.\//, "")))) {
+      failures.push(`\`${ADR_DIR}/${file}\`'s \`## Enforcement\` names no command and no tracked file, so nothing can fail when this decision is undone.`);
+    }
+  }
+}
 
 /** The records a status names under each relation, as their numbers: "Amends [ADR-0006](…)" gives amends ["0006"]. */
 export function statusRelations(status) {
@@ -413,6 +474,7 @@ export function checkDocs(root = process.cwd()) {
   checkGenerated(root, tracked, failures);
   checkAdrIndex(root, tracked, failures);
   checkAdrRelations(root, tracked, failures);
+  checkAdrGrammar(root, tracked, failures);
   if (tracked.includes(CLAUDE_SETTINGS)) {
     try {
       failures.push(...hookProblems(JSON.parse(read(CLAUDE_SETTINGS)), tracked).map((problem) => `\`${CLAUDE_SETTINGS}\` ${problem}.`));

@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 42 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 422 edges, 0 active episodes.
+Now: 7 modules, 44 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 424 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
@@ -30,6 +30,8 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
+- [ADR-0043](../adr/0043-rules-ship-failing-cases.md) Every architecture rule ships a failing case; a structural PR carries the whole set (Proposed)
+- [ADR-0042](../adr/0042-make-every-adr-falsifiable.md) Make every ADR falsifiable: a full status grammar and a required Enforcement section (Proposed)
 - [ADR-0041](../adr/0041-remove-template-self-versioning.md) Remove the template's self-versioning; address a template by commit (Accepted)
 - [ADR-0040](../adr/0040-clean-generated-projects-of-template-meta-history.md) Clean a generated project of the template's meta-history at generation time (Accepted)
 - [ADR-0039](../adr/0039-port-only-verifiable-mechanisms-from-external-engines.md) Port only verifiable mechanisms from external self-improving engines (Accepted)
@@ -40,9 +42,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 - [ADR-0034](../adr/0034-move-the-runner-pin-to-ubuntu-26.04.md) Move the runner pin to Ubuntu 26.04 (Accepted)
 - [ADR-0033](../adr/0033-track-the-current-stable-python-line.md) Track the current stable Python line (Accepted)
 - [ADR-0032](../adr/0032-track-the-current-stable-go-line.md) Track the current stable Go line (Accepted)
-- [ADR-0031](../adr/0031-track-the-node-lts-line.md) Track the Node LTS line (Accepted)
-- [ADR-0030](../adr/0030-serve-mcp-over-streamable-http-beside-stdio.md) Serve MCP over Streamable HTTP beside stdio (Accepted)
-- 30 older: see the [decision index](../adr/README.md).
+- 32 older: see the [decision index](../adr/README.md).
 
 ## Active episodes
 
