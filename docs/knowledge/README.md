@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 44 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 424 edges, 0 active episodes.
+Now: 7 modules, 45 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 429 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
@@ -30,6 +30,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
+- [ADR-0044](../adr/0044-model-the-repositorys-own-machinery.md) Model the repository's own machinery in the architecture model (Proposed)
 - [ADR-0043](../adr/0043-rules-ship-failing-cases.md) Every architecture rule ships a failing case; a structural PR carries the whole set (Accepted)
 - [ADR-0042](../adr/0042-make-every-adr-falsifiable.md) Make every ADR falsifiable: a full status grammar and a required Enforcement section (Accepted)
 - [ADR-0041](../adr/0041-remove-template-self-versioning.md) Remove the template's self-versioning; address a template by commit (Accepted)
@@ -41,8 +42,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 - [ADR-0035](../adr/0035-drive-releases-from-a-written-standing-plan.md) Drive releases from a written standing plan (Accepted)
 - [ADR-0034](../adr/0034-move-the-runner-pin-to-ubuntu-26.04.md) Move the runner pin to Ubuntu 26.04 (Accepted)
 - [ADR-0033](../adr/0033-track-the-current-stable-python-line.md) Track the current stable Python line (Accepted)
-- [ADR-0032](../adr/0032-track-the-current-stable-go-line.md) Track the current stable Go line (Accepted)
-- 32 older: see the [decision index](../adr/README.md).
+- 33 older: see the [decision index](../adr/README.md).
 
 ## Active episodes
 

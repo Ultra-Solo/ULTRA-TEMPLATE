@@ -4,7 +4,7 @@
  * that breaks it and watch it fire.
  */
 
-const BUILT = new Set(["service", "webapp", "library"]);
+const BUILT = new Set(["service", "webapp", "library", "script", "records"]);
 
 /** Every element this project builds says what it is built with and what it is for. */
 export function undocumented(model) {
@@ -23,6 +23,18 @@ export function clientDependencies(model) {
     .map((r) => `${r.source.id} depends on the web app ${r.target.id}`);
 }
 
+// ADR-0044: the chassis and the system it builds stay decoupled; only the generator may point at the product.
+const inChassis = (id) => id === "chassis" || id.startsWith("chassis.");
+const inProduct = (id) => id === "product" || id.startsWith("product.");
+
+/** No relationship may cross the chassis/product boundary except chassis.template -> product. */
+export function chassisDecoupled(model) {
+  return [...model.relationships()]
+    .filter((r) => (inChassis(r.source.id) && inProduct(r.target.id)) || (inProduct(r.source.id) && inChassis(r.target.id)))
+    .filter((r) => !(r.source.id === "chassis.template" && r.target.id === "product"))
+    .map((r) => `${r.source.id} crosses the chassis boundary to ${r.target.id}`);
+}
+
 /**
  * One hand-built model per rule, keyed by the rule's export name, that breaks exactly that rule.
  * test/model.test.mjs fails when a rule has no entry here or does not fire on it, so a rule proven
@@ -38,5 +50,11 @@ export const violating = {
     const api = element("product.api", "service");
     const web = element("product.web", "webapp");
     return { elements: () => [api, web], relationships: () => [{ source: api, target: web }] };
+  })(),
+  chassisDecoupled: (() => {
+    const element = (id, kind) => ({ id, kind, technology: "x", description: { isEmpty: false } });
+    const verify = element("chassis.verify", "script");
+    const api = element("product.api", "service");
+    return { elements: () => [verify, api], relationships: () => [{ source: verify, target: api }] };
   })(),
 };

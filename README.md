@@ -16,7 +16,8 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 - **One statement of the rules.** The statuses and legal moves are written once, and every module that repeats them, the MCP server, the web app and the library included, is checked against that statement.
 - **A feature-sliced web app and a publishable library**, each with its import or packaging rules checked.
 - **An MCP server for agents**, built on the official SDK and tested through a real client, not a mock.
-- **Architecture as code.** A LikeC4 model with rules checked in CI.
+- **Versionless by construction.** The template publishes no releases and no tags; generation records an exact source commit in `.template-provenance.json` ([ADR-0041](docs/adr/0041-remove-template-self-versioning.md)), a ruleset refuses tag pushes, and a test fails if a version artifact such as a `CHANGELOG.md` reappears.
+- **Falsifiable decisions and architecture.** ADRs carry a status grammar with a mandatory `Enforcement` section naming the check that fails without the decision ([ADR-0042](docs/adr/0042-make-every-adr-falsifiable.md)); a LikeC4 model of the system and of this repository's own machinery has rules checked in CI, and every rule ships a failing-case test ([ADR-0043](docs/adr/0043-rules-ship-failing-cases.md), [ADR-0044](docs/adr/0044-model-the-repositorys-own-machinery.md)).
 - **One set of instructions for agents.** `AGENTS.md` is the only copy; `CLAUDE.md`, `GEMINI.md` and Copilot's file point at it, and a check fails when one starts saying something else.
 - **Selectable features, tested.** CI generates a project from every preset and runs that project's own checks, and a project can add or remove a feature later with the same three-way merge that brings in template updates.
 - **The same checks everywhere.** Node modules lint and format with Biome, from one configuration, as Go and Python modules do with their own tools; local runs refuse a Node other than CI's and a pinned tool at another version; CI runs each module's checks from the same `module.json` through the same script; a cloud agent's session gets CI's toolchains before its first command; the chassis runs on Windows in CI; and every module's coverage is reported without being gated.
@@ -32,7 +33,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 
 3. Initialize. This needs Node <!-- generated:version .node-version -->26<!-- /generated --> and a clean working tree. Run in a terminal, init reads the owner and repository from `origin`, asks for anything else, shows the plan and waits for your confirmation:
 
-   Initialization verifies stable publication and generates from that upstream commit. If publication is pending or failed, it stops before writing project files. Keep `.template-provenance.json` committed; updates use its exact source and original inputs. For offline generation and candidate testing, see [template source guidance](template/README.md#exact-source-and-reconstruction).
+   Initialization generates from the upstream default branch's HEAD — an exact commit, recorded in `.template-provenance.json` (schema 2, commit-only provenance; the template has no releases or tags to wait for, [ADR-0041](docs/adr/0041-remove-template-self-versioning.md)). Keep `.template-provenance.json` committed; updates use its exact source and original inputs. For offline generation and candidate testing, see [template source guidance](template/README.md#exact-source-and-reconstruction).
 
    ```bash
    node template/init.mjs
@@ -95,6 +96,20 @@ Deployment targets and infrastructure, databases and migrations, authentication,
 
 [docs/README.md](docs/README.md) indexes the documentation, [AGENTS.md](AGENTS.md) holds the rules every contributor and coding agent follows, and [template/README.md](template/README.md) covers how the template works and how projects track its commits.
 
+## The template itself
+
+This repository is checked by its own machinery, drawn in the `machinery` view of [the architecture model](architecture/README.md) ([ADR-0044](docs/adr/0044-model-the-repositorys-own-machinery.md)): one gate runs every check CI requires, guard scripts hold the repository's shape, the docs and the ADR grammar, the ADR records carry their enforcement, the knowledge graph keeps the memory current, and the generator turns a commit of this repository into a new project. A rule that no relationship may cross from the chassis to the system a project builds — except the generator — is itself a test with a failing case.
+
+```mermaid
+flowchart LR
+  contributor([Contributor]) --> verify["verify.mjs — the one gate CI requires"]
+  contributor --> guards["check-*.mjs — hygiene, docs, contract, ADR grammar"]
+  contributor --> adr[("docs/adr — ADRs, each structural one naming its Enforcement check")]
+  contributor --> knowledge[("docs/knowledge — the extracted graph and episodes")]
+  contributor --> template["template/init.mjs — generates from an exact commit"]
+  template --> product(["product — the system the generated project builds"])
+```
+
 ---
 <!-- ultra:end template -->
 
@@ -132,7 +147,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 
 ## What's here
 
-- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, `check-safety.mjs` refuses a change that erases most of a file, `check-plan.mjs` holds the self-upgrade plan in `data/plan.md` to its schema, `tools.mjs` installs and verifies the pinned tools, `template-update.mjs` takes template updates (below), and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
+- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation and the ADR grammar (status words and the mandatory `Enforcement` section), `check-safety.mjs` refuses a change that erases most of a file, `check-plan.mjs` holds the self-upgrade plan in `data/plan.md` to its schema, `tools.mjs` installs and verifies the pinned tools, `template-update.mjs` takes template updates (below), and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
 <!-- ultra:begin go-service|ts-service|py-service -->
 - `scripts/check-contract.mjs` — holds every task service to the one API contract, whose cases are in `scripts/contract/` beside the OpenAPI document it holds to them.
 <!-- ultra:end go-service|ts-service|py-service -->
@@ -158,7 +173,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 - `packages/ts-library/` — TypeScript library published to npm. `npm run verify` there builds it and checks the package consumers would install. [README](packages/ts-library/README.md)
 <!-- ultra:end ts-library -->
 <!-- ultra:begin architecture -->
-- `architecture/` — LikeC4 model of the system. `npm run dev` there previews every view. [README](architecture/README.md)
+- `architecture/` — LikeC4 model of the system and of the repository's own machinery, with model rules as tests, each shipping a failing case. `npm run dev` there previews every view. [README](architecture/README.md)
 <!-- ultra:end architecture -->
 <!-- ultra:begin knowledge -->
 - `docs/knowledge/` — the repository's memory: a generated briefing, a graph extracted from the checkout, and episodes people write. [Working with the memory](#the-second-brain)

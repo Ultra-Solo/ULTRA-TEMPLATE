@@ -63,7 +63,7 @@ Everything consumers may import is exported from `src/index.ts`; the `exports` m
 <!-- ultra:begin architecture -->
 ### architecture
 
-The LikeC4 model in `architecture/model/` describes the system. A structural pull request carries the whole set in one PR: the ADR (with its `## Enforcement` section, ADR-0042), the model change, the rule it adds in `architecture/rules.mjs` together with its failing case in the `violating` map (ADR-0043), the docs, and the regenerated `docs/knowledge/graph.json` from `node scripts/knowledge.mjs sync`. Rules it must satisfy live in `architecture/rules.mjs`, each with a test in `architecture/test/model.test.mjs` showing it can fail.
+The LikeC4 model in `architecture/model/` describes the system a project builds (`product`) and this repository's own machinery (`chassis`: the gate, the guards, the ADR records, the knowledge graph, the generator — ADR-0044). A structural pull request carries the whole set in one PR: the ADR (with its `## Enforcement` section, ADR-0042), the model change, the rule it adds in `architecture/rules.mjs` together with its failing case in the `violating` map (ADR-0043), the docs, and the regenerated `docs/knowledge/graph.json` from `node scripts/knowledge.mjs sync`. Rules it must satisfy live in `architecture/rules.mjs`, each with a test in `architecture/test/model.test.mjs` showing it can fail.
 <!-- ultra:end architecture -->
 
 <!-- ultra:begin knowledge -->

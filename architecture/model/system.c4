@@ -81,4 +81,54 @@ model {
     web -> apiPy 'proxies /api/tasks to it'
     // ultra:end web&py-service
   }
+
+  // ADR-0044: the repository's own machinery, drawn beside the system a project builds.
+  // Only the generator and the knowledge graph carry feature markers; scripts and ADR seeds ship to every project.
+  contributor = actor 'Contributor' {
+    description 'Someone working in this repository: runs the gate, reads the records, generates a project.'
+  }
+
+  chassis = system 'chassis' {
+    description 'The machinery that keeps this repository a versionless template: one verification gate, guard scripts, decision records, the knowledge graph, and the generator.'
+
+    verify = script 'verify' {
+      technology 'Node, scripts/verify.mjs'
+      description 'The single gate CI requires: runs every module check the way CI does and the chassis checks on top.'
+      link ../../scripts/verify.mjs 'verify.mjs'
+    }
+    contributor -> verify 'runs the gate before pushing'
+
+    guards = script 'guards' {
+      technology 'Node, scripts/check-*.mjs'
+      description 'Hygiene, docs, contract, facts and architecture checks; the ADR grammar and Enforcement sections included (ADR-0042).'
+      link ../../scripts/check-docs.mjs 'check-docs.mjs'
+    }
+    contributor -> guards 'reads what they enforce'
+
+    adr = records 'decision records' {
+      technology 'Markdown, docs/adr/'
+      description 'ADRs with a status grammar and a mandatory Enforcement section for structural records (ADR-0042); every architecture rule ships a failing case (ADR-0043).'
+      link ../../docs/adr/0000-template.md 'ADR template'
+    }
+    contributor -> adr 'records and consults decisions'
+
+    // ultra:begin knowledge
+    knowledge = records 'knowledge graph' {
+      technology 'Node, scripts/knowledge.mjs'
+      description 'docs/knowledge/ as the repository memory: ADRs, docs, the extracted graph and written episodes, checked for staleness in CI.'
+      link ../../scripts/knowledge.mjs 'knowledge.mjs'
+    }
+    contributor -> knowledge 'queries the memory before a structural change'
+    // ultra:end knowledge
+
+    // ultra:begin template
+    template = script 'template' {
+      technology 'Node, template/init.mjs'
+      description 'Generates a project from a source commit (schema-2 commit-only provenance, ADR-0041): no releases, no tags, no version files.'
+      link ../../template/init.mjs 'init.mjs'
+    }
+    contributor -> template 'generates a project from'
+    template -> product 'a commit of this repository'
+    // ultra:end template
+  }
 }
