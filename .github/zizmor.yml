@@ -5,12 +5,3 @@ rules:
   # actionlint (scripts/tools/tools.json), so `./` stays. Revisit when an actionlint release supports `$/`.
   self-repository:
     disable: true
-  # ultra:begin template
-  # template-release.yml listens for verify with workflow_run, the only primitive that runs after another
-  # workflow concludes, and this audit flags the trigger on sight. The job publishes only what a
-  # successful push-event verify run passed on — its gate rejects pull_request, merge_queue and failed
-  # runs, so a fork cannot reach it — and workflow_dispatch needs write access. Generated projects
-  # delete that workflow, so they keep this audit on.
-  dangerous-triggers:
-    disable: true
-  # ultra:end template

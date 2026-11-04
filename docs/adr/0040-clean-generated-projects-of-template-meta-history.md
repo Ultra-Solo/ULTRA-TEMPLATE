@@ -1,6 +1,6 @@
 # ADR-0040: Clean a generated project of the template's meta-history at generation time
 
-**Status:** Proposed · **Date:** 2026-11-03
+**Status:** Proposed · Amended by [ADR-0041](0041-remove-template-self-versioning.md) · **Date:** 2026-11-03
 
 ## Context
 
@@ -18,11 +18,11 @@ But an executed audit of `node template/init.mjs --preset minimal --source-commi
 - Never rewrite the template's own git history. Adopter freshness is a platform guarantee; the fix is file-level and happens at generation time.
 - `template/init.mjs` cleans, in `plan()`, whatever the template's own operation leaves behind:
   - `docs/adr/` is seeded to `README.md` + `0000-template.md` only — the adopter starts an empty decision log.
-  - `CHANGELOG.md` is reset to its header, the release-note marker block, and a single `## [Unreleased]` holding only the `Initialized from …` origin line.
+  - `CHANGELOG.md` is deleted from the template itself (ADR-0041), so a generated project has none; when a legacy source still ships one, `init` resets it to its header and a single `## [Unreleased]` holding only the `Initialized from …` origin line.
   - `docs/knowledge/` is reset to its seed documents, and the graph is regenerated for the generated tree when the knowledge feature is selected.
   - the two template-operational agent files are added to `templateOnly` in `template/features.json`, so every init deletes them.
 - `template/README.md` documents that adopters should generate from the default branch only ("include all branches" copies stale branches into the new repository) and that `template-update` preserves the provenance chain.
-- Identity strings may survive only where they are the provenance record itself: `.template-provenance.json`, the `Initialized from` line in `CHANGELOG.md`, and the upstream attribution in `LICENSE`.
+- Identity strings may survive only where they are the provenance record itself: `.template-provenance.json`, a legacy `Initialized from` line in a `CHANGELOG.md` the source still ships, and the upstream attribution in `LICENSE`.
 
 ## Alternatives considered
 
@@ -36,4 +36,4 @@ But an executed audit of `node template/init.mjs --preset minimal --source-commi
 - Generated projects start with an empty ADR log, an empty knowledge seed, and a changelog that records only their own origin — professional, fresh, ready to use.
 - The template keeps its full history, so pins, tags, and provenance keep verifying.
 - `template/init.test.mjs` gains failing-first tests over all presets: no meta residue, no dangling `template/` references, identity confined to provenance/CHANGELOG/LICENSE.
-- This changes generated output without changing the public contract, so it is a minor release (per the versioning table in `template/README.md`, enforced by `template-release-check`, ADR-0022).
+- This changes generated output without changing the public contract; ADR-0041 removes template releases entirely, so no version advance is needed.

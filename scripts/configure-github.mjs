@@ -21,8 +21,10 @@
  *   - Dependabot alerts and security updates, and the private vulnerability reporting SECURITY.md links to.
  *   - Secret scanning and push protection. Free on public repositories; GitHub refuses them on a private
  *     repository without Advanced Security, and that is reported as unavailable rather than as a failure.
- *   - A ruleset on release tags (`v*`): anyone who may push can create one, and nobody, administrators
- *     included, moves or deletes it, so a version always names the code that was released.
+ *   - In a generated project that releases (release.yml present, no template/): a ruleset on release
+ *     tags (`v*`) — anyone who may push can create one, and nobody, administrators included, moves or
+ *     deletes it, so a version always names the code that was released. The template itself carries no
+ *     versions (ADR-0041), so it gets no such ruleset and its old tags can be cleaned up.
  *   - Only when release.yml exists and init has run (template/ is gone): GitHub Actions may open pull
  *     requests, and RELEASE_ENABLED=true turns the release workflow on. Opening pull requests is the
  *     whole of what release-please needs; GitHub names the setting `can_approve_pull_request_reviews`,
@@ -79,9 +81,10 @@ export const RULESET = {
 };
 
 /**
- * Release tags, once made, stay where they were made: nobody deletes or moves a `v*` tag, so a version
- * always names the code that was released and the notes written about it. Creating one stays open, since
- * releasing is how a tag is made.
+ * Release tags in a generated project, once made, stay where they were made: nobody deletes or moves a
+ * `v*` tag, so a version always names the code that was released and the notes written about it. Creating
+ * one stays open, since releasing is how a tag is made. The template itself is not released (ADR-0041),
+ * so plan() applies this only when `release` is true.
  */
 export const TAG_RULESET = {
   name: "release-tags",
@@ -128,7 +131,6 @@ export function plan(repo, { release, environments = [], defaultBranch = "main" 
       },
     },
     { name: `ruleset "${RULESET.name}": pull requests and the ${REQUIRED_CHECK} check`, upsertRuleset: RULESET },
-    { name: `ruleset "${TAG_RULESET.name}": release tags are never moved or deleted`, upsertRuleset: TAG_RULESET },
     { name: "Dependabot alerts", method: "PUT", path: `${r}/vulnerability-alerts` },
     { name: "Dependabot security updates", method: "PUT", path: `${r}/automated-security-fixes` },
     { name: "private vulnerability reporting", method: "PUT", path: `${r}/private-vulnerability-reporting`, optional: true },
@@ -142,6 +144,7 @@ export function plan(repo, { release, environments = [], defaultBranch = "main" 
   ];
   if (release) {
     steps.push(
+      { name: `ruleset "${TAG_RULESET.name}": release tags are never moved or deleted`, upsertRuleset: TAG_RULESET },
       {
         name: "GitHub Actions may open pull requests (release-please)",
         method: "PUT",

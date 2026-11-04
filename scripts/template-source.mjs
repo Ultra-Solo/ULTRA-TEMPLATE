@@ -12,10 +12,12 @@ const git = (root, args) => execFileSync("git", args, { cwd: root, encoding: "ut
 export function validateProvenance(record) {
   const { source, inputs } = record ?? {};
   const identity = inputs?.identity;
-  if (record?.schemaVersion !== 1 || [source?.url, source?.version, source?.commit, identity?.name, identity?.owner, identity?.repo].some((value) => typeof value !== "string") ||
+  const schema = record?.schemaVersion;
+  if ((schema !== 1 && schema !== 2) || [source?.url, source?.commit, identity?.name, identity?.owner, identity?.repo].some((value) => typeof value !== "string") ||
       !/^https:\/\/github\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(source?.url ?? "") ||
-      !RELEASE.test(source?.version ?? "") || !COMMIT.test(source?.commit ?? "") ||
-      (source.tag !== null && source.tag !== source.version) ||
+      !COMMIT.test(source?.commit ?? "") ||
+      (schema === 1 && (!RELEASE.test(source?.version ?? "") || (source.tag !== null && source.tag !== source.version))) ||
+      (schema === 2 && (source.version !== undefined || source.tag !== undefined)) ||
       !/^[a-z][a-z0-9-]{0,62}[a-z0-9]$/.test(identity?.name ?? "") ||
       !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(identity?.owner ?? "") ||
       !/^[A-Za-z0-9._-]{1,100}$/.test(identity?.repo ?? "") ||
@@ -59,24 +61,22 @@ export function cloneSource(source, into) {
 }
 
 /** Resolve and inspect objects before checkout, and before executing either initializer. */
-export function resolveSource(clone, { version, commit, tag = version }) {
-  if (!RELEASE.test(version ?? "") || (commit !== undefined && !COMMIT.test(commit)) || (tag === null && commit === undefined) || (tag !== null && tag !== version)) {
-    throw new SourceError("Source version must be vMAJOR.MINOR.PATCH and its expected commit must be a full lowercase 40-character SHA.");
+export function resolveSource(clone, { commit }) {
+  if (!COMMIT.test(commit ?? "")) {
+    throw new SourceError("The source commit must be a full lowercase 40-character SHA.");
   }
   const resolve = (ref) => {
     try { return git(clone, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`]).trim(); }
-    catch { throw new SourceError(`There is no release ${version} or expected source commit ${commit ?? "(unresolved)"} in the template source. No initializer ran.`); }
+    catch { throw new SourceError(`There is no source commit ${commit} in the template source. No initializer ran.`); }
   };
-  const sha = tag === null ? resolve(commit) : resolve(`refs/tags/${tag}`);
-  if (commit !== undefined && sha !== commit) throw new SourceError(`The ${tag} tag moved: expected commit ${commit}, found ${sha}. No initializer ran; restore the original source or review a separate migration.`);
+  const sha = resolve(commit);
   let manifest;
   try { manifest = JSON.parse(git(clone, ["show", `${sha}:template/features.json`])); }
   catch { throw new SourceError(`Source commit ${sha} has no valid template manifest. No initializer ran.`); }
-  if (manifest.provenanceSchema !== undefined && manifest.provenanceSchema !== 1) throw new SourceError("The source has an unsupported generation protocol. No initializer ran.");
-  if (`v${manifest.version}` !== version) throw new SourceError(`Source commit ${sha} declares v${manifest.version}, not ${version}. No initializer ran.`);
+  if (manifest.provenanceSchema !== 1 && manifest.provenanceSchema !== 2) throw new SourceError("The source has an unsupported generation protocol. No initializer ran.");
   const url = `https://github.com/${manifest.identity?.owner}/${manifest.identity?.repo}`;
   if (!/^https:\/\/github\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(url)) throw new SourceError("The source manifest has no valid upstream GitHub identity.");
-  return { manifest, source: { url, version, commit: sha, tag } };
+  return { manifest, source: { url, commit: sha } };
 }
 
 export function checkoutSource(clone, snapshot) {
@@ -101,7 +101,8 @@ const renderer = await import(pathToFileURL(root + "/template/init.mjs"));
 await renderer.renderMain(JSON.parse(args), root, JSON.parse(inputs));`;
   const result = snapshot.manifest.provenanceSchema === 1
     ? spawnSync(process.execPath, ["--input-type=module", "-e", worker, root, JSON.stringify(args), JSON.stringify(inputs)], { cwd: root, encoding: "utf8" })
-    : spawnSync(process.execPath, ["template/init.mjs", ...args], { cwd: root, encoding: "utf8" });
+    // The worker renders the verified checkout in place; the env flag keeps main() from re-verifying a source.
+    : spawnSync(process.execPath, ["template/init.mjs", ...args], { cwd: root, encoding: "utf8", env: { ...process.env, TEMPLATE_RENDER_WORKER: "1", TEMPLATE_RENDER_INPUTS: JSON.stringify(inputs) } });
   if (result.status !== 0) throw new SourceError(`Initializer at ${snapshot.source.commit} failed: ${(result.stderr || result.stdout).trim().split("\n").at(-1)}`);
 }
 

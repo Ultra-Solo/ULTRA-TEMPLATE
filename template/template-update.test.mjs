@@ -1,121 +1,88 @@
-// scripts/template-update.mjs, run against a real release history: this tree as one release, the
-// same tree with a change as the next, and a project generated from the first. Template-only, because
-// generating needs the template, which init deletes from every project.
+/**
+ * template-update, commit-based (ADR-0041): the template has no releases and no tags, so a fixture is
+ * two commits of a source repo — FROM, the commit a project was generated from, and TO, the newer one
+ * the update moves it to — and a project is made by running init against the fixture at FROM.
+ */
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync, execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { after, before, test } from "node:test";
-import {
-  checkForUpdate,
-  compareVersions,
-  readOrigin,
-  recordUpdate,
-  remoteIdentity,
-  update,
-  UpdateError,
-} from "../scripts/template-update.mjs";
-import { PROVENANCE_FILE } from "../scripts/template-source.mjs";
-import { loadManifest, ROOT } from "./init.mjs";
+import test from "node:test";
+import { ROOT } from "./init.mjs";
+import { PROVENANCE_FILE, readProvenance } from "../scripts/template-source.mjs";
+import { UpdateError, checkForUpdate, compareVersions, readOrigin, recordUpdate, remoteIdentity, update } from "../scripts/template-update.mjs";
 
-const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-const commit = (cwd, message) => git(cwd, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-am", message);
+const NOTE = "a policy note the newer template commit adds";
 const quiet = () => {};
 
-const { version } = loadManifest();
-const FROM = `v${version}`;
-const [major, minor] = version.split(".").map(Number);
-const TO = `v${major}.${minor + 1}.0`;
-const NOTE = "Security fixes are released for the latest minor version only.";
+const work = mkdtempSync(join(tmpdir(), "template-update-test-"));
+// A source repo: the template's tracked files as one commit (FROM), then a change (TO).
+const template = join(work, "template");
+mkdirSync(template, { recursive: true });
+for (const file of execFileSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "utf8" }).split("\0").filter(Boolean)) {
+  const dest = join(template, file);
+  mkdirSync(dirname(dest), { recursive: true });
+  copyFileSync(join(ROOT, file), dest);
+}
+const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+git(template, "init", "-q");
+git(template, "add", "-A");
+git(template, "-c", "user.name=test", "-c", "user.email=test@localhost", "commit", "-q", "-m", "FROM");
+const FROM = git(template, "rev-parse", "HEAD").trim();
+writeFileSync(join(template, "SECURITY.md"), `${readFileSync(join(template, "SECURITY.md"), "utf8")}\n## Note\n\n${NOTE}\n`);
+git(template, "add", "-A");
+git(template, "-c", "user.name=test", "-c", "user.email=test@localhost", "commit", "-q", "-m", "TO");
+const TO = git(template, "rev-parse", "HEAD").trim();
 
-let work;
-let template;
-
-before(() => {
-  work = mkdtempSync(join(tmpdir(), "tu-"));
-  template = join(work, "template");
-  for (const file of git(ROOT, "ls-files", "-z").split("\0").filter(Boolean)) {
-    if (!existsSync(join(ROOT, file))) continue;
-    mkdirSync(dirname(join(template, file)), { recursive: true });
-    copyFileSync(join(ROOT, file), join(template, file));
-  }
-  git(template, "init", "-q");
-  git(template, "config", "core.autocrlf", "false");
-  git(template, "add", "-A");
-  commit(template, "release");
-  git(template, "tag", FROM);
-  // The next release changes one chassis file and bumps the version, as a real release does.
-  const security = join(template, "SECURITY.md");
-  writeFileSync(security, readFileSync(security, "utf8").replace("## Reporting a vulnerability", `${NOTE}\n\n## Reporting a vulnerability`));
-  const manifest = join(template, "template/features.json");
-  writeFileSync(manifest, readFileSync(manifest, "utf8").replace(`"version": "${version}"`, `"version": "${TO.slice(1)}"`));
-  commit(template, "next release");
-  git(template, "tag", TO);
-});
-
-after(() => rmSync(work, { recursive: true, force: true }));
-
-/** A project made from the first release, committed, as a team would have it. */
-function project(name, features = []) {
+/** A project generated from the fixture template at `commit`, then committed as its own repo. */
+function project(name, { commit: from = FROM, features } = {}) {
   const dir = join(work, name);
-  const selection = features.length === 0 ? ["--preset", "minimal"] : ["--features", features.join(",")];
-  execFileSync(process.execPath, ["template/init.mjs", "--source", template, "--name", "demo-app", "--owner", "octo-org", ...selection, "--out", dir], {
-    cwd: join(work, "template"),
-    stdio: "ignore",
-  });
+  const args = ["template/init.mjs", "--source", template, "--source-commit", from, "--name", "demo-app", "--owner", "octo-org", "--out", dir];
+  if (features && features.length > 0) args.push("--features", features.join(","));
+  else args.push("--preset", "minimal");
+  execFileSync(process.execPath, args, { cwd: template, stdio: ["ignore", "pipe", "pipe"] });
   git(dir, "init", "-q");
   git(dir, "config", "core.autocrlf", "false");
-  git(dir, "add", "-A");
-  commit(dir, "chore: initialize project");
+  commit(dir, "chore: generated project");
   return dir;
 }
-
+const commit = (cwd, message) => {
+  git(cwd, "add", "-A");
+  git(cwd, "-c", "user.name=test", "-c", "user.email=test@localhost", "commit", "-q", "-m", message);
+};
 const run = (dir, options = {}) => update({ project: dir, to: TO, template, owner: "octo-org", repo: "demo-app", log: quiet, ...options });
+const provenance = (dir) => readProvenance(dir);
 
-test("a template change reaches the project, and the project's own changes stay", () => {
-  git(template, "checkout", "-q", FROM);
-  const dir = project("clean");
-  git(template, "checkout", "-q", "-");
+test("a template commit's change reaches the project, and the project's own changes stay", () => {
+  const dir = project("apply");
   const readme = join(dir, "README.md");
   writeFileSync(readme, `${readFileSync(readme, "utf8")}\nOur own section.\n`);
-  commit(dir, "docs: our section");
+  commit(dir, "docs: ours");
 
   const result = run(dir);
 
   assert.deepEqual(result.conflicts, []);
+  assert.equal(result.status, "applied");
   assert.match(readFileSync(join(dir, "SECURITY.md"), "utf8"), new RegExp(NOTE));
   assert.match(readFileSync(readme, "utf8"), /Our own section\./);
-  // Renamed as the project is named, never as the template: the identity came through init.
+  // Generated projects keep no CHANGELOG; the provenance record is the baseline (schema 2).
+  assert.equal(existsSync(join(dir, "CHANGELOG.md")), false);
+  assert.equal(provenance(dir).source.commit, TO);
   assert.doesNotMatch(readFileSync(join(dir, "SECURITY.md"), "utf8"), /hynix666\/ULTRA-TEMPLATE/);
-  const changelog = readFileSync(join(dir, "CHANGELOG.md"), "utf8");
-  assert.match(changelog, new RegExp(`Updated to \\[ULTRA-TEMPLATE ${TO.replaceAll(".", "\\.")}\\]`));
-  assert.equal(readOrigin(changelog).version, TO, "the next update starts from here");
 });
 
-test("the provenance record an update writes is the one init writes for the same release", () => {
-  git(template, "checkout", "-q", FROM);
+test("the provenance record an update writes is the one init writes for the same commit", () => {
   const dir = project("same-record");
-  git(template, "checkout", "-q", "-");
-
   run(dir);
-
-  // Byte for byte, including the order of the description's keys: a record must never
-  // tell whether the tree that holds it was made by init or reached its release by update.
-  const fresh = join(work, "same-record-fresh");
-  execFileSync(process.execPath, ["template/init.mjs", "--source", template, "--name", "demo-app", "--owner", "octo-org", "--preset", "minimal", "--out", fresh], {
-    cwd: join(work, "template"),
-    stdio: "ignore",
-  });
+  const fresh = project("fresh-from-to", { commit: TO });
   assert.equal(readFileSync(join(dir, PROVENANCE_FILE), "utf8"), readFileSync(join(fresh, PROVENANCE_FILE), "utf8"));
 });
 
-test("where the project changed the same lines, the conflict is left to resolve", () => {
-  git(template, "checkout", "-q", FROM);
+test("a change the project also made to the same file is a conflict left for a person", () => {
   const dir = project("conflict");
-  git(template, "checkout", "-q", "-");
   const security = join(dir, "SECURITY.md");
-  writeFileSync(security, readFileSync(security, "utf8").replace("## Reporting a vulnerability", "Our own policy line.\n\n## Reporting a vulnerability"));
+  writeFileSync(security, `${readFileSync(security, "utf8")}\nOur policy.\n`);
   commit(dir, "docs: our policy");
 
   const result = run(dir);
@@ -125,9 +92,7 @@ test("where the project changed the same lines, the conflict is left to resolve"
 });
 
 test("a dry run changes nothing, and an update already made is not made twice", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("dry");
-  git(template, "checkout", "-q", "-");
 
   const dry = run(dir, { dryRun: true });
   assert.equal(dry.status, "dry-run");
@@ -140,9 +105,7 @@ test("a dry run changes nothing, and an update already made is not made twice", 
 });
 
 test("a change to a file the project deleted is skipped, not forced back", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("deleted");
-  git(template, "checkout", "-q", "-");
   git(dir, "rm", "-q", "SECURITY.md");
   commit(dir, "chore: our policy lives elsewhere");
 
@@ -152,26 +115,25 @@ test("a change to a file the project deleted is skipped, not forced back", () =>
   assert.equal(existsSync(join(dir, "SECURITY.md")), false);
 });
 
-test("it refuses to go back to an older release, and changes nothing", () => {
-  const dir = project("downgrade");
+test("it refuses to go back to an earlier commit, and changes nothing", () => {
+  const dir = project("downgrade", { commit: TO });
   const before = git(dir, "rev-parse", "HEAD");
-  assert.throws(() => run(dir, { to: FROM }), /older than/);
+  assert.throws(() => run(dir, { to: FROM }), /not a descendant/);
   assert.equal(git(dir, "status", "--porcelain"), "");
   assert.equal(git(dir, "rev-parse", "HEAD"), before);
 });
 
-test("a release that does not exist is named as such, and changes nothing", () => {
-  const dir = project("no-such-release");
+test("a commit outside the template's future is named as such, and changes nothing", () => {
+  const dir = project("no-such-commit");
   const before = git(dir, "rev-parse", "HEAD");
-  assert.throws(() => run(dir, { to: "v9.9.9" }), (err) => err instanceof UpdateError && /no release v9\.9\.9/.test(err.message));
+  const missing = "0".repeat(40);
+  assert.throws(() => run(dir, { to: missing }), (err) => err instanceof UpdateError && new RegExp(`${missing.slice(0, 12)} is not a descendant`).test(err.message));
   assert.equal(git(dir, "status", "--porcelain"), "");
   assert.equal(git(dir, "rev-parse", "HEAD"), before);
 });
 
 test("a template it cannot reach exits 2, could not run, never 1, which means conflicts", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("unreachable");
-  git(template, "checkout", "-q", "-");
   const result = spawnSync(
     process.execPath,
     [join(ROOT, "scripts/template-update.mjs"), "--to", TO, "--template", join(work, "no-such-template"), "--owner", "octo-org", "--repo", "demo-app"],
@@ -183,37 +145,36 @@ test("a template it cannot reach exits 2, could not run, never 1, which means co
 });
 
 test("it refuses to start without what it needs", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("refusals");
-  git(template, "checkout", "-q", "-");
-  assert.throws(() => run(dir, { to: "newest" }), UpdateError);
+  assert.throws(() => run(dir, { to: "newest" }), /--to must be a full lowercase 40-character commit SHA, or latest/);
   writeFileSync(join(dir, "README.md"), "uncommitted\n");
   assert.throws(() => run(dir), /uncommitted changes/);
 });
 
-test("the origin line is read whichever release wrote it, and the highest version wins", () => {
+test("the legacy CHANGELOG origin line is still read, and recordUpdate names the commit, not a release", () => {
+  const url = "https://github.com/Ultra-Solo/ULTRA-TEMPLATE";
   const changelog = [
     "## [Unreleased]",
     "",
-    "- Updated to [ULTRA-TEMPLATE v1.4.0](https://github.com/hynix666/ULTRA-TEMPLATE/releases/tag/v1.4.0).",
-    "- Initialized from [ULTRA-TEMPLATE v1.2.0](https://github.com/hynix666/ULTRA-TEMPLATE/releases/tag/v1.2.0) with go-service, release.",
+    "- Updated to [ULTRA-TEMPLATE v1.4.0](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v1.4.0).",
+    "- Initialized from [ULTRA-TEMPLATE v1.2.0](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v1.2.0) with go-service, release.",
   ].join("\n");
   // The newer line sits above the older one; the highest version wins, not the last line.
   const origin = readOrigin(changelog);
   assert.equal(origin.version, "v1.4.0");
   assert.deepEqual(origin.features, ["go-service", "release"]);
   assert.equal(compareVersions("v1.10.0", "v1.9.9") > 0, true, "numeric, not lexical");
-  assert.equal(readOrigin(recordUpdate("## [Unreleased]\n\n- Initialized from [ULTRA-TEMPLATE v1.3.1](https://github.com/hynix666/ULTRA-TEMPLATE/releases/tag/v1.3.1) with no features.\n", "https://github.com/hynix666/ULTRA-TEMPLATE", "v1.4.0")).version, "v1.4.0");
+  const sha = "a".repeat(40);
+  assert.match(recordUpdate("## [Unreleased]\n", url, sha, ["web"]), new RegExp(`- Updated to \\[ULTRA-TEMPLATE ${sha.slice(0, 12)}\\]\\(${url}/tree/${sha}\\) with web\\.`));
+  assert.match(recordUpdate("## [Unreleased]\n", url, sha, []), / with no features\./);
+  assert.doesNotMatch(recordUpdate("## [Unreleased]\n", url, sha), / with /);
   assert.deepEqual(remoteIdentity("git@github.com:octo-org/demo-app.git"), { owner: "octo-org", repo: "demo-app" });
   assert.equal(remoteIdentity("https://gitlab.com/octo-org/demo-app"), null);
 });
 
-/** A project made from the first release with `features`, and the template left at its newest release. */
+/** A project made from FROM with `features`, and the template left at its newest commit TO. */
 function withFeatures(name, features) {
-  git(template, "checkout", "-q", FROM);
-  const dir = project(name, features);
-  git(template, "checkout", "-q", "-");
-  return dir;
+  return project(name, { features });
 }
 const select = (dir, options) => update({ project: dir, template, owner: "octo-org", repo: "demo-app", log: quiet, ...options });
 const workflow = (dir) => readFileSync(join(dir, ".github/workflows/verify.yml"), "utf8");
@@ -229,10 +190,10 @@ test("removing a feature takes its files and its marked lines out, and records t
   assert.equal(existsSync(join(dir, "packages/ts-library")), false);
   assert.doesNotMatch(workflow(dir), /ts-library/);
   assert.doesNotMatch(readFileSync(join(dir, ".github/dependabot.yml"), "utf8"), /ts-library/);
-  // Still on the release it was on; only the selection moved.
-  const origin = readOrigin(readFileSync(join(dir, "CHANGELOG.md"), "utf8"));
-  assert.equal(origin.version, FROM);
-  assert.deepEqual(origin.features, ["release"]);
+  // Still on the commit it was on; only the selection moved.
+  const record = provenance(dir);
+  assert.equal(record.source.commit, FROM);
+  assert.deepEqual(record.inputs.features, ["release"]);
 });
 
 test("removing a feature removes its directory whole, installed dependencies included", () => {
@@ -255,18 +216,18 @@ test("adding a feature brings its files and marked lines in, in the template's o
   assert.deepEqual(result.features, ["ts-library", "release"]);
   assert.equal(existsSync(join(dir, "packages/ts-library/package.json")), true);
   assert.match(workflow(dir), /^ {2}ts-library:$/m);
-  assert.match(readFileSync(join(dir, "CHANGELOG.md"), "utf8"), /Updated to \[ULTRA-TEMPLATE v[\d.]+\]\([^)]+\) with ts-library, release\./);
+  assert.deepEqual(provenance(dir).inputs.features, ["ts-library", "release"]);
 });
 
-test("a selection change and a release move are one update", () => {
+test("a selection change and a commit move are one update", () => {
   const dir = withFeatures("both", []);
   const result = select(dir, { to: TO, add: ["release"] });
   assert.deepEqual(result.conflicts, []);
   assert.match(readFileSync(join(dir, "SECURITY.md"), "utf8"), new RegExp(NOTE));
   assert.equal(existsSync(join(dir, ".github/workflows/release.yml")), true);
-  const origin = readOrigin(readFileSync(join(dir, "CHANGELOG.md"), "utf8"));
-  assert.equal(origin.version, TO);
-  assert.deepEqual(origin.features, ["knowledge", "release"]);
+  const record = provenance(dir);
+  assert.equal(record.source.commit, TO);
+  assert.deepEqual(record.inputs.features, ["knowledge", "release"]);
 });
 
 test("a dry run of a selection change lists the files and writes nothing", () => {
@@ -282,7 +243,7 @@ test("an impossible selection is refused before anything is written", () => {
   const head = git(dir, "rev-parse", "HEAD");
   assert.throws(() => select(dir, { add: ["release"] }), /release is already one of this project's features/);
   assert.throws(() => select(dir, { remove: ["web"] }), /web is not one of this project's features: release/);
-  assert.throws(() => select(dir, { add: ["kubernetes"] }), /v[\d.]+ defines no feature kubernetes\. It defines: go-service/);
+  assert.throws(() => select(dir, { add: ["kubernetes"] }), /defines no feature kubernetes\. It defines: /);
   assert.throws(() => select(dir, {}), /Nothing to do/);
   assert.equal(git(dir, "status", "--porcelain"), "");
   assert.equal(git(dir, "rev-parse", "HEAD"), head);
@@ -308,92 +269,61 @@ test("removing a feature whose files the project changed or added to is refused,
   assert.equal(git(dir, "rev-parse", "HEAD"), head);
 });
 
-test("the selection is read from the newest line that names one, and the first of two at one version", () => {
-  const url = "https://github.com/hynix666/ULTRA-TEMPLATE";
-  const line = (kind, version, features) => `- ${kind} [ULTRA-TEMPLATE ${version}](${url}/releases/tag/${version})${features ? ` with ${features}` : ""}.`;
-  const changelog = [
-    "## [Unreleased]",
-    "",
-    line("Updated to", "v1.3.0"),
-    line("Updated to", "v1.2.0", "web, release"),
-    line("Updated to", "v1.2.0", "release"),
-    line("Initialized from", "v1.1.0", "go-service, release"),
-  ].join("\n");
-  const origin = readOrigin(changelog);
-  assert.equal(origin.version, "v1.3.0");
-  assert.deepEqual(origin.features, ["web", "release"]);
-  assert.match(recordUpdate("## [Unreleased]\n", url, "v1.3.0", []), /v1\.3\.0\) with no features\./);
-  assert.doesNotMatch(recordUpdate("## [Unreleased]\n", url, "v1.3.0"), / with /);
-});
-
 test("recorded identity reconstructs a project after package.json is removed", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("unnamed");
-  git(template, "checkout", "-q", "-");
   rmSync(join(dir, "package.json"));
   commit(dir, "chore: no root package.json");
   assert.equal(run(dir).status, "applied");
 });
 
-test("each release is named with the commit its tag points at, before its init runs", () => {
-  git(template, "checkout", "-q", FROM);
-  const dir = project("named-commits");
-  git(template, "checkout", "-q", "-");
+test("each commit is printed before its init runs, since that init is code this runs", () => {
+  const dir = project("logged");
   const lines = [];
   run(dir, { log: (line) => lines.push(line) });
-  for (const tag of [FROM, TO]) {
-    const sha = git(template, "rev-parse", `${tag}^{commit}`).trim();
-    assert.ok(lines.some((line) => line.includes(`${tag} is commit ${sha}`)), `${tag} ${sha} not in:\n${lines.join("\n")}`);
-  }
+  assert.ok(lines.some((line) => line.includes(`template-update: ${FROM.slice(0, 12)} → ${TO.slice(0, 12)}`)), lines.join("\n"));
+  assert.ok(lines.some((line) => line.includes(`commit ${TO.slice(0, 12)} resolved`)), lines.join("\n"));
 });
 
 test("run from a subdirectory, it updates the whole project", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("from-below");
-  git(template, "checkout", "-q", "-");
   const below = join(dir, "docs");
   const result = spawnSync(process.execPath, [join(dir, "scripts/template-update.mjs"), "--to", TO, "--template", template, "--owner", "octo-org", "--repo", "demo-app"], { cwd: below, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   assert.match(readFileSync(join(dir, "SECURITY.md"), "utf8"), new RegExp(NOTE));
 });
 
-test("--check reports a newer release and the command that takes it, without touching the tree", () => {
-  git(template, "checkout", "-q", FROM);
+test("--check reports a newer commit and the command that takes it, without touching the tree", () => {
   const dir = project("check-behind");
-  git(template, "checkout", "-q", "-");
   writeFileSync(join(dir, "README.md"), `${readFileSync(join(dir, "README.md"), "utf8")}\nUncommitted.\n`);
 
   const report = checkForUpdate({ project: dir, template });
 
-  assert.equal(report.schema, 1);
-  assert.deepEqual(report.current, { version: FROM, source: "provenance" });
-  assert.deepEqual(report.latest, { version: TO });
+  assert.equal(report.schema, 2);
+  assert.deepEqual(report.current, { commit: FROM, source: "provenance" });
+  assert.deepEqual(report.latest, { commit: TO });
   assert.equal(report.updateAvailable, true);
   assert.equal(report.command, `node scripts/template-update.mjs --to ${TO}`);
   assert.equal(git(dir, "status", "--porcelain").trim(), "M README.md");
 });
 
-test("--check on the newest release says so", () => {
-  git(template, "checkout", "-q", TO);
-  const dir = project("check-current");
-  git(template, "checkout", "-q", "-");
+test("--check on the newest commit says so", () => {
+  const dir = project("check-current", { commit: TO });
 
   const report = checkForUpdate({ project: dir, template });
 
-  assert.deepEqual(report.current, { version: TO, source: "provenance" });
+  assert.deepEqual(report.current, { commit: TO, source: "provenance" });
   assert.equal(report.updateAvailable, false);
 });
 
 test("--check reads CHANGELOG.md when a legacy project predates the provenance record", () => {
-  git(template, "checkout", "-q", FROM);
   const dir = project("check-legacy");
-  git(template, "checkout", "-q", "-");
   rmSync(join(dir, PROVENANCE_FILE));
+  writeFileSync(join(dir, "CHANGELOG.md"), `## [Unreleased]\n\n- Initialized from [ULTRA-TEMPLATE v3.0.0](https://github.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v3.0.0) with no features.\n`);
   commit(dir, "chore: a project from before provenance");
 
   const report = checkForUpdate({ project: dir, template });
 
-  assert.deepEqual(report.current, { version: FROM, source: "changelog" });
+  assert.deepEqual(report.current, { version: "v3.0.0", source: "changelog" });
   assert.equal(report.updateAvailable, true);
 });
 
@@ -407,7 +337,6 @@ test("--check refuses a provenance record it cannot read, and names a project th
 
   const silent = project("check-nothing");
   rmSync(join(silent, PROVENANCE_FILE));
-  rmSync(join(silent, "CHANGELOG.md"));
   assert.throws(() => checkForUpdate({ project: silent, template }), /CHANGELOG.md is missing/);
 });
 
@@ -415,14 +344,12 @@ test("--check on a template it cannot reach is an error, never a silent no", () 
   const dir = project("check-unreachable");
   assert.throws(
     () => checkForUpdate({ project: dir, template: join(work, "no-such-template") }),
-    (err) => err instanceof UpdateError && /cannot list the releases/.test(err.message),
+    (err) => err instanceof UpdateError && /cannot resolve the HEAD of/.test(err.message),
   );
 });
 
-test("--check exits 1 when a newer release is out and 0 at the newest, and takes no update option", () => {
-  git(template, "checkout", "-q", FROM);
+test("--check exits 1 when a newer commit is out and 0 at the newest, and takes no update option", () => {
   const dir = project("check-main");
-  git(template, "checkout", "-q", "-");
   const check = () =>
     spawnSync(process.execPath, [join(dir, "scripts/template-update.mjs"), "--check", "--template", template], {
       cwd: dir,
@@ -446,19 +373,14 @@ test("--check exits 1 when a newer release is out and 0 at the newest, and takes
   assert.equal(JSON.parse(current.stdout).updateAvailable, false);
 });
 
-test("a file the release adds that the project already has, byte for byte, is not in the way; --to latest takes the newest release", () => {
-  git(template, "checkout", "-q", FROM);
+test("a file the newer commit adds that the project already has, byte for byte, is not in the way; --to latest takes the newest commit", () => {
   const dir = project("already-has-it");
-  git(template, "checkout", "-q", "-");
-  // A later release that adds a file, which this project happened to add itself, identically.
-  const LATEST = `v${major}.${minor + 2}.0`;
+  // A later commit that adds a file, which this project happened to add itself, identically.
   const added = "## Support\n\nAsk in the discussions.\n";
   writeFileSync(join(template, "SUPPORT.md"), added);
-  const manifest = join(template, "template/features.json");
-  writeFileSync(manifest, readFileSync(manifest, "utf8").replace(`"version": "${TO.slice(1)}"`, `"version": "${LATEST.slice(1)}"`));
   git(template, "add", "-A");
-  commit(template, "a release that adds a file");
-  git(template, "tag", LATEST);
+  git(template, "-c", "user.name=test", "-c", "user.email=test@localhost", "commit", "-q", "-m", "a commit that adds a file");
+  const LATEST = git(template, "rev-parse", "HEAD").trim();
   writeFileSync(join(dir, "SUPPORT.md"), added);
   git(dir, "add", "-A");
   commit(dir, "docs: support");
@@ -468,5 +390,7 @@ test("a file the release adds that the project already has, byte for byte, is no
   assert.deepEqual(result.conflicts, []);
   assert.equal(result.to, LATEST);
   assert.ok(!result.changed.some((line) => line.endsWith(" SUPPORT.md")), `SUPPORT.md is not a change: ${result.changed.join(", ")}`);
-  assert.match(readFileSync(join(dir, "CHANGELOG.md"), "utf8"), new RegExp(`Updated to \\[[^\\]]+ ${LATEST.replaceAll(".", "\\.")}\\]`));
+  assert.equal(provenance(dir).source.commit, LATEST);
+  // Restore the fixture: other tests expect TO as HEAD.
+  git(template, "reset", "-q", "--hard", TO);
 });

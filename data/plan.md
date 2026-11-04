@@ -46,7 +46,7 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
     PASS node scripts/check-plan.mjs (plan schema OK, 5 entry/entries)
     PASS node --test template/*.test.mjs (97/97 pass)
     PASS npm audit signatures in the fresh clone: api-ts 3, mcp-server 10, apps/web 42, ts-library 13 packages with verified attestations, all exit 0
-    COMMIT 4b118c8 on release/3.15.0-self-upgrade-gate, the branch v3.15.0 is released from (scripts/check-plan.mjs, scripts/search_replace.mjs, data/plan.md, the chassis: plan step in scripts/verify.mjs, ADR-0037, test/check-plan.test.mjs, template/notes/v3.15.0.md; the suite in test/agents-claims.test.mjs holds this invariant to those enforcers)
+    COMMIT 4b118c8 on release/3.15.0-self-upgrade-gate, the branch v3.15.0 is released from (scripts/check-plan.mjs, scripts/search_replace.mjs, data/plan.md, the chassis: plan step in scripts/verify.mjs, ADR-0037, test/check-plan.test.mjs; the suite in test/agents-claims.test.mjs holds this invariant to those enforcers)
     CLONE a clean clone of b9f32f9 and a clean clone of the gate commit fail the same 8 chassis steps, so the gate adds no failure: actionlint and zizmor are skipped by name for want of win32-x64 assets, uv 0.12.5 sits below py-service's >=0.13.0 floor, and npm 12 rejects the --ignore-scripts default. A minimal-preset child generated from the gate commit runs node scripts/verify.mjs with exit 0 and verify: OK
 
 ### minimal-pr

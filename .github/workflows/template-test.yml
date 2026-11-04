@@ -59,8 +59,8 @@ jobs:
           node-version-file: .node-version
 
       # In place, on this job's own fresh checkout — exactly what an adopter runs after "Use this
-      # template". The explicit candidate SHA avoids claiming an unpublished release.
-      # Unit tests cover release resolution and independently copied repository histories.
+      # template". The explicit SHA records the exact commit the source is (ADR-0041: the template
+      # has no releases; provenance is commit-only).
       - name: Initialize in place
         env:
           PRESET: ${{ matrix.preset }}

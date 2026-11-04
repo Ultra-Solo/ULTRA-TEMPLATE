@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Resolve a published upstream snapshot independently of a GitHub template copy's new history.
+ * Resolve an upstream commit snapshot independently of a GitHub template copy's new history.
  * Render that source, then record its commit and original generation inputs for exact updates.
  * Explicit local mirrors and source commits provide offline and unpublished candidate paths.
  * renderMain is the committed-source worker; it is called only after source verification.
@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
-import { checkoutSource, cloneSource, defaultDescription, generateSource, resolveSource, sourceLine, writeProvenance, SourceError } from "../scripts/template-source.mjs";
+import { COMMIT, checkoutSource, cloneSource, defaultDescription, generateSource, resolveSource, sourceLine, writeProvenance, SourceError } from "../scripts/template-source.mjs";
 import { adrRecordDrops, resetChangelog, rewriteDroppedAdrLinks } from "./clean.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,7 +45,8 @@ export function loadManifest(root = ROOT) {
 /** Every inconsistency in the manifest, as messages. Empty means usable. */
 export function validateManifest(manifest, exists) {
   const problems = [];
-  if (!/^\d+\.\d+\.\d+$/.test(manifest.version ?? "")) problems.push(`version "${manifest.version}" is not MAJOR.MINOR.PATCH.`);
+  // No version field: the template has no version (ADR-0041); a source is addressed by commit.
+  if ("version" in manifest) problems.push(`"version" is not a manifest field: the template has no version (ADR-0041).`);
   for (const [id, feature] of Object.entries(manifest.features)) {
     if (id === TEMPLATE_ONLY_ID || !/^[a-z0-9-]+$/.test(id)) problems.push(`"${id}" is not a usable feature id.`);
     for (const path of feature.paths) {
@@ -215,15 +216,18 @@ export function replaceIdentity(text, from, to) {
 /**
  * Records which template release, and which features, a project started from. A repository created from
  * a template has none of its history or tags, so without this line nobody can tell later which template
- * changes a project already has. Added after identity replacement, so the link keeps naming the template.
+ * changes a project already has. The template itself has no version (ADR-0041): a versionless manifest
+ * links the repository, not a release. Added after identity replacement, so the link keeps naming it.
  */
 export function recordOrigin(changelog, manifest, selected, file = "CHANGELOG.md") {
   const heading = "## [Unreleased]";
-  if (!changelog.includes(heading)) throw new InitError(`${file} has no "${heading}" heading to record the template version under.`);
+  if (!changelog.includes(heading)) throw new InitError(`${file} has no "${heading}" heading to record the template source under.`);
   const { owner, repo } = manifest.identity;
-  const tag = `v${manifest.version}`;
+  const at = manifest.version === undefined
+    ? `[${repo}](https://github.com/${owner}/${repo})`
+    : `[${repo} v${manifest.version}](https://github.com/${owner}/${repo}/releases/tag/v${manifest.version})`;
   const features = [...selected].join(", ") || "no features";
-  return changelog.replace(heading, `${heading}\n\n- Initialized from [${repo} ${tag}](https://github.com/${owner}/${repo}/releases/tag/${tag}) with ${features}.`);
+  return changelog.replace(heading, `${heading}\n\n- Initialized from ${at} with ${features}.`);
 }
 
 /** The README line init replaces with a sentence on what the project is. Invisible where Markdown renders. */
@@ -337,6 +341,17 @@ function readOrigin(root) {
     return execFileSync("git", ["remote", "get-url", "origin"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
     return "";
+  }
+}
+
+/** The default source is the upstream default branch's HEAD via git ls-remote — no release API (ADR-0041). */
+function lsRemoteHead(source) {
+  try {
+    const sha = execFileSync("git", ["ls-remote", source, "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim().split(/\s+/)[0];
+    if (!COMMIT.test(sha ?? "")) throw new Error("unresolvable HEAD");
+    return sha;
+  } catch {
+    throw new InitError(`Cannot resolve the default source's HEAD from ${source}. Retry online, or pass --source <local-git-path> --source-commit <sha>. Nothing was written.`, 2);
   }
 }
 
@@ -494,6 +509,8 @@ Next:
 
 /** A GitHub template copy has new history; always resolve the upstream snapshot independently. */
 export async function main(argv = process.argv.slice(2), root = ROOT) {
+  // Spawned by generateSource as the verified snapshot's own renderer: render in place, never re-clone.
+  if (process.env.TEMPLATE_RENDER_WORKER === "1") return renderMain(argv, root, process.env.TEMPLATE_RENDER_INPUTS === undefined ? undefined : JSON.parse(process.env.TEMPLATE_RENDER_INPUTS));
   const { values } = parseArgs({ args: argv, strict: true, options: {
     name: { type: "string" }, owner: { type: "string" }, repo: { type: "string" }, description: { type: "string" },
     preset: { type: "string" }, features: { type: "string" }, out: { type: "string" },
@@ -502,7 +519,7 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   } });
   if (values.list || values.help) {
     const code = await renderMain([values.help ? "--help" : "--list"], root);
-    if (values.help) console.log("\nSources: default = published upstream release. --source <mirror> uses its verified tag;\n  --source <local-git-path> --source-commit <40-character-sha> is explicit offline/unreleased generation.");
+    if (values.help) console.log("\nSources: default = the upstream default branch's HEAD, resolved with git ls-remote;\n  --source <local-git-path> --source-commit <40-character-sha> is explicit offline/unreleased generation.");
     return code;
   }
   if (values["source-commit"] && !values.source) throw new InitError("--source-commit requires an explicit --source local Git checkout.");
@@ -518,23 +535,14 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
   const out = values.out === undefined ? null : resolve(values.out);
   if (out === null) assertClean(root);
   else if (existsSync(out) && readdirSync(out).length) throw new InitError(`--out ${out} exists and is not empty.`, 2);
-  const version = `v${bootstrap.version}`;
   const upstream = `https://github.com/${bootstrap.identity.owner}/${bootstrap.identity.repo}`;
-  if (!values.source) {
-    let response;
-    // Unauthenticated api.github.com is rate-limited by IP, which 403s on shared CI runners; a token, when one is present, lifts the limit.
-    const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
-    try { response = await fetch(`https://api.github.com/repos/${bootstrap.identity.owner}/${bootstrap.identity.repo}/releases/tags/${version}`, { signal: AbortSignal.timeout(15_000), headers: token ? { Authorization: `Bearer ${token}` } : undefined }); }
-    catch { throw new InitError(`Cannot verify publication of ${version}. Retry online, or use an explicit verified local source. Nothing was written.`, 2); }
-    if (!response.ok) throw new InitError(`${version} is not a verified published release (HTTP ${response.status}). Wait for publication or use an explicit local source commit. Nothing was written.`, 2);
-    const release = await response.json();
-    if (release.draft || release.prerelease || release.tag_name !== version) throw new InitError(`${version} is not a stable published release. Nothing was written.`, 2);
-  }
+  const source = values.source ?? `${upstream}.git`;
+  const commit = values["source-commit"] ?? lsRemoteHead(source);
   const work = mkdtempSync(join(tmpdir(), "template-source-"));
   try {
     const clone = join(work, "source");
-    cloneSource(values.source ?? `${upstream}.git`, clone);
-    const snapshot = resolveSource(clone, { version, commit: values["source-commit"], tag: values["source-commit"] ? null : version });
+    cloneSource(source, clone);
+    const snapshot = resolveSource(clone, { commit });
     checkoutSource(clone, snapshot);
     const features = [...resolveSelection(snapshot.manifest, values)];
     const description = values.description === undefined
@@ -543,14 +551,13 @@ export async function main(argv = process.argv.slice(2), root = ROOT) {
     const inputs = { identity, features, description, year: new Date().getUTCFullYear() };
     const generated = join(work, "generated");
     generateSource(clone, snapshot, inputs, generated);
-    writeProvenance(generated, { schemaVersion: 1, source: snapshot.source, inputs });
+    writeProvenance(generated, { schemaVersion: 2, source: snapshot.source, inputs });
+    // Only legacy sources ship a CHANGELOG.md; prepend the source line there, never create one.
     const changelog = join(generated, "CHANGELOG.md");
-    let text = readFileSync(changelog, "utf8");
-    if (snapshot.source.tag === null) {
-      text = text.replace(`](${snapshot.source.url}/releases/tag/${version})`, ` source](${snapshot.source.url}/tree/${snapshot.source.commit})`);
+    if (existsSync(changelog)) {
+      writeFileSync(changelog, readFileSync(changelog, "utf8").replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(snapshot.source)}`));
     }
-    writeFileSync(changelog, text.replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(snapshot.source)}`));
-    const summary = `${identity.name} (${identity.owner}/${identity.repo}) from ${version} at ${snapshot.source.commit}, features: ${features.join(", ") || "none"}.`;
+    const summary = `${identity.name} (${identity.owner}/${identity.repo}) from commit ${snapshot.source.commit}, features: ${features.join(", ") || "none"}.`;
     if (values["dry-run"]) { console.log(`Dry run — nothing written.\n${summary}`); return 0; }
     if (confirm && !(await confirm(summary))) { console.log("Nothing written."); return 0; }
     const files = [];

@@ -1,6 +1,6 @@
 # ADR-0023: Reconstruct projects from exact source
 
-**Status:** Accepted · Amends [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) · **Date:** 2026-10-01
+**Status:** Accepted · Amends [ADR-0022](0022-advance-the-release-when-generated-output-changes.md) · Amended by [ADR-0041](0041-remove-template-self-versioning.md) · **Date:** 2026-10-01
 
 ## Context
 

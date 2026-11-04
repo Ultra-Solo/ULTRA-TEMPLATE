@@ -1,38 +1,46 @@
 /**
- * Brings the changes between two template releases into a project made from the template.
+ * Brings the changes between two template commits into a project made from the template.
  *
  * A generated project keeps none of the template's history, so a later fix cannot be merged the usual
- * way. It keeps enough to recompute it, though: CHANGELOG.md records the template release it came from
- * and the features selected, and the project's name, owner and repository are its identity. So this
- * generates the project twice — as release A's init would have made it, and as release B's would — and
- * applies the difference with a three-way merge. Only what the template changed between A and B reaches
- * the project, already renamed and without the features it did not select. What the project changed
- * itself is kept; where both changed the same lines, the conflict is left in the working tree like any
- * merge conflict, for a person to resolve.
+ * way. It keeps enough to recompute it, though: .template-provenance.json records the exact template
+ * commit it came from and the features selected, and the project's name, owner and repository are its
+ * identity. So this generates the project twice — as that commit's init would have made it, and as the
+ * target commit's would — and applies the difference with a three-way merge. Only what the template
+ * changed between the two commits reaches the project, already renamed and without the features it did
+ * not select. What the project changed itself is kept; where both changed the same lines, the conflict
+ * is left in the working tree like any merge conflict, for a person to resolve.
  *
- *   node scripts/template-update.mjs --to vX.Y.Z              # apply, then review with git diff
- *   node scripts/template-update.mjs --to latest              # the newest release
- *   node scripts/template-update.mjs --to vX.Y.Z --dry-run    # list what would change
- *   node scripts/template-update.mjs --add web                 # take a feature, at the current release
- *   node scripts/template-update.mjs --remove py-service       # give one up
- *   node scripts/template-update.mjs --check                   # is a newer release out there?
+ *   node scripts/template-update.mjs --to <40-character-sha>   # apply, then review with git diff
+ *   node scripts/template-update.mjs --to latest               # the upstream default branch's HEAD
+ *   node scripts/template-update.mjs --to <sha> --dry-run      # list what would change
+ *   node scripts/template-update.mjs --add web                  # take a feature, at the current commit
+ *   node scripts/template-update.mjs --remove py-service        # give one up
+ *   node scripts/template-update.mjs --check                    # is the upstream HEAD newer?
+ *
+ * The template has no releases and no tags (ADR-0041): a source is addressed by commit only, and
+ * "latest" is the upstream default branch's HEAD, resolved with git ls-remote. Updates only move
+ * forward — the recorded commit must be an ancestor of the target — so an update cannot quietly undo
+ * later changes.
  *
  * --add and --remove take comma-separated feature ids, may be combined with each other and with --to,
  * and change the selection by the same means: the "after" side is generated with the new selection.
- * The new selection is recorded in CHANGELOG.md beside the release, where the next update reads it.
+ * The new selection is recorded in the provenance file, where the next update reads it. Projects made
+ * before provenance records existed (schema 1) have a CHANGELOG.md origin line instead; for those,
+ * pass --legacy-commit <40-character-sha> naming the commit that release tag pointed at, and the
+ * CHANGELOG line is read and rewritten as before.
  *
- * --check only reads: it reports the release the project is on, the newest one the template has, and
- * the command that would move the project to it, as JSON. It takes no other action, works on a dirty
- * tree, and exits 1 when a newer release exists so a script can ask without parsing the report.
+ * --check only reads: it reports the commit the project is on, the upstream HEAD, and the command that
+ * would move the project to it, as JSON. It takes no other action, works on a dirty tree, and exits 1
+ * when the upstream HEAD is newer so a script can ask without parsing the report.
  *
  * Needs git, network access to the template repository, and a clean working tree; it works on the
  * repository it is run in, from any directory of it. The name is read from package.json and owner and
- * repository from the `origin` remote; --name, --owner and --repo override them, and --template points at
- * another copy of the template (a path or URL). Each release's tag is printed with the commit it names
- * before that release's init runs, since that init is code this runs.
+ * repository from the `origin` remote; --name, --owner and --repo override them, and --template points
+ * at another copy of the template (a path or URL). Each commit is printed before its init runs, since
+ * that init is code this runs.
  *
- * Exit 0 applied cleanly, nothing to do, or --check found no newer release · 1 applied with conflicts,
- * or --check found one · 2 cannot run.
+ * Exit 0 applied cleanly, nothing to do, or --check found nothing newer · 1 applied with conflicts,
+ * or --check found a newer commit · 2 cannot run.
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -44,16 +52,14 @@ import { COMMIT, PROVENANCE_FILE, SourceError, cloneSource, defaultDescription, 
 
 export class UpdateError extends Error {}
 
-const VERSION = /^v\d+\.\d+\.\d+$/;
-// Written by init, and by this script.
+// Written by init, and by this script, into a legacy project's CHANGELOG.md only (schema 1 baselines).
 const ORIGIN = /^- (Initialized from|Updated to) \[[^\]\s]+ (v\d+\.\d+\.\d+)\]\((https:\/\/github\.com\/[^/]+\/[^/]+)\/releases\/tag\/v\d+\.\d+\.\d+\)(?: with (.+?))?\.?$/gm;
 
 const featureList = (text) => (text === "no features" ? [] : text.split(",").map((f) => f.trim()));
 
 /**
- * What the project's CHANGELOG says about where it came from: the release it is on, and the features it
- * has. Init names the features; an update that changed them names them again, and one that did not
- * leaves them out.
+ * What a legacy project's CHANGELOG says about where it came from: the release it is on, and the
+ * features it has. Schema-2 projects keep no CHANGELOG, so this is read only for schema-1 baselines.
  */
 export function readOrigin(changelog) {
   const lines = [...changelog.matchAll(ORIGIN)];
@@ -78,13 +84,15 @@ export function compareVersions(a, b) {
 
 /**
  * Records the update beside the line init wrote, so the next update knows where to start. `features` is
- * given only when the selection changed, and is then written as init writes it.
+ * given only when the selection changed, and is then written as init writes it. The line names the
+ * commit, not a release: the template has no releases (ADR-0041).
  */
-export function recordUpdate(changelog, url, to, features) {
+export function recordUpdate(changelog, url, toCommit, features) {
   const heading = "## [Unreleased]";
   const repo = url.split("/").at(-1);
+  const short = toCommit.slice(0, 12);
   const selection = features === undefined ? "" : ` with ${features.join(", ") || "no features"}`;
-  const line = `- Updated to [${repo} ${to}](${url}/releases/tag/${to})${selection}.`;
+  const line = `- Updated to [${repo} ${short}](${url}/tree/${toCommit})${selection}.`;
   if (!changelog.includes(heading)) return `${changelog.trimEnd()}\n\n${heading}\n\n${line}\n`;
   return changelog.replace(heading, `${heading}\n\n${line}`);
 }
@@ -108,44 +116,46 @@ function commitTree(repo, from, message) {
   return git(repo, ["rev-parse", "HEAD"]).trim();
 }
 
-/** The highest release tag at `source`, a path or URL. */
-function latestRelease(source) {
+/** The upstream default branch's HEAD at `source`, a path or URL — the template's "latest" (ADR-0041). */
+function latestCommit(source) {
   let listed;
   try {
-    listed = execFileSync("git", ["ls-remote", "--tags", "--refs", source], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    listed = execFileSync("git", ["ls-remote", source, "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   } catch (err) {
-    throw new UpdateError(`cannot list the releases of ${source}: ${firstLine(err)}`);
+    throw new UpdateError(`cannot resolve the HEAD of ${source}: ${firstLine(err)}`);
   }
-  const tags = listed.split("\n").map((line) => line.split("refs/tags/")[1]).filter((tag) => VERSION.test(tag ?? ""));
-  if (tags.length === 0) throw new UpdateError(`${source} has no release tag such as v1.10.0.`);
-  return tags.reduce((best, tag) => (compareVersions(tag, best) > 0 ? tag : best));
+  const sha = listed.trim().split(/\s+/)[0];
+  if (!COMMIT.test(sha ?? "")) throw new UpdateError(`${source} has no resolvable HEAD commit.`);
+  return sha;
 }
 
-function updateVerified({ project, to, add = [], remove = [], dryRun = false, template, owner, repo, name, legacyCommit, toCommit, log = console.log }) {
-  const requestedRelease = to !== undefined;
+function updateVerified({ project, to, add = [], remove = [], dryRun = false, template, owner, repo, name, legacyCommit, log = console.log }) {
+  const requestedTarget = to !== undefined;
   const changesSelection = add.length > 0 || remove.length > 0;
-  if (to === undefined && !changesSelection) throw new UpdateError("Nothing to do: pass --to with a release, or --add or --remove with features.");
-  if (to !== undefined && to !== "latest" && !VERSION.test(to)) throw new UpdateError(`--to must be a release tag such as v1.10.0, or latest, got "${to}".`);
+  if (to === undefined && !changesSelection) throw new UpdateError("Nothing to do: pass --to with a commit (or latest), or --add or --remove with features.");
+  if (to !== undefined && to !== "latest" && !COMMIT.test(to)) throw new UpdateError(`--to must be a full lowercase 40-character commit SHA, or latest, got "${to}".`);
   if (git(project, ["status", "--porcelain"]).trim() !== "") throw new UpdateError("The working tree has uncommitted changes. Commit or stash them first, so the update can be reviewed and undone on its own.");
 
-  const changelogPath = join(project, "CHANGELOG.md");
-  if (!existsSync(changelogPath)) throw new UpdateError("CHANGELOG.md is missing; it records which template release this project came from.");
-  const changelog = readFileSync(changelogPath, "utf8");
   const provenance = readProvenance(project);
-  const origin = provenance ? { ...provenance.source, features: provenance.inputs.features } : readOrigin(changelog);
-  if (!provenance && !COMMIT.test(legacyCommit ?? "")) throw new UpdateError("Legacy project: CHANGELOG records a version but no exact source. Review the tagged generation baseline, then pass --legacy-commit <40-character-sha>. Main-derived legacy output may need manual repair; no files were changed.");
-  if (toCommit !== undefined && !COMMIT.test(toCommit)) throw new UpdateError("--to-commit must be a full lowercase 40-character SHA.");
+  let origin;
+  if (provenance) {
+    origin = { commit: provenance.source.commit, url: provenance.source.url, features: provenance.inputs.features, legacy: false };
+  } else {
+    // Schema-1 baseline: the CHANGELOG names a release, not a commit, so the exact source commit must
+    // be supplied once, by a person who verified what that tag pointed at.
+    const changelogPath = join(project, "CHANGELOG.md");
+    if (!existsSync(changelogPath)) throw new UpdateError("No provenance record and no CHANGELOG.md; the template commit this project came from is unknown.");
+    const legacy = readOrigin(readFileSync(changelogPath, "utf8"));
+    if (!COMMIT.test(legacyCommit ?? "")) throw new UpdateError("Legacy project: CHANGELOG records a release but no exact source. Review the tagged generation baseline, then pass --legacy-commit <40-character-sha>. Main-derived legacy output may need manual repair; no files were changed.");
+    origin = { commit: legacyCommit, url: legacy.url, version: legacy.version, features: legacy.features, legacy: true };
+  }
+  const changelogPath = join(project, "CHANGELOG.md");
+  const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, "utf8") : null;
   const source = template ?? `${origin.url}.git`;
-  if (to === "latest") to = latestRelease(source);
-  // Without --to, a selection change happens at the release the project is already on.
-  to ??= origin.version;
+  const toCommit = to === "latest" ? latestCommit(source) : to ?? origin.commit;
+  if (!COMMIT.test(toCommit)) throw new UpdateError(`--to must resolve to a full lowercase 40-character commit SHA, got "${toCommit}".`);
   for (const id of add) if (origin.features.includes(id)) throw new UpdateError(`${id} is already one of this project's features: ${origin.features.join(", ")}.`);
   for (const id of remove) if (!origin.features.includes(id)) throw new UpdateError(`${id} is not one of this project's features: ${origin.features.join(", ") || "none"}.`);
-  // Applied backwards, the difference would quietly undo later releases, and the recorded version (the
-  // highest one listed) would still claim the newer release. Updates only move forward.
-  if (compareVersions(to, origin.version) < 0) {
-    throw new UpdateError(`${to} is older than ${origin.version}, the release this project is on. template-update only moves forward.`);
-  }
 
   if (provenance && name !== undefined && name !== provenance.inputs.identity.name) throw new UpdateError("--name disagrees with the original provenance identity; keep the recorded generation inputs.");
   let identity = provenance?.inputs.identity;
@@ -166,23 +176,27 @@ function updateVerified({ project, to, add = [], remove = [], dryRun = false, te
 
   const work = mkdtempSync(join(tmpdir(), "template-update-"));
   try {
-    log(`template-update: ${origin.version} → ${to} from ${source}, features: ${origin.features.join(", ") || "none"}`);
+    const short = (sha) => sha.slice(0, 12);
+    log(`template-update: ${short(origin.commit)} → ${short(toCommit)} from ${source}, features: ${origin.features.join(", ") || "none"}`);
     const clone = join(work, "template");
     cloneSource(source, clone);
-    const beforeSnapshot = resolveSource(clone, { version: origin.version, commit: provenance?.source.commit ?? legacyCommit, tag: provenance ? provenance.source.tag : origin.version });
-    const afterSnapshot = !requestedRelease && provenance?.source.tag === null
-      ? beforeSnapshot : resolveSource(clone, { version: to, commit: toCommit });
-    for (const snapshot of [beforeSnapshot, afterSnapshot]) log(`template-update: ${snapshot.source.version} is commit ${snapshot.source.commit}`);
-    if (provenance && beforeSnapshot.source.commit === afterSnapshot.source.commit && !changesSelection) {
-      log(`template-update: already at verified ${to} (${beforeSnapshot.source.commit}).`);
+    // Applied backwards, the difference would quietly undo later commits. Updates only move forward.
+    const forward = spawnSync("git", ["merge-base", "--is-ancestor", origin.commit, toCommit], { cwd: clone, encoding: "utf8" });
+    if (forward.status !== 0) {
+      throw new UpdateError(`${short(toCommit)} is not a descendant of ${short(origin.commit)}, the commit this project is on. template-update only moves forward.`);
+    }
+    const beforeSnapshot = resolveSource(clone, { commit: origin.commit });
+    const afterSnapshot = requestedTarget || changesSelection ? resolveSource(clone, { commit: toCommit }) : beforeSnapshot;
+    for (const snapshot of [beforeSnapshot, afterSnapshot]) log(`template-update: commit ${short(snapshot.source.commit)} resolved`);
+    if (beforeSnapshot.source.commit === afterSnapshot.source.commit && !changesSelection) {
+      log(`template-update: already at ${short(toCommit)}.`);
       return { status: "current" };
     }
     const snapshots = { before: beforeSnapshot, after: afterSnapshot };
-    // Feature ids are the target release's to define: a feature added later exists only from then on.
-    const manifestAt = (version) => version === origin.version ? beforeSnapshot.manifest : afterSnapshot.manifest;
+    // Feature ids are the target commit's to define: a feature added later exists only from then on.
     const known = Object.keys(afterSnapshot.manifest.features);
     const unknown = add.filter((id) => !known.includes(id));
-    if (unknown.length > 0) throw new UpdateError(`${to} defines no feature ${unknown.join(", ")}. It defines: ${known.join(", ")}.`);
+    if (unknown.length > 0) throw new UpdateError(`The target commit defines no feature ${unknown.join(", ")}. It defines: ${known.join(", ")}.`);
     const features = changesSelection ? known.filter((id) => (origin.features.includes(id) || add.includes(id)) && !remove.includes(id)) : origin.features;
     if (changesSelection) log(`template-update: features ${origin.features.join(", ") || "none"} → ${features.join(", ") || "none"}`);
 
@@ -202,10 +216,10 @@ function updateVerified({ project, to, add = [], remove = [], dryRun = false, te
     const pair = join(work, "pair");
     mkdirSync(pair);
     git(pair, ["init", "-q"]);
-    const sides = [["before", origin.version], ["after", to]];
-    const shas = sides.map(([side, version]) => {
+    const sides = [["before", beforeSnapshot.source.commit], ["after", afterSnapshot.source.commit]];
+    const shas = sides.map(([side, commit]) => {
       generateSource(join(work, `at-${side}`), snapshots[side], side === "before" ? beforeInputs : afterInputs, join(work, `gen-${side}`));
-      return commitTree(pair, join(work, `gen-${side}`), `template ${version} ${side}`);
+      return commitTree(pair, join(work, `gen-${side}`), `template ${short(commit)} ${side}`);
     });
     const [before, after] = shas;
     // The CHANGELOG is the project's own; init's origin line in it is replaced by the "Updated to" line.
@@ -224,15 +238,15 @@ function updateVerified({ project, to, add = [], remove = [], dryRun = false, te
     // it stops with the rest of the patch half applied. So both are refused, by path, before anything is.
     const generated = (path) => readFileSync(join(work, "gen-before", path));
     const edited = parsed.filter(([kind, path]) => kind === "D" && existsSync(join(project, path)) && !readFileSync(join(project, path)).equals(generated(path)));
-    // A file the project already has exactly as the release adds it needs nothing, and is left out of the patch.
+    // A file the project already has exactly as the target adds it needs nothing, and is left out of the patch.
     const same = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)) && readFileSync(join(project, path)).equals(readFileSync(join(work, "gen-after", path))));
     const occupied = parsed.filter(([kind, path]) => kind === "A" && existsSync(join(project, path)) && !same.some(([, p]) => p === path));
     scope = [...scope, ...same.map(([, path]) => `:(exclude)${path}`)];
     files = files.filter((line) => !same.some(([, path]) => line === `A ${path}`));
     // A file of the project's own inside a feature being removed would be left behind in a directory the
     // feature no longer owns, so it is named as well rather than kept or deleted silently.
-    const removedPaths = remove.flatMap((id) => manifestAt(origin.version).features[id]?.paths ?? []);
-    const keptPaths = features.flatMap((id) => manifestAt(to).features[id]?.paths ?? []);
+    const removedPaths = remove.flatMap((id) => beforeSnapshot.manifest.features[id]?.paths ?? []);
+    const keptPaths = features.flatMap((id) => afterSnapshot.manifest.features[id]?.paths ?? []);
     const inside = (path, dir) => path === dir || path.startsWith(`${dir}/`);
     const own = git(project, ["ls-files", "-z"]).split("\0").filter(Boolean)
       .filter((path) => removedPaths.some((dir) => inside(path, dir)) && !keptPaths.some((dir) => inside(path, dir)))
@@ -247,15 +261,15 @@ function updateVerified({ project, to, add = [], remove = [], dryRun = false, te
     }
 
     const record = () => {
-      let text = recordUpdate(changelog, afterSnapshot.source.url, to, changesSelection ? features : undefined);
-      if (afterSnapshot.source.tag === null) text = text.replace(`](${afterSnapshot.source.url}/releases/tag/${to})`, ` source](${afterSnapshot.source.url}/tree/${afterSnapshot.source.commit})`);
+      if (changelog === null) return; // No CHANGELOG: the provenance record is the baseline (schema 2).
+      let text = recordUpdate(changelog, afterSnapshot.source.url, afterSnapshot.source.commit, changesSelection ? features : undefined);
       return text.replace("## [Unreleased]", `## [Unreleased]\n\n${sourceLine(afterSnapshot.source)}`);
     };
-    const recordSource = () => writeProvenance(project, { schemaVersion: 1, source: afterSnapshot.source, inputs: afterInputs });
+    const recordSource = () => writeProvenance(project, { schemaVersion: 2, source: afterSnapshot.source, inputs: afterInputs });
     if (files.length === 0) {
-      log(`template-update: nothing in ${to} changes a file this project has.`);
-      if (!dryRun) { writeFileSync(changelogPath, record()); recordSource(); }
-      return { status: dryRun ? "dry-run" : "applied", conflicts: [], changed: [], skipped, features, to };
+      log(`template-update: nothing at ${short(toCommit)} changes a file this project has.`);
+      if (!dryRun) { const text = record(); if (text !== undefined) writeFileSync(changelogPath, text); recordSource(); }
+      return { status: dryRun ? "dry-run" : "applied", conflicts: [], changed: [], skipped, features, to: toCommit };
     }
     if (dryRun) {
       log(`template-update: ${files.length} file(s) would change:\n  ${files.join("\n  ")}`);
@@ -281,11 +295,12 @@ function updateVerified({ project, to, add = [], remove = [], dryRun = false, te
     if (emptied.length > 0) log(`template-update: removed ${emptied.join(", ")} with the ignored files left in it (dependencies, build output)`);
     // Written even when there are conflicts: the record is part of the same uncommitted change, so
     // reverting the update removes it too, and committing the resolved update keeps it.
-    writeFileSync(changelogPath, record());
+    const text = record();
+    if (text !== undefined) writeFileSync(changelogPath, text);
     recordSource();
     log(`template-update: ${files.length} file(s) changed.${conflicts.length ? ` Resolve ${conflicts.length} conflict(s): ${conflicts.join(", ")}` : ""}`);
     log("Next: git diff to review, node scripts/setup.mjs, node scripts/verify.mjs, then commit.");
-    return { status: "applied", conflicts, changed: files, skipped, features, to };
+    return { status: "applied", conflicts, changed: files, skipped, features, to: toCommit };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -297,8 +312,8 @@ export function update(options) {
 }
 
 /**
- * Whether the template has a release newer than the one this project is on, as `--check` reports.
- * Read-only, so it runs on a dirty tree; the update itself needs a clean one. The release the project
+ * Whether the upstream HEAD is newer than the commit this project is on, as `--check` reports.
+ * Read-only, so it runs on a dirty tree; the update itself needs a clean one. The commit the project
  * is on comes from the provenance record when there is one, and from CHANGELOG.md before that existed.
  */
 export function checkForUpdate({ project, template }) {
@@ -312,7 +327,7 @@ export function checkForUpdate({ project, template }) {
   let current;
   let url;
   if (provenance) {
-    current = { version: provenance.source.version, source: "provenance" };
+    current = { commit: provenance.source.commit, source: "provenance" };
     url = provenance.source.url;
   } else {
     const changelogPath = join(project, "CHANGELOG.md");
@@ -321,12 +336,13 @@ export function checkForUpdate({ project, template }) {
     current = { version: origin.version, source: "changelog" };
     url = origin.url;
   }
-  const latest = latestRelease(template ?? `${url}.git`);
+  const latest = latestCommit(template ?? `${url}.git`);
+  const updateAvailable = provenance ? latest !== provenance.source.commit : true;
   return {
-    schema: 1,
+    schema: 2,
     current,
-    latest: { version: latest },
-    updateAvailable: compareVersions(latest, current.version) > 0,
+    latest: { commit: latest },
+    updateAvailable,
     command: `node scripts/template-update.mjs --to ${latest}`,
   };
 }
@@ -344,16 +360,15 @@ function main() {
       repo: { type: "string" },
       name: { type: "string" },
       "legacy-commit": { type: "string" },
-      "to-commit": { type: "string" },
     },
   });
   const ids = (list) => (list ?? "").split(",").map((id) => id.trim()).filter(Boolean);
   try {
-    // The repository this runs in, from wherever in it: its CHANGELOG and package.json are at the root.
+    // The repository this runs in, from wherever in it: its provenance record and package.json are at the root.
     const project = git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
     if (values.check) {
       // --check only reads; every other option describes an update to make.
-      const others = ["to", "add", "remove", "dry-run", "to-commit", "legacy-commit", "name", "owner", "repo"]
+      const others = ["to", "add", "remove", "dry-run", "legacy-commit", "name", "owner", "repo"]
         .filter((key) => values[key] !== undefined);
       if (others.length > 0) throw new UpdateError(`--check only takes --template, not --${others[0]}.`);
       const report = checkForUpdate({ project, template: values.template });
@@ -371,7 +386,6 @@ function main() {
       repo: values.repo,
       name: values.name,
       legacyCommit: values["legacy-commit"],
-      toCommit: values["to-commit"],
     });
     return result.conflicts?.length ? 1 : 0;
   } catch (err) {

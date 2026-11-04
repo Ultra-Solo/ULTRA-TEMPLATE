@@ -53,8 +53,8 @@ const tools = (extra = {}) =>
 
 const provenance = () =>
   JSON.stringify({
-    schemaVersion: 1,
-    source: { url: "https://github.com/Ultra-Solo/ULTRA-TEMPLATE", version: "v3.4.0", commit: "a".repeat(40), tag: "v3.4.0" },
+    schemaVersion: 2,
+    source: { url: "https://github.com/Ultra-Solo/ULTRA-TEMPLATE", commit: "a".repeat(40) },
     inputs: {
       identity: { name: "demo-app", owner: "octo-org", repo: "demo-app" },
       features: ["go-service"],
@@ -222,7 +222,7 @@ test("a provenance record is the template source, a CHANGELOG line the legacy on
   try {
     const source = find(diagnose(modern), "template-source");
     assert.equal(source.status, "pass");
-    assert.match(source.detail, /records the template at v3\.4\.0/);
+    assert.match(source.detail, /records the template at commit a{40}/);
     const update = find(diagnose(modern), "update");
     assert.equal(update.status, "unknown");
     assert.match(update.detail, /template-update\.mjs --check/);

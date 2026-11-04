@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { sourceFixture } from "./test-source.mjs";
 import { presentModules } from "../scripts/modules.mjs";
+import { PROVENANCE_FILE } from "../scripts/template-source.mjs";
 import { checkGate } from "../scripts/check-hygiene.mjs";
 import {
   applyMarkers, DESCRIPTION_ANCHOR, describeProject, InitError, loadManifest, MARKER_RE, originDefaults, originIdentity, plan, recordDescription,
@@ -13,7 +14,7 @@ import {
 } from "./init.mjs";
 
 let source;
-before(() => { source = sourceFixture(ROOT, loadManifest().version); });
+before(() => { source = sourceFixture(ROOT); });
 after(() => rmSync(source, { recursive: true, force: true }));
 
 test("the template's own remote is never used as the project's identity", () => {
@@ -207,7 +208,7 @@ test("the real manifest is consistent and every marker in the tree is well forme
 });
 
 test("a path may belong to several features, but not to one inside another's or the template's", () => {
-  const manifest = (features, templateOnly = []) => ({ version: "1.0.0", features, templateOnly, presets: {} });
+  const manifest = (features, templateOnly = []) => ({ features, templateOnly, presets: {} });
   const exists = () => true;
   // The same path under two features is how a file both of them need is expressed.
   assert.deepEqual(validateManifest(manifest({ a: { paths: ["svc"] }, b: { paths: ["svc"] } }), exists), []);
@@ -234,16 +235,14 @@ test("the preset workflow is called by verify and cannot be left outside its gat
   assert.match(checkGate("verify.yml", verify.replace(/^      - template-presets\n/m, "")).join("\n"), /template-presets.*missing/);
 });
 
-test("the public contract only grows: no feature or preset of 1.x or 2.x is removed or renamed", () => {
+test("the public contract only grows: no feature or preset is removed or renamed", () => {
   // Feature ids and preset names are what adopters type, and what template-update replays from a
-  // project's CHANGELOG. Taking one away breaks every project that used it, which is a major version.
-  // 2.0.0 was major for the storage port and kept every one of them; a major that drops one moves this line.
+  // project's provenance record. Taking one away breaks every project that used it.
   const manifest = loadManifest();
-  if (Number(manifest.version.split(".")[0]) > 2) return;
   const features = ["go-service", "ts-service", "py-service", "mcp-server", "web", "ts-library", "architecture", "release", "devcontainer"];
   const presets = ["minimal", "go-api", "py-api", "fullstack-ts", "library", "mcp", "all"];
-  assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed within 1.x or 2.x");
-  assert.deepEqual(presets.filter((id) => !(id in manifest.presets)), [], "presets removed within 1.x or 2.x");
+  assert.deepEqual(features.filter((id) => !(id in manifest.features)), [], "features removed");
+  assert.deepEqual(presets.filter((id) => !(id in manifest.presets)), [], "presets removed");
   for (const preset of presets.filter((id) => id !== "all")) {
     for (const feature of manifest.presets[preset]) assert.ok(manifest.presets.all.includes(feature), `${preset}: ${feature} is not in all`);
   }
@@ -440,11 +439,12 @@ test("init --out writes a project with no template residue", (t) => {
   }
   // A new project's copyright starts the year it is created, not the year the template was written.
   assert.match(readFileSync(join(out, "LICENSE"), "utf8"), new RegExp(`^Copyright \\(c\\) ${new Date().getUTCFullYear()} octo$`, "m"));
-  const { version } = loadManifest();
-  assert.match(
-    readFileSync(join(out, "CHANGELOG.md"), "utf8"),
-    new RegExp(`- Initialized from \\[ULTRA-TEMPLATE v${version.replaceAll(".", "\\.")}\\]\\(https://github\\.com/Ultra-Solo/ULTRA-TEMPLATE/releases/tag/v${version.replaceAll(".", "\\.")}\\) with knowledge\\.`),
-  );
+  // ADR-0041: the template keeps no version, so the record of origin is the commit, not a release tag.
+  const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: source, encoding: "utf8" }).trim();
+  const provenance = JSON.parse(readFileSync(join(out, PROVENANCE_FILE), "utf8"));
+  assert.equal(provenance.schemaVersion, 2);
+  assert.equal(provenance.source.commit, sha);
+  assert.equal(existsSync(join(out, "CHANGELOG.md")), false, "init must not create a CHANGELOG");
   assert.match(readFileSync(join(out, "README.md"), "utf8"), /^# demo-app/);
   assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /ultra:|go-service/);
 });
