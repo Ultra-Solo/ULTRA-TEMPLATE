@@ -77,7 +77,7 @@ These stay decisions for each project, and are left out on purpose: deployment t
 
 A new feature has to meet the five requirements in [ADR-0008](../docs/adr/0008-a-third-language-and-what-a-module-must-prove.md) and the checklist above.
 
-## Versioning
+## Provenance
 
 The template carries no version and publishes no releases ([ADR-0041](../docs/adr/0041-remove-template-self-versioning.md)). Provenance is a commit: init records the exact template commit it rendered from in `.template-provenance.json` (schema 2 — upstream URL, full SHA, original identity, feature selection, description, copyright year), and `scripts/template-update.mjs` moves a project forward commit to commit, refusing any target that does not descend from the recorded one.
 
