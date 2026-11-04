@@ -1,6 +1,6 @@
 # ADR-0042: Make every ADR falsifiable: a full status grammar and a required Enforcement section
 
-**Status:** Proposed · **Date:** 2026-11-04
+**Status:** Accepted · **Date:** 2026-11-04
 
 ## Context
 

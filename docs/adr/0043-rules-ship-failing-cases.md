@@ -1,6 +1,6 @@
 # ADR-0043: Every architecture rule ships a failing case; a structural PR carries the whole set
 
-**Status:** Proposed · **Date:** 2026-11-04
+**Status:** Accepted · **Date:** 2026-11-04
 
 ## Context
 
