@@ -79,15 +79,7 @@ A new feature has to meet the five requirements in [ADR-0008](../docs/adr/0008-a
 
 ## Versioning
 
-The template is a product with a public contract, and its version says what a release does to the projects made from it.
-
-**The public contract** is what adopters type and what a project records: the feature ids and preset names in `features.json`, init's flags (`--name`, `--owner`, `--repo`, `--description`, `--preset`, `--features`, `--out`, `--source`, `--source-commit`), `template-update.mjs`'s flags (`--to`, which also takes `latest`, `--add`, `--remove`, `--dry-run`, `--template`, `--name`, `--owner`, `--repo`, `--legacy-commit`, `--to-commit`), the machine-readable provenance schema and the `Initialized from` and `Updated to` lines in `CHANGELOG.md` that `template-update.mjs` writes and still reads for legacy projects (an `Updated to` line names the features when an update changed them, and the newest line that names them is the selection), and the required check's name, `verify`. `template/init.test.mjs` fails if a feature or preset of 1.x or 2.x disappears.
-
-| Bump | When | Example |
-|---|---|---|
-| **Major** | A generated project, or a person using the template, has to change something of their own to keep working | Removing or renaming a feature or preset, changing init's flags or the origin line, renaming the required check |
-| **Minor** | A new capability, with nothing an existing project has to adapt to | A new feature, preset, script or check |
-| **Patch** | Maintenance: fixes, pin updates, documentation, CI | A bug fix in a check, a Dependabot update, a clearer README |
+The template carries no version and publishes no releases ([ADR-0041](../docs/adr/0041-remove-template-self-versioning.md)). Provenance is a commit: init records the exact template commit it rendered from in `.template-provenance.json` (schema 2 — upstream URL, full SHA, original identity, feature selection, description, copyright year), and `scripts/template-update.mjs` moves a project forward commit to commit, refusing any target that does not descend from the recorded one.
 
 A behaviour change a project's users would notice — an API status code, a stricter check — is at least minor, even when it fixes a bug, and its release notes say so.
 
