@@ -1,6 +1,6 @@
 # ADR-0040: Clean a generated project of the template's meta-history at generation time
 
-**Status:** Proposed · Amended by [ADR-0041](0041-remove-template-self-versioning.md) · **Date:** 2026-11-03
+**Status:** Accepted · Amended by [ADR-0041](0041-remove-template-self-versioning.md) · **Date:** 2026-11-03
 
 ## Context
 
