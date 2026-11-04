@@ -18,7 +18,7 @@ It is for anyone starting a service, a web app, a library or an MCP server who w
 - **An MCP server for agents**, built on the official SDK and tested through a real client, not a mock.
 - **Architecture as code.** A LikeC4 model with rules checked in CI.
 - **One set of instructions for agents.** `AGENTS.md` is the only copy; `CLAUDE.md`, `GEMINI.md` and Copilot's file point at it, and a check fails when one starts saying something else.
-- **Selectable features, tested.** CI generates a project from every preset and runs that project's own checks, and a project can add or remove a feature later with the same three-way merge that brings in template releases.
+- **Selectable features, tested.** CI generates a project from every preset and runs that project's own checks, and a project can add or remove a feature later with the same three-way merge that brings in template updates.
 - **The same checks everywhere.** Node modules lint and format with Biome, from one configuration, as Go and Python modules do with their own tools; local runs refuse a Node other than CI's and a pinned tool at another version; CI runs each module's checks from the same `module.json` through the same script; a cloud agent's session gets CI's toolchains before its first command; the chassis runs on Windows in CI; and every module's coverage is reported without being gated.
 
 ## Start a project
@@ -132,7 +132,7 @@ Each toolchain version is pinned once, in the file named beside it above, so the
 
 ## What's here
 
-- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, `check-safety.mjs` refuses a change that erases most of a file, `check-plan.mjs` holds the self-upgrade plan in `data/plan.md` to its schema, `tools.mjs` installs and verifies the pinned tools, `template-update.mjs` takes template releases (below), and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
+- `scripts/` — `setup.mjs` installs every module, `verify.mjs` runs every module's checks, `dev.mjs` starts the development stack, `doctor.mjs` reports what the checkout needs before a check can run, `check-hygiene.mjs` guards the repository's shape, `check-docs.mjs` its documentation, `check-safety.mjs` refuses a change that erases most of a file, `check-plan.mjs` holds the self-upgrade plan in `data/plan.md` to its schema, `tools.mjs` installs and verifies the pinned tools, `template-update.mjs` takes template updates (below), and `configure-github.mjs` applies the repository settings (squash merging, the required `verify` check, security features). In CI, `coverage-summary.mjs` reports each module's coverage and `check-pins.mjs` the hand-pinned tools with a newer release.
 <!-- ultra:begin go-service|ts-service|py-service -->
 - `scripts/check-contract.mjs` — holds every task service to the one API contract, whose cases are in `scripts/contract/` beside the OpenAPI document it holds to them.
 <!-- ultra:end go-service|ts-service|py-service -->
