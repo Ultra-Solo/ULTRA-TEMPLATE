@@ -53,4 +53,4 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0041](0041-remove-template-self-versioning.md) | Remove the template's self-versioning; address a template by commit | Accepted, amends 0017, 0023, 0040, supersedes 0022, 0035 |
 | [0042](0042-make-every-adr-falsifiable.md) | Make every ADR falsifiable: a full status grammar and a required Enforcement section | Accepted |
 | [0043](0043-rules-ship-failing-cases.md) | Every architecture rule ships a failing case; a structural PR carries the whole set | Accepted |
-| [0044](0044-model-the-repositorys-own-machinery.md) | Model the repository's own machinery in the architecture model | Proposed |
+| [0044](0044-model-the-repositorys-own-machinery.md) | Model the repository's own machinery in the architecture model | Accepted |
