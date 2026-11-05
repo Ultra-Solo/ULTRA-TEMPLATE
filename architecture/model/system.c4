@@ -83,21 +83,24 @@ model {
     // ultra:end web&py-service
   }
 
-  // ADR-0044: the repository's own machinery, drawn beside the system a project builds. ADR-0046: every
-  // script in scripts/ is a link on a chassis element. Only the generator, the knowledge graph and the
-  // feature-owned guard scripts carry feature markers; the rest of scripts/ and the ADR seeds ship to every project.
+  // ADR-0044: the repository's own machinery, drawn beside the system a project builds. ADR-0046/0047: every
+  // file in scripts/ and every workflow in .github/workflows/ is a link on a chassis element. Only the
+  // generator, the knowledge graph, the git hooks, the feature-owned guard files (scripts/contract,
+  // scripts/rules, check-contract.mjs, check-facts.mjs) and the feature-owned workflows carry feature
+  // markers; the rest of scripts/, the core workflows and the ADR seeds ship to every project.
   contributor = actor 'Contributor' {
     description 'Someone working in this repository: runs the gate, reads the records, generates a project.'
   }
 
   chassis = system 'chassis' {
-    description 'The machinery that keeps this repository a versionless template: the gate, the guards, the pinned tools, the environment, the records, the knowledge graph, the generator and the update path — every scripts/*.mjs drawn (ADR-0046).'
+    description 'The machinery that keeps this repository a versionless template: the gate, the guards, the pinned tools, the environment, the records, the knowledge graph, the generator, the update path and the CI — every file in scripts/ and every workflow in .github/workflows/ drawn (ADR-0046, ADR-0047).'
 
     verify = script 'verify' {
       technology 'Node, scripts/verify.mjs, scripts/modules.mjs'
       description 'The single gate CI requires: runs every module check the way CI does and the chassis checks on top.'
       link ../../scripts/verify.mjs 'verify.mjs'
       link ../../scripts/modules.mjs 'modules.mjs'
+      link ../../.github/workflows/verify.yml 'verify.yml'
     }
     contributor -> verify 'runs the gate before pushing'
 
@@ -116,6 +119,12 @@ model {
       // ultra:begin mcp-server|web|ts-library
       link ../../scripts/check-facts.mjs 'check-facts.mjs'
       // ultra:end mcp-server|web|ts-library
+      // ultra:begin go-service|ts-service|py-service|mcp-server|web|ts-library
+      link ../../scripts/contract/tasks-api.json 'tasks-api.json'
+      link ../../scripts/contract/openapi.json 'openapi.json'
+      link ../../scripts/rules/load.mjs 'load.mjs'
+      link ../../scripts/rules/task-rules.json 'task-rules.json'
+      // ultra:end go-service|ts-service|py-service|mcp-server|web|ts-library
     }
     contributor -> guards 'reads what they enforce'
 
@@ -130,6 +139,7 @@ model {
       technology 'Node, scripts/tools.mjs'
       description 'Installs and runs the hand-pinned tools from scripts/tools/tools.json, every asset checksum-verified before it runs (ADR-0017).'
       link ../../scripts/tools.mjs 'tools.mjs'
+      link ../../scripts/tools/tools.json 'tools.json'
     }
     contributor -> tools 'installs the pinned tools with'
 
@@ -170,6 +180,40 @@ model {
     }
     contributor -> gate 'repairs the template through'
 
+    hooks = script 'git hooks' {
+      technology 'Shell, scripts/hooks/'
+      description 'Optional hooks a checkout may install into .git/hooks: the safety guard on every commit, the knowledge sync before it.'
+      link ../../scripts/hooks/check-safety 'check-safety'
+      // ultra:begin knowledge
+      link ../../scripts/hooks/knowledge 'knowledge'
+      // ultra:end knowledge
+    }
+    contributor -> hooks 'installs as git hooks'
+
+    ci = script 'CI workflows' {
+      technology 'GitHub Actions, .github/workflows/'
+      description 'The workflows that gate every push and pull request: the single required verify job, the security and supply-chain scans, the pinned-tool and PR-title checks, and the cloud agents setup.'
+      link ../../.github/workflows/codeql.yml 'codeql.yml'
+      link ../../.github/workflows/copilot-setup-steps.yml 'copilot-setup-steps.yml'
+      link ../../.github/workflows/pins.yml 'pins.yml'
+      link ../../.github/workflows/pr-title.yml 'pr-title.yml'
+      link ../../.github/workflows/scorecard.yml 'scorecard.yml'
+      link ../../.github/workflows/security.yml 'security.yml'
+      // ultra:begin architecture
+      link ../../.github/workflows/architecture.yml 'architecture.yml'
+      // ultra:end architecture
+      // ultra:begin devcontainer
+      link ../../.github/workflows/devcontainer-scan.yml 'devcontainer-scan.yml'
+      // ultra:end devcontainer
+      // ultra:begin mcp-server
+      link ../../.github/workflows/mcp-publish.yml 'mcp-publish.yml'
+      // ultra:end mcp-server
+      // ultra:begin release
+      link ../../.github/workflows/release.yml 'release.yml'
+      // ultra:end release
+    }
+    ci -> verify 'runs the gate before merge'
+
     probe = script 'CI probes' {
       technology 'Node, scripts/probe-image.mjs, scripts/coverage-summary.mjs'
       description 'Container image probes and coverage summaries, run where the tools exist: in CI.'
@@ -191,6 +235,9 @@ model {
       technology 'Node, scripts/knowledge.mjs'
       description 'docs/knowledge/ as the repository memory: ADRs, docs, the extracted graph and written episodes, checked for staleness in CI.'
       link ../../scripts/knowledge.mjs 'knowledge.mjs'
+      link ../../scripts/knowledge/core.mjs 'core.mjs'
+      link ../../scripts/knowledge/graphify.mjs 'graphify.mjs'
+      link ../../scripts/knowledge/query.mjs 'query.mjs'
     }
     contributor -> knowledge 'queries the memory before a structural change'
     // ultra:end knowledge
@@ -200,6 +247,7 @@ model {
       technology 'Node, template/init.mjs'
       description 'Generates a project from a source commit (schema-2 commit-only provenance, ADR-0041): no releases, no tags, no version files.'
       link ../../template/init.mjs 'init.mjs'
+      link ../../.github/workflows/template-test.yml 'template-test.yml'
     }
     contributor -> template 'generates a project from'
     template -> product 'a commit of this repository'

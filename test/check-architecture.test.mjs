@@ -2,7 +2,7 @@
 // proves nothing.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkModel, checkScripts, modelLinks } from "../scripts/check-architecture.mjs";
+import { checkModel, checkScripts, checkWorkflows, modelLinks } from "../scripts/check-architecture.mjs";
 
 const modules = [
   { id: "api", dir: "services/api" },
@@ -50,18 +50,40 @@ test("a module missing from the model, a module drawn twice, and an element whos
   );
 });
 
-const scripts = ["scripts/check-docs.mjs", "scripts/verify.mjs"];
+const scripts = ["scripts/check-docs.mjs", "scripts/verify.mjs", "scripts/contract/tasks-api.json", "scripts/tools/tools.json"];
 
-test("a model that links every chassis script here agrees (ADR-0046)", () => {
-  const links = model(["    link ../../scripts/verify.mjs 'verify.mjs'", "    link ../../scripts/check-docs.mjs 'check-docs.mjs'"]);
+test("a model that links every chassis file here, at any depth, agrees (ADR-0046, ADR-0047)", () => {
+  const links = model([
+    "    link ../../scripts/verify.mjs 'verify.mjs'",
+    "    link ../../scripts/check-docs.mjs 'check-docs.mjs'",
+    "    link ../../scripts/contract/tasks-api.json 'tasks-api.json'",
+    "    link ../../scripts/tools/tools.json 'tools.json'",
+  ]);
   assert.deepEqual(checkScripts(scripts, links), []);
 });
 
-test("a script nobody draws, and a link to a script that is gone, both fail", () => {
+test("a file nobody draws, and a link to a file that is gone, both fail (ADR-0047)", () => {
   const drawn = model(["    link ../../scripts/verify.mjs 'verify.mjs'"]);
   assert.match(checkScripts(scripts, drawn).join(), /scripts\/check-docs\.mjs is here, but no element of the model links to it/);
+  assert.match(checkScripts(scripts, drawn).join(), /scripts\/tools\/tools\.json is here, but no element of the model links to it/);
   assert.match(
     checkScripts(["scripts/verify.mjs"], [...drawn, ...model(["    link ../../scripts/gone.mjs 'gone.mjs'"])]).join(),
-    /system\.c4:\d+ links to scripts\/gone\.mjs, which is not a script here/,
+    /system\.c4:\d+ links to scripts\/gone\.mjs, which is not a file here/,
+  );
+});
+
+const workflows = [".github/workflows/verify.yml", ".github/workflows/pins.yml"];
+
+test("a model that links every CI workflow here agrees (ADR-0047)", () => {
+  const links = model(["    link ../../.github/workflows/verify.yml 'verify.yml'", "    link ../../.github/workflows/pins.yml 'pins.yml'"]);
+  assert.deepEqual(checkWorkflows(workflows, links), []);
+});
+
+test("a workflow nobody draws, and a link to a workflow that is gone, both fail (ADR-0047)", () => {
+  const drawn = model(["    link ../../.github/workflows/verify.yml 'verify.yml'"]);
+  assert.match(checkWorkflows(workflows, drawn).join(), /\.github\/workflows\/pins\.yml is here, but no element of the model links to it/);
+  assert.match(
+    checkWorkflows([".github/workflows/verify.yml"], [...drawn, ...model(["    link ../../.github/workflows/gone.yml 'gone.yml'"])]).join(),
+    /system\.c4:\d+ links to \.github\/workflows\/gone\.yml, which is not a file here/,
   );
 });
