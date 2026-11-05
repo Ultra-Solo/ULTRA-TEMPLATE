@@ -98,12 +98,13 @@ Deployment targets and infrastructure, databases and migrations, authentication,
 
 ## The template itself
 
-This repository is checked by its own machinery, drawn in the `machinery` view of [the architecture model](architecture/README.md) ([ADR-0044](docs/adr/0044-model-the-repositorys-own-machinery.md)): one gate runs every check CI requires, guard scripts hold the repository's shape, the docs and the ADR grammar, the ADR records carry their enforcement, the knowledge graph keeps the memory current, and the generator turns a commit of this repository into a new project. A rule that no relationship may cross from the chassis to the system a project builds — except the generator — is itself a test with a failing case.
+This repository is checked by its own machinery, drawn in the `machinery` view of [the architecture model](architecture/README.md) ([ADR-0044](docs/adr/0044-model-the-repositorys-own-machinery.md), [ADR-0046](docs/adr/0046-draw-every-chassis-script-in-the-model.md)): one gate runs every check CI requires, guard scripts hold the repository's shape, the docs and the ADR grammar, the ADR records carry their enforcement, the knowledge graph keeps the memory current, and the generator turns a commit of this repository into a new project. Every script in `scripts/` is drawn in the model as a link on a chassis element, and a check fails the moment a script appears, disappears or loses its link. A rule that no relationship may cross from the chassis to the system a project builds — except the generator — is itself a test with a failing case.
 
 ```mermaid
 flowchart LR
   contributor([Contributor]) --> verify["verify.mjs — the one gate CI requires"]
   contributor --> guards["check-*.mjs — hygiene, docs, contract, ADR grammar"]
+  contributor --> rest["the rest of scripts/ — pinned tools, environment, dev, configure, docs, gate, probes, updates"]
   contributor --> adr[("docs/adr — ADRs, each structural one naming its Enforcement check")]
   contributor --> knowledge[("docs/knowledge — the extracted graph and episodes")]
   contributor --> template["template/init.mjs — generates from an exact commit"]

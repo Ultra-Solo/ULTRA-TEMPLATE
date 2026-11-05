@@ -41,6 +41,13 @@ export function chassisDecoupled(model) {
     .map((r) => `${r.source.id} crosses the chassis boundary to ${r.target.id}`);
 }
 
+/** ADR-0046: every built element is anchored to a file: a node with no link is decoration, not architecture. */
+export function anchored(model) {
+  return [...model.elements()]
+    .filter((element) => BUILT.has(element.kind) && (element.links ?? []).length === 0)
+    .map((element) => `${element.id} has no link to a file`);
+}
+
 /**
  * One hand-built model per rule, keyed by the rule's export name, that breaks exactly that rule.
  * test/model.test.mjs fails when a rule has no entry here or does not fire on it, so a rule proven
@@ -66,5 +73,9 @@ export const violating = {
     const verify = element("chassis.verify", "script");
     const api = element("product.api", "service");
     return { elements: () => [verify, api], relationships: () => [{ source: verify, target: api }] };
+  })(),
+  anchored: (() => {
+    const element = (id, kind) => ({ id, kind, technology: "x", description: { isEmpty: false }, links: [] });
+    return { elements: () => [element("chassis.verify", "script")], relationships: () => [] };
   })(),
 };

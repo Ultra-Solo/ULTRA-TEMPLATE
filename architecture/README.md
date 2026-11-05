@@ -9,9 +9,9 @@ npm run verify     # validate the model, run the model rules, build the static s
 ```
 
 - `model/spec.c4` — the element kinds this model may use.
-- `model/system.c4` — two systems: `product`, the system a generated project builds (people, services, web apps, and how they depend on each other), and `chassis`, this repository's own machinery — the `verify.mjs` gate, the `check-*.mjs` guards, the ADR records, the knowledge graph and the `template/init.mjs` generator (ADR-0044).
+- `model/system.c4` — two systems: `product`, the system a generated project builds (people, services, web apps, and how they depend on each other), and `chassis`, this repository's own machinery — the `verify.mjs` gate, the `check-*.mjs` guards, the ADR records, the knowledge graph and the `template/init.mjs` generator (ADR-0044), with every script in `scripts/` drawn as a link on a chassis element (ADR-0046).
 - `model/views.c4` — the diagrams: `index` (everything), `containers of product`, and `machinery` (the chassis alone).
-- `rules.mjs` — rules the model must satisfy, such as "every element states its technology", "no service depends on a web app", "nothing crosses the chassis/product boundary except the generator" and "no element floats without a relationship" (ADR-0045); `test/model.test.mjs` runs them against the model and proves each one can fail on a hand-built `violating` model (ADR-0043).
+- `rules.mjs` — rules the model must satisfy, such as "every element states its technology", "no service depends on a web app", "nothing crosses the chassis/product boundary except the generator", "no element floats without a relationship" (ADR-0045) and "every built element links to a file" (ADR-0046); `test/model.test.mjs` runs them against the model and proves each one can fail on a hand-built `violating` model (ADR-0043).
 
 `npm run verify` builds the static site, laying out views with Graphviz's `dot` and `unflatten` — the Dev Container and GitHub's Ubuntu runners provide them; on another machine, install Graphviz first.
 
