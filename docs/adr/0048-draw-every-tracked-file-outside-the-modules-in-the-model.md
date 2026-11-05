@@ -1,6 +1,6 @@
 # ADR-0048: Draw every tracked file outside the modules in the architecture model
 
-**Status:** Proposed · Amends [ADR-0044](0044-model-the-repositorys-own-machinery.md) · Amends [ADR-0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) · **Date:** 2026-11-05
+**Status:** Accepted · Amends [ADR-0044](0044-model-the-repositorys-own-machinery.md) · Amends [ADR-0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) · **Date:** 2026-11-05
 
 ## Context
 
