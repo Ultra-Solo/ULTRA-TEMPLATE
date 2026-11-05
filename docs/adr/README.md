@@ -54,4 +54,4 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0042](0042-make-every-adr-falsifiable.md) | Make every ADR falsifiable: a full status grammar and a required Enforcement section | Accepted |
 | [0043](0043-rules-ship-failing-cases.md) | Every architecture rule ships a failing case; a structural PR carries the whole set | Accepted |
 | [0044](0044-model-the-repositorys-own-machinery.md) | Model the repository's own machinery in the architecture model | Accepted |
-| [0045](0045-no-orphan-elements.md) | No element floats without a relationship | Proposed |
+| [0045](0045-no-orphan-elements.md) | No element floats without a relationship | Accepted |
