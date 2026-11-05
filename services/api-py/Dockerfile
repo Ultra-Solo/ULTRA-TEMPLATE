@@ -19,7 +19,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # payloads install through dpkg, nothing at runtime calls apt, and it is the CVE-2026-109518
 # download-path vector the image scan flags.
 RUN python -m pip uninstall --yes --root-user-action=ignore pip \
-    && apt-get purge --yes apt libapt-pkg7.0 \
+    && apt-get purge --yes --allow-remove-essential apt libapt-pkg7.0 \
     && rm -rf /var/lib/apt/lists/*
 COPY src ./src
 USER nobody
