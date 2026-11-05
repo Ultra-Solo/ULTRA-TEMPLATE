@@ -55,4 +55,5 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0043](0043-rules-ship-failing-cases.md) | Every architecture rule ships a failing case; a structural PR carries the whole set | Accepted |
 | [0044](0044-model-the-repositorys-own-machinery.md) | Model the repository's own machinery in the architecture model | Accepted |
 | [0045](0045-no-orphan-elements.md) | No element floats without a relationship | Accepted |
-| [0046](0046-draw-every-chassis-script-in-the-model.md) | Draw every chassis script in the architecture model | Accepted |
+| [0046](0046-draw-every-chassis-script-in-the-model.md) | Draw every chassis script in the architecture model | Accepted, amended by 0047 |
+| [0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) | Draw every workflow and every scripts/ file in the architecture model | Proposed, amends 0046 |

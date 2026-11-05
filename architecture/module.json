@@ -4,9 +4,9 @@
   "checks": [
     { "name": "npm run verify", "run": ["npm", "run", "verify"] },
     {
-      "name": "the model draws every module and chassis script here",
+      "name": "the model draws every module, every scripts/ file and every CI workflow here",
       "run": ["node", "../scripts/check-architecture.mjs", "model"],
-      "why": "AGENTS.md asks for the model to change with the structure; this is what holds it to that (ADR-0046)"
+      "why": "AGENTS.md asks for the model to change with the structure; this is what holds it to that (ADR-0046, ADR-0047)"
     }
   ],
   "coverage": { "run": [["npm", "run", "--silent", "coverage"]], "report": "coverage/lcov.info" }

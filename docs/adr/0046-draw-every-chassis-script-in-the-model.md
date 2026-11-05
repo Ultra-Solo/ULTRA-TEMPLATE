@@ -1,6 +1,6 @@
 # ADR-0046: Draw every chassis script in the architecture model
 
-**Status:** Accepted · **Date:** 2026-11-05
+**Status:** Accepted, amended by [ADR-0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) · **Date:** 2026-11-05
 
 ## Context
 
