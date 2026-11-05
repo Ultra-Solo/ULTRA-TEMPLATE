@@ -1,6 +1,6 @@
 # ADR-0045: No element floats without a relationship
 
-**Status:** Proposed · **Date:** 2026-11-05
+**Status:** Accepted · **Date:** 2026-11-05
 
 ## Context
 
