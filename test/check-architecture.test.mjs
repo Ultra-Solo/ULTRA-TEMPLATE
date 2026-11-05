@@ -2,7 +2,7 @@
 // proves nothing.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkModel, checkScripts, checkWorkflows, modelLinks } from "../scripts/check-architecture.mjs";
+import { checkDrawn, checkModel, drawn, modelLinks } from "../scripts/check-architecture.mjs";
 
 const modules = [
   { id: "api", dir: "services/api" },
@@ -30,7 +30,7 @@ test("links are read relative to the file they are in, and a web address is not 
   );
 });
 
-test("a module missing from the model, a module drawn twice, and an element whose module is gone all fail", () => {
+test("a module missing from the model, a module drawn twice, and a prefix-sharing directory all fail", () => {
   assert.match(
     checkModel(modules, model(both.slice(0, 3)), "architecture/model").join(),
     /web \(apps\/web\) is here, but no element of the model links to apps\/web\/README\.md/,
@@ -39,10 +39,6 @@ test("a module missing from the model, a module drawn twice, and an element whos
     checkModel(modules, model([...both, "    link ../../apps/web/README.md 'README'"]), "architecture/model").join(),
     /web has 2 elements linking to apps\/web\/README\.md/,
   );
-  assert.match(
-    checkModel(modules, model([...both, "    link ../../services/gone/README.md 'README'"]), "architecture/model").join(),
-    /system\.c4:7 links to services\/gone\/README\.md, which is not the README of a module here/,
-  );
   // A directory that merely shares a prefix with the model's is still a module to draw.
   assert.match(
     checkModel([...modules, { id: "arch2", dir: "architecture-2" }], model(both), "architecture/model").join(),
@@ -50,40 +46,48 @@ test("a module missing from the model, a module drawn twice, and an element whos
   );
 });
 
-const scripts = ["scripts/check-docs.mjs", "scripts/verify.mjs", "scripts/contract/tasks-api.json", "scripts/tools/tools.json"];
+test("drawn keeps every file outside the modules and the ADR records, and keeps the two ADR seeds (ADR-0048)", () => {
+  const dirs = ["services/api", "apps/web", "architecture"];
+  assert.equal(drawn("README.md", dirs), true);
+  assert.equal(drawn(".github/workflows/verify.yml", dirs), true);
+  assert.equal(drawn("data/plan.md", dirs), true);
+  assert.equal(drawn("docs/adr/README.md", dirs), true);
+  assert.equal(drawn("docs/adr/0000-template.md", dirs), true);
+  assert.equal(drawn("docs/adr/0048-draw-every-tracked-file-outside-the-modules-in-the-model.md", dirs), false);
+  assert.equal(drawn("services/api/README.md", dirs), false);
+  assert.equal(drawn("architecture/model/system.c4", dirs), false);
+  // The generator writes this into every generated project (ADR-0023); it is not template content.
+  assert.equal(drawn(".template-provenance.json", dirs), false);
+  // A directory that merely shares a prefix with a module dir is not inside it.
+  assert.equal(drawn("services/api2/x.mjs", dirs), true);
+});
 
-test("a model that links every chassis file here, at any depth, agrees (ADR-0046, ADR-0047)", () => {
+const files = ["README.md", "data/plan.md", ".github/workflows/verify.yml", "scripts/verify.mjs", "docs/adr/README.md"];
+const all = [...files, "services/api/README.md", "docs/adr/0048-draw-every-tracked-file-outside-the-modules-in-the-model.md"];
+
+test("a model that links every drawn file here agrees; module files and ADR records need no link but may be linked (ADR-0046–ADR-0048)", () => {
   const links = model([
+    "    link ../../README.md 'README'",
+    "    link ../../data/plan.md 'plan.md'",
+    "    link ../../.github/workflows/verify.yml 'verify.yml'",
     "    link ../../scripts/verify.mjs 'verify.mjs'",
-    "    link ../../scripts/check-docs.mjs 'check-docs.mjs'",
-    "    link ../../scripts/contract/tasks-api.json 'tasks-api.json'",
-    "    link ../../scripts/tools/tools.json 'tools.json'",
+    "    link ../../docs/adr/README.md 'index'",
+    "    link ../../services/api/README.md 'README'",
   ]);
-  assert.deepEqual(checkScripts(scripts, links), []);
+  assert.deepEqual(checkDrawn(files, links, all), []);
 });
 
-test("a file nobody draws, and a link to a file that is gone, both fail (ADR-0047)", () => {
-  const drawn = model(["    link ../../scripts/verify.mjs 'verify.mjs'"]);
-  assert.match(checkScripts(scripts, drawn).join(), /scripts\/check-docs\.mjs is here, but no element of the model links to it/);
-  assert.match(checkScripts(scripts, drawn).join(), /scripts\/tools\/tools\.json is here, but no element of the model links to it/);
+test("a file nobody draws, and a link to a file that is gone — a README included — both fail (ADR-0048)", () => {
+  const linked = model(["    link ../../README.md 'README'", "    link ../../scripts/verify.mjs 'verify.mjs'"]);
+  assert.match(checkDrawn(files, linked, all).join(), /data\/plan\.md is here, but no element of the model links to it/);
+  assert.match(checkDrawn(files, linked, all).join(), /\.github\/workflows\/verify\.yml is here, but no element of the model links to it/);
+  assert.match(checkDrawn(files, linked, all).join(), /docs\/adr\/README\.md is here, but no element of the model links to it/);
   assert.match(
-    checkScripts(["scripts/verify.mjs"], [...drawn, ...model(["    link ../../scripts/gone.mjs 'gone.mjs'"])]).join(),
-    /system\.c4:\d+ links to scripts\/gone\.mjs, which is not a file here/,
-  );
-});
-
-const workflows = [".github/workflows/verify.yml", ".github/workflows/pins.yml"];
-
-test("a model that links every CI workflow here agrees (ADR-0047)", () => {
-  const links = model(["    link ../../.github/workflows/verify.yml 'verify.yml'", "    link ../../.github/workflows/pins.yml 'pins.yml'"]);
-  assert.deepEqual(checkWorkflows(workflows, links), []);
-});
-
-test("a workflow nobody draws, and a link to a workflow that is gone, both fail (ADR-0047)", () => {
-  const drawn = model(["    link ../../.github/workflows/verify.yml 'verify.yml'"]);
-  assert.match(checkWorkflows(workflows, drawn).join(), /\.github\/workflows\/pins\.yml is here, but no element of the model links to it/);
-  assert.match(
-    checkWorkflows([".github/workflows/verify.yml"], [...drawn, ...model(["    link ../../.github/workflows/gone.yml 'gone.yml'"])]).join(),
-    /system\.c4:\d+ links to \.github\/workflows\/gone\.yml, which is not a file here/,
+    checkDrawn(
+      ["README.md"],
+      [...model(["    link ../../README.md 'README'"]), ...model(["    link ../../services/gone/README.md 'README'"])],
+      all,
+    ).join(),
+    /system\.c4:\d+ links to services\/gone\/README\.md, which is not a file here/,
   );
 });
