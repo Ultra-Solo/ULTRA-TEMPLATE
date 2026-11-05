@@ -1,6 +1,6 @@
 # ADR-0046: Draw every chassis script in the architecture model
 
-**Status:** Proposed · **Date:** 2026-11-05
+**Status:** Accepted · **Date:** 2026-11-05
 
 ## Context
 
