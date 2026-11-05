@@ -57,4 +57,4 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0045](0045-no-orphan-elements.md) | No element floats without a relationship | Accepted |
 | [0046](0046-draw-every-chassis-script-in-the-model.md) | Draw every chassis script in the architecture model | Accepted, amended by 0047 |
 | [0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) | Draw every workflow and every scripts/ file in the architecture model | Accepted, amends 0046, amended by 0048 |
-| [0048](0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) | Draw every tracked file outside the modules in the architecture model | Proposed, amends 0044, amends 0047 |
+| [0048](0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) | Draw every tracked file outside the modules in the architecture model | Accepted, amends 0044, amends 0047 |
