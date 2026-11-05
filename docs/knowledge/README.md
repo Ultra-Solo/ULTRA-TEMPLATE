@@ -30,7 +30,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
-- [ADR-0047](../adr/0047-draw-every-workflow-and-scripts-file-in-the-model.md) Draw every workflow and every scripts/ file in the architecture model (Proposed)
+- [ADR-0047](../adr/0047-draw-every-workflow-and-scripts-file-in-the-model.md) Draw every workflow and every scripts/ file in the architecture model (Accepted)
 - [ADR-0046](../adr/0046-draw-every-chassis-script-in-the-model.md) Draw every chassis script in the architecture model (Accepted, amended by ADR-0047)
 - [ADR-0045](../adr/0045-no-orphan-elements.md) No element floats without a relationship (Accepted)
 - [ADR-0044](../adr/0044-model-the-repositorys-own-machinery.md) Model the repository's own machinery in the architecture model (Accepted)
