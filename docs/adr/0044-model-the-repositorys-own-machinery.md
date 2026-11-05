@@ -1,6 +1,6 @@
 # ADR-0044: Model the repository's own machinery in the architecture model
 
-**Status:** Accepted · **Date:** 2026-11-04
+**Status:** Accepted · Amended by [ADR-0048](0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) · **Date:** 2026-11-04
 
 ## Context
 

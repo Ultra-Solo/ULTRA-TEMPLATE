@@ -1,6 +1,6 @@
 # ADR-0047: Draw every workflow and every scripts/ file in the architecture model
 
-**Status:** Accepted · Amends [ADR-0046](0046-draw-every-chassis-script-in-the-model.md) · **Date:** 2026-11-05
+**Status:** Accepted · Amends [ADR-0046](0046-draw-every-chassis-script-in-the-model.md) · Amended by [ADR-0048](0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) · **Date:** 2026-11-05
 
 ## Context
 

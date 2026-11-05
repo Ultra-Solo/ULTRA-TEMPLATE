@@ -83,17 +83,44 @@ model {
     // ultra:end web&py-service
   }
 
-  // ADR-0044: the repository's own machinery, drawn beside the system a project builds. ADR-0046/0047: every
-  // file in scripts/ and every workflow in .github/workflows/ is a link on a chassis element. Only the
-  // generator, the knowledge graph, the git hooks, the feature-owned guard files (scripts/contract,
-  // scripts/rules, check-contract.mjs, check-facts.mjs) and the feature-owned workflows carry feature
-  // markers; the rest of scripts/, the core workflows and the ADR seeds ship to every project.
+  // ADR-0044: the repository's own machinery, drawn beside the system a project builds. ADR-0046–ADR-0048:
+  // every tracked file outside the modules and the ADR records is a link on a chassis element. Only
+  // feature-owned files carry feature markers (per template/features.json); everything else — the root
+  // files, the .github settings, the skills, the docs, the tests, the core of scripts/ and workflows, the
+  // ADR index and seed — ships to every project.
   contributor = actor 'Contributor' {
     description 'Someone working in this repository: runs the gate, reads the records, generates a project.'
   }
 
   chassis = system 'chassis' {
-    description 'The machinery that keeps this repository a versionless template: the gate, the guards, the pinned tools, the environment, the records, the knowledge graph, the generator, the update path and the CI — every file in scripts/ and every workflow in .github/workflows/ drawn (ADR-0046, ADR-0047).'
+    description 'The machinery that keeps this repository a versionless template: the gate, the guards, the pinned tools, the environment, the records, the knowledge graph, the generator, the update path, the CI and the repository settings — every tracked file outside the modules drawn as a link (ADR-0046–ADR-0048).'
+
+    root = script 'repository root' {
+      technology 'Markdown, JSON, VCS and editor configuration'
+      description 'The files every checkout carries: the one set of agent instructions, the readme, the package manifest, the pinned Node version, the ignore and editor rules, the license, security and conduct pages.'
+      link ../../AGENTS.md 'AGENTS.md'
+      link ../../CLAUDE.md 'CLAUDE.md'
+      link ../../GEMINI.md 'GEMINI.md'
+      link ../../README.md 'README.md'
+      link ../../package.json 'package.json'
+      link ../../.node-version '.node-version'
+      link ../../.gitignore '.gitignore'
+      link ../../.gitattributes '.gitattributes'
+      link ../../.editorconfig '.editorconfig'
+      link ../../.trivyignore '.trivyignore'
+      link ../../LICENSE 'LICENSE'
+      link ../../SECURITY.md 'SECURITY.md'
+      link ../../CODE_OF_CONDUCT.md 'CODE_OF_CONDUCT.md'
+      link ../../CONTRIBUTING.md 'CONTRIBUTING.md'
+      // ultra:begin architecture|ts-service|mcp-server|web|ts-library
+      link ../../biome.jsonc 'biome.jsonc'
+      // ultra:end architecture|ts-service|mcp-server|web|ts-library
+      // ultra:begin release
+      link ../../release-please-config.json 'release-please-config.json'
+      link ../../.release-please-manifest.json '.release-please-manifest.json'
+      // ultra:end release
+    }
+    contributor -> root 'reads the rules and the readme in'
 
     verify = script 'verify' {
       technology 'Node, scripts/verify.mjs, scripts/modules.mjs'
@@ -103,6 +130,42 @@ model {
       link ../../.github/workflows/verify.yml 'verify.yml'
     }
     contributor -> verify 'runs the gate before pushing'
+
+    tests = script 'chassis tests' {
+      technology 'Node, test/'
+      description 'The tests of the gate, the guards and the chassis itself; the module checks run the modules’ own tests the same way.'
+      link ../../test/agent-env.test.mjs 'agent-env.test.mjs'
+      link ../../test/agents-claims.test.mjs 'agents-claims.test.mjs'
+      // ultra:begin architecture
+      link ../../test/check-architecture.test.mjs 'check-architecture.test.mjs'
+      // ultra:end architecture
+      // ultra:begin go-service|ts-service|py-service
+      link ../../test/check-contract.test.mjs 'check-contract.test.mjs'
+      link ../../test/dev.test.mjs 'dev.test.mjs'
+      // ultra:end go-service|ts-service|py-service
+      link ../../test/check-docs.test.mjs 'check-docs.test.mjs'
+      // ultra:begin mcp-server|web|ts-library
+      link ../../test/check-facts.test.mjs 'check-facts.test.mjs'
+      // ultra:end mcp-server|web|ts-library
+      link ../../test/check-hygiene.test.mjs 'check-hygiene.test.mjs'
+      link ../../test/check-pins.test.mjs 'check-pins.test.mjs'
+      link ../../test/check-plan.test.mjs 'check-plan.test.mjs'
+      link ../../test/check-safety.test.mjs 'check-safety.test.mjs'
+      link ../../test/claims.mjs 'claims.mjs'
+      link ../../test/configure-github.test.mjs 'configure-github.test.mjs'
+      link ../../test/coverage-summary.test.mjs 'coverage-summary.test.mjs'
+      link ../../test/doctor.test.mjs 'doctor.test.mjs'
+      link ../../test/generate-docs.test.mjs 'generate-docs.test.mjs'
+      // ultra:begin knowledge
+      link ../../test/knowledge.test.mjs 'knowledge.test.mjs'
+      // ultra:end knowledge
+      link ../../test/modules.test.mjs 'modules.test.mjs'
+      link ../../test/probe-image.test.mjs 'probe-image.test.mjs'
+      link ../../test/search_replace.test.mjs 'search_replace.test.mjs'
+      link ../../test/setup.test.mjs 'setup.test.mjs'
+      link ../../test/tools.test.mjs 'tools.test.mjs'
+    }
+    verify -> tests 'runs the chassis tests from'
 
     guards = script 'guards' {
       technology 'Node, scripts/check-*.mjs'
@@ -131,9 +194,51 @@ model {
     adr = records 'decision records' {
       technology 'Markdown, docs/adr/'
       description 'ADRs with a status grammar and a mandatory Enforcement section for structural records (ADR-0042); every architecture rule ships a failing case (ADR-0043).'
+      link ../../docs/adr/README.md 'index'
       link ../../docs/adr/0000-template.md 'ADR template'
     }
     contributor -> adr 'records and consults decisions'
+
+    skills = script 'agent skills' {
+      technology 'Markdown, .claude/'
+      description 'The step-by-step skills agents follow and the settings that wire them; each feature-owned skill ships with its feature (ADR-0009).'
+      link ../../.claude/settings.json 'settings.json'
+      // ultra:begin go-service
+      link ../../.claude/skills/add-endpoint-go/SKILL.md 'add-endpoint-go'
+      // ultra:end go-service
+      // ultra:begin py-service
+      link ../../.claude/skills/add-endpoint-py/SKILL.md 'add-endpoint-py'
+      // ultra:end py-service
+      // ultra:begin ts-service
+      link ../../.claude/skills/add-endpoint-ts/SKILL.md 'add-endpoint-ts'
+      // ultra:end ts-service
+      // ultra:begin mcp-server
+      link ../../.claude/skills/add-mcp-tool/SKILL.md 'add-mcp-tool'
+      // ultra:end mcp-server
+      // ultra:begin go-service|ts-service|py-service|mcp-server|web|ts-library
+      link ../../.claude/skills/change-task-contract/SKILL.md 'change-task-contract'
+      // ultra:end go-service|ts-service|py-service|mcp-server|web|ts-library
+      // ultra:begin knowledge
+      link ../../.claude/skills/consult-knowledge/SKILL.md 'consult-knowledge'
+      link ../../.claude/skills/record-episode/SKILL.md 'record-episode'
+      link ../../.claude/skills/triage-and-fix/SKILL.md 'triage-and-fix'
+      // ultra:end knowledge
+      link ../../.claude/skills/record-decision/SKILL.md 'record-decision'
+      link ../../.claude/skills/update-from-template/SKILL.md 'update-from-template'
+    }
+    contributor -> skills 'follows the skills of'
+
+    docs = records 'documentation' {
+      technology 'Markdown, docs/'
+      description 'The guides indexed by docs/README.md; the ADR log is drawn on the adr element, the knowledge memory on knowledge.'
+      link ../../docs/README.md 'README'
+      link ../../docs/growing-the-ci.md 'growing-the-ci.md'
+      link ../../docs/toolchain-updates.md 'toolchain-updates.md'
+      // ultra:begin devcontainer
+      link ../../docs/devcontainer-scan-baseline.md 'devcontainer-scan-baseline.md'
+      // ultra:end devcontainer
+    }
+    contributor -> docs 'reads the documentation in'
 
     tools = script 'pinned tools' {
       technology 'Node, scripts/tools.mjs'
@@ -149,6 +254,10 @@ model {
       link ../../scripts/setup.mjs 'setup.mjs'
       link ../../scripts/agent-env.mjs 'agent-env.mjs'
       link ../../scripts/doctor.mjs 'doctor.mjs'
+      // ultra:begin devcontainer
+      link ../../.devcontainer/devcontainer.json 'devcontainer.json'
+      link ../../.devcontainer/Dockerfile 'Dockerfile'
+      // ultra:end devcontainer
     }
     contributor -> environment 'prepares a checkout with'
 
@@ -176,7 +285,9 @@ model {
     gate = script 'self-upgrade gate' {
       technology 'Node, scripts/search_replace.mjs'
       description 'Computes the minimal three-way repair the self-upgrade gate may apply; every entry in data/plan.md names its scope (ADR-0037).'
+      link ../../scripts/check-plan.mjs 'check-plan.mjs'
       link ../../scripts/search_replace.mjs 'search_replace.mjs'
+      link ../../data/plan.md 'plan.md'
     }
     contributor -> gate 'repairs the template through'
 
@@ -211,8 +322,32 @@ model {
       // ultra:begin release
       link ../../.github/workflows/release.yml 'release.yml'
       // ultra:end release
+      link ../../.github/actions/module/action.yml 'module action'
+      link ../../.github/actions/tool/action.yml 'tool action'
     }
     ci -> verify 'runs the gate before merge'
+
+    github = script 'repository settings' {
+      technology 'YAML, Markdown, .github/'
+      description 'The settings that shape CI and contribution outside the workflows: the actionlint and zizmor audits, Dependabot, CODEOWNERS, the issue and pull request templates, the Copilot instructions and the prompt files.'
+      link ../../.github/actionlint.yaml 'actionlint.yaml'
+      link ../../.github/zizmor.yml 'zizmor.yml'
+      link ../../.github/dependabot.yml 'dependabot.yml'
+      link ../../.github/CODEOWNERS 'CODEOWNERS'
+      link ../../.github/copilot-instructions.md 'copilot-instructions.md'
+      link ../../.github/pull_request_template.md 'pull_request_template.md'
+      link ../../.github/ISSUE_TEMPLATE/bug_report.yml 'bug_report.yml'
+      link ../../.github/ISSUE_TEMPLATE/config.yml 'config.yml'
+      link ../../.github/ISSUE_TEMPLATE/feature_request.yml 'feature_request.yml'
+      link ../../.github/prompts/verify-and-report.prompt.md 'verify-and-report.prompt.md'
+      // ultra:begin knowledge
+      link ../../.github/prompts/triage-and-fix.prompt.md 'triage-and-fix.prompt.md'
+      // ultra:end knowledge
+      // ultra:begin template
+      link ../../.github/agents/synthesis-architect-pro.agent.md 'synthesis-architect-pro.agent.md'
+      // ultra:end template
+    }
+    github -> ci 'configures the audits of'
 
     probe = script 'CI probes' {
       technology 'Node, scripts/probe-image.mjs, scripts/coverage-summary.mjs'
@@ -238,6 +373,9 @@ model {
       link ../../scripts/knowledge/core.mjs 'core.mjs'
       link ../../scripts/knowledge/graphify.mjs 'graphify.mjs'
       link ../../scripts/knowledge/query.mjs 'query.mjs'
+      link ../../docs/knowledge/README.md 'docs/knowledge/README.md'
+      link ../../docs/knowledge/graph.json 'graph.json'
+      link ../../docs/knowledge/episodes/README.md 'docs/knowledge/episodes/README.md'
     }
     contributor -> knowledge 'queries the memory before a structural change'
     // ultra:end knowledge
@@ -247,6 +385,16 @@ model {
       technology 'Node, template/init.mjs'
       description 'Generates a project from a source commit (schema-2 commit-only provenance, ADR-0041): no releases, no tags, no version files.'
       link ../../template/init.mjs 'init.mjs'
+      link ../../template/clean.mjs 'clean.mjs'
+      link ../../template/features.json 'features.json'
+      link ../../template/test-source.mjs 'test-source.mjs'
+      link ../../template/README.md 'README.md'
+      link ../../template/claims.test.mjs 'claims.test.mjs'
+      link ../../template/clean.test.mjs 'clean.test.mjs'
+      link ../../template/init.test.mjs 'init.test.mjs'
+      link ../../template/no-version.test.mjs 'no-version.test.mjs'
+      link ../../template/provenance.test.mjs 'provenance.test.mjs'
+      link ../../template/template-update.test.mjs 'template-update.test.mjs'
       link ../../.github/workflows/template-test.yml 'template-test.yml'
     }
     contributor -> template 'generates a project from'
