@@ -23,6 +23,12 @@ export function clientDependencies(model) {
     .map((r) => `${r.source.id} depends on the web app ${r.target.id}`);
 }
 
+/** Every built element takes part in a relationship: a node nothing connects to is decoration, not architecture. */
+export function orphaned(model) {
+  const connected = new Set(model.relationships().flatMap((r) => [r.source.id, r.target.id]));
+  return [...model.elements()].filter((e) => BUILT.has(e.kind) && !connected.has(e.id)).map((e) => `${e.id} has no relationship`);
+}
+
 // ADR-0044: the chassis and the system it builds stay decoupled; only the generator may point at the product.
 const inChassis = (id) => id === "chassis" || id.startsWith("chassis.");
 const inProduct = (id) => id === "product" || id.startsWith("product.");
@@ -50,6 +56,10 @@ export const violating = {
     const api = element("product.api", "service");
     const web = element("product.web", "webapp");
     return { elements: () => [api, web], relationships: () => [{ source: api, target: web }] };
+  })(),
+  orphaned: (() => {
+    const element = (id, kind) => ({ id, kind, technology: "x", description: { isEmpty: false } });
+    return { elements: () => [element("product.tsLibrary", "library")], relationships: () => [] };
   })(),
   chassisDecoupled: (() => {
     const element = (id, kind) => ({ id, kind, technology: "x", description: { isEmpty: false } });

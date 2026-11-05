@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 45 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 429 edges, 0 active episodes.
+Now: 7 modules, 46 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 430 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
@@ -30,6 +30,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
+- [ADR-0045](../adr/0045-no-orphan-elements.md) No element floats without a relationship (Proposed)
 - [ADR-0044](../adr/0044-model-the-repositorys-own-machinery.md) Model the repository's own machinery in the architecture model (Accepted)
 - [ADR-0043](../adr/0043-rules-ship-failing-cases.md) Every architecture rule ships a failing case; a structural PR carries the whole set (Accepted)
 - [ADR-0042](../adr/0042-make-every-adr-falsifiable.md) Make every ADR falsifiable: a full status grammar and a required Enforcement section (Accepted)
@@ -41,8 +42,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 - [ADR-0036](../adr/0036-record-what-the-task-contract-leaves-free.md) Record what the task contract leaves free (Accepted)
 - [ADR-0035](../adr/0035-drive-releases-from-a-written-standing-plan.md) Drive releases from a written standing plan (Accepted)
 - [ADR-0034](../adr/0034-move-the-runner-pin-to-ubuntu-26.04.md) Move the runner pin to Ubuntu 26.04 (Accepted)
-- [ADR-0033](../adr/0033-track-the-current-stable-python-line.md) Track the current stable Python line (Accepted)
-- 33 older: see the [decision index](../adr/README.md).
+- 34 older: see the [decision index](../adr/README.md).
 
 ## Active episodes
 

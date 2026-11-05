@@ -59,6 +59,7 @@ model {
       description 'The task status rules as a typed package on npm, for a client that should offer only the moves the API accepts.'
       link ../../packages/ts-library/README.md 'README'
     }
+    user -> tsLibrary 'installs it from npm to offer only the legal status moves'
     // ultra:end ts-library
 
     // The clients of the task API, each drawn only when both ends are in the project.
