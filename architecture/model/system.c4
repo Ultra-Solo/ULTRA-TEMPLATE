@@ -83,26 +83,39 @@ model {
     // ultra:end web&py-service
   }
 
-  // ADR-0044: the repository's own machinery, drawn beside the system a project builds.
-  // Only the generator and the knowledge graph carry feature markers; scripts and ADR seeds ship to every project.
+  // ADR-0044: the repository's own machinery, drawn beside the system a project builds. ADR-0046: every
+  // script in scripts/ is a link on a chassis element. Only the generator, the knowledge graph and the
+  // feature-owned guard scripts carry feature markers; the rest of scripts/ and the ADR seeds ship to every project.
   contributor = actor 'Contributor' {
     description 'Someone working in this repository: runs the gate, reads the records, generates a project.'
   }
 
   chassis = system 'chassis' {
-    description 'The machinery that keeps this repository a versionless template: one verification gate, guard scripts, decision records, the knowledge graph, and the generator.'
+    description 'The machinery that keeps this repository a versionless template: the gate, the guards, the pinned tools, the environment, the records, the knowledge graph, the generator and the update path — every scripts/*.mjs drawn (ADR-0046).'
 
     verify = script 'verify' {
-      technology 'Node, scripts/verify.mjs'
+      technology 'Node, scripts/verify.mjs, scripts/modules.mjs'
       description 'The single gate CI requires: runs every module check the way CI does and the chassis checks on top.'
       link ../../scripts/verify.mjs 'verify.mjs'
+      link ../../scripts/modules.mjs 'modules.mjs'
     }
     contributor -> verify 'runs the gate before pushing'
 
     guards = script 'guards' {
       technology 'Node, scripts/check-*.mjs'
-      description 'Hygiene, docs, contract, facts and architecture checks; the ADR grammar and Enforcement sections included (ADR-0042).'
+      description 'Hygiene, docs, safety, plan, pins and architecture checks; the ADR grammar and Enforcement sections included (ADR-0042).'
+      link ../../scripts/check-hygiene.mjs 'check-hygiene.mjs'
       link ../../scripts/check-docs.mjs 'check-docs.mjs'
+      link ../../scripts/check-safety.mjs 'check-safety.mjs'
+      link ../../scripts/check-plan.mjs 'check-plan.mjs'
+      link ../../scripts/check-pins.mjs 'check-pins.mjs'
+      link ../../scripts/check-architecture.mjs 'check-architecture.mjs'
+      // ultra:begin go-service|ts-service|py-service
+      link ../../scripts/check-contract.mjs 'check-contract.mjs'
+      // ultra:end go-service|ts-service|py-service
+      // ultra:begin mcp-server|web|ts-library
+      link ../../scripts/check-facts.mjs 'check-facts.mjs'
+      // ultra:end mcp-server|web|ts-library
     }
     contributor -> guards 'reads what they enforce'
 
@@ -112,6 +125,66 @@ model {
       link ../../docs/adr/0000-template.md 'ADR template'
     }
     contributor -> adr 'records and consults decisions'
+
+    tools = script 'pinned tools' {
+      technology 'Node, scripts/tools.mjs'
+      description 'Installs and runs the hand-pinned tools from scripts/tools/tools.json, every asset checksum-verified before it runs (ADR-0017).'
+      link ../../scripts/tools.mjs 'tools.mjs'
+    }
+    contributor -> tools 'installs the pinned tools with'
+
+    environment = script 'environment' {
+      technology 'Node, scripts/setup.mjs, scripts/agent-env.mjs, scripts/doctor.mjs'
+      description 'Prepares a fresh checkout: installs every module dependencies, wires the agent environment, and reports what a check could not run.'
+      link ../../scripts/setup.mjs 'setup.mjs'
+      link ../../scripts/agent-env.mjs 'agent-env.mjs'
+      link ../../scripts/doctor.mjs 'doctor.mjs'
+    }
+    contributor -> environment 'prepares a checkout with'
+
+    dev = script 'dev servers' {
+      technology 'Node, scripts/dev.mjs'
+      description 'Starts the web app and a task service together for local work.'
+      link ../../scripts/dev.mjs 'dev.mjs'
+    }
+    contributor -> dev 'runs locally with'
+
+    configure = script 'repository configuration' {
+      technology 'Node, scripts/configure-github.mjs'
+      description 'Applies the settings CI relies on: branch rulesets, the single required check, labels.'
+      link ../../scripts/configure-github.mjs 'configure-github.mjs'
+    }
+    contributor -> configure 'configures the repository with'
+
+    generate = script 'doc generation' {
+      technology 'Node, scripts/generate-docs.mjs'
+      description 'Rewrites the generated blocks in the docs and READMEs so a restated fact keeps one source (ADR-0013).'
+      link ../../scripts/generate-docs.mjs 'generate-docs.mjs'
+    }
+    contributor -> generate 'regenerates the docs with'
+
+    gate = script 'self-upgrade gate' {
+      technology 'Node, scripts/search_replace.mjs'
+      description 'Computes the minimal three-way repair the self-upgrade gate may apply; every entry in data/plan.md names its scope (ADR-0037).'
+      link ../../scripts/search_replace.mjs 'search_replace.mjs'
+    }
+    contributor -> gate 'repairs the template through'
+
+    probe = script 'CI probes' {
+      technology 'Node, scripts/probe-image.mjs, scripts/coverage-summary.mjs'
+      description 'Container image probes and coverage summaries, run where the tools exist: in CI.'
+      link ../../scripts/probe-image.mjs 'probe-image.mjs'
+      link ../../scripts/coverage-summary.mjs 'coverage-summary.mjs'
+    }
+    contributor -> probe 'probes images and coverage with'
+
+    update = script 'template updates' {
+      technology 'Node, scripts/template-source.mjs, scripts/template-update.mjs'
+      description 'Reads the recorded template commit and brings a generated project up to a later one by regenerating and three-way merging (ADR-0041).'
+      link ../../scripts/template-source.mjs 'template-source.mjs'
+      link ../../scripts/template-update.mjs 'template-update.mjs'
+    }
+    contributor -> update 'updates a project from the template with'
 
     // ultra:begin knowledge
     knowledge = records 'knowledge graph' {
