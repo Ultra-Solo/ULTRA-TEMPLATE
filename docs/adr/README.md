@@ -59,3 +59,4 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) | Draw every workflow and every scripts/ file in the architecture model | Accepted, amends 0046, amended by 0048 |
 | [0048](0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) | Draw every tracked file outside the modules in the architecture model | Accepted, amends 0044, amends 0047 |
 | [0049](0049-narrate-every-runtime-flow-as-a-dynamic-view.md) | Narrate every runtime flow as a dynamic view | Proposed |
+| [0050](0050-hold-a-route-claim-to-the-contract.md) | Hold a diagram's route claim to the API contract | Proposed |

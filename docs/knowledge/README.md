@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 50 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 446 edges, 0 active episodes.
+Now: 7 modules, 51 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 58 scripts, 447 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
@@ -30,6 +30,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
+- [ADR-0050](../adr/0050-hold-a-route-claim-to-the-contract.md) Hold a diagram's route claim to the API contract (Proposed)
 - [ADR-0049](../adr/0049-narrate-every-runtime-flow-as-a-dynamic-view.md) Narrate every runtime flow as a dynamic view (Proposed)
 - [ADR-0048](../adr/0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) Draw every tracked file outside the modules in the architecture model (Accepted)
 - [ADR-0047](../adr/0047-draw-every-workflow-and-scripts-file-in-the-model.md) Draw every workflow and every scripts/ file in the architecture model (Accepted)
@@ -41,8 +42,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 - [ADR-0041](../adr/0041-remove-template-self-versioning.md) Remove the template's self-versioning; address a template by commit (Accepted)
 - [ADR-0040](../adr/0040-clean-generated-projects-of-template-meta-history.md) Clean a generated project of the template's meta-history at generation time (Accepted)
 - [ADR-0039](../adr/0039-port-only-verifiable-mechanisms-from-external-engines.md) Port only verifiable mechanisms from external self-improving engines (Accepted)
-- [ADR-0038](../adr/0038-keep-a-layered-self-checking-memory-in-docs-knowledge.md) Keep a layered, self-checking memory of the repository in docs/knowledge (Accepted)
-- 38 older: see the [decision index](../adr/README.md).
+- 39 older: see the [decision index](../adr/README.md).
 
 ## Active episodes
 
