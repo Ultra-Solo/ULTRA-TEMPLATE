@@ -49,6 +49,18 @@ export function anchored(model) {
 }
 
 /**
+ * ADR-0049: every runtime relationship of the product — from the user into it, or between its own
+ * elements — is a step of some dynamic view, so the flows a static view cannot show are narrated.
+ */
+export function runtimeFlowDocumented(model) {
+  const dynamics = [...model.views()].filter((view) => view.isDynamicView());
+  return [...model.relationships()]
+    .filter((r) => (r.source.id === "user" && inProduct(r.target.id)) || (inProduct(r.source.id) && inProduct(r.target.id)))
+    .filter((r) => !dynamics.some((view) => view.includesRelation(r)))
+    .map((r) => `${r.source.id} -> ${r.target.id} is not a step of any dynamic view`);
+}
+
+/**
  * One hand-built model per rule, keyed by the rule's export name, that breaks exactly that rule.
  * test/model.test.mjs fails when a rule has no entry here or does not fire on it, so a rule proven
  * only against a clean model cannot pass while broken (ADR-0043).
@@ -77,5 +89,15 @@ export const violating = {
   anchored: (() => {
     const element = (id, kind) => ({ id, kind, technology: "x", description: { isEmpty: false }, links: [] });
     return { elements: () => [element("chassis.verify", "script")], relationships: () => [] };
+  })(),
+  runtimeFlowDocumented: (() => {
+    const web = { id: "product.web", kind: "webapp", technology: "x", description: { isEmpty: false } };
+    const api = { id: "product.apiGo", kind: "service", technology: "x", description: { isEmpty: false } };
+    const dynamic = { isDynamicView: () => true, includesRelation: () => false };
+    return {
+      views: () => [dynamic],
+      relationships: () => [{ id: "r1", source: web, target: api }],
+      elements: () => [web, api],
+    };
   })(),
 };
