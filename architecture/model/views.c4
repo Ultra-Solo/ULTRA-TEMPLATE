@@ -14,4 +14,61 @@ views {
     title 'Repository machinery'
     include chassis, chassis.*, contributor
   }
+
+  // ADR-0049: the one runtime question the static views do not answer — what happens on a task move,
+  // and where an illegal move is refused. Steps carry the markers of the elements they name, so a
+  // generated project keeps exactly the steps whose elements it keeps.
+  dynamic view taskMove {
+    title 'Moving a task, and the refused illegal move'
+
+    // ultra:begin web
+    user -> product.web 'asks to move a task to another status'
+    // ultra:end web
+    // ultra:begin mcp-server
+    user -> product.mcpServer 'asks the assistant to move a task'
+    // ultra:end mcp-server
+    // ultra:begin go-service
+    user -> product.apiGo 'calls POST /api/tasks/{id}/move directly'
+    // ultra:end go-service
+    // ultra:begin ts-service
+    user -> product.apiTs 'calls POST /api/tasks/{id}/move directly'
+    // ultra:end ts-service
+    // ultra:begin py-service
+    user -> product.apiPy 'calls POST /api/tasks/{id}/move directly'
+    // ultra:end py-service
+    // ultra:begin ts-library
+    user -> product.tsLibrary 'reads the published package documentation'
+    // ultra:end ts-library
+
+    // ultra:begin web&go-service
+    product.web -> product.apiGo 'POST /api/tasks/{id}/move'
+    product.apiGo -> product.web '200 OK: the task moved'
+    product.apiGo -> product.web '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    // ultra:end web&go-service
+    // ultra:begin web&ts-service
+    product.web -> product.apiTs 'POST /api/tasks/{id}/move'
+    product.apiTs -> product.web '200 OK: the task moved'
+    product.apiTs -> product.web '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    // ultra:end web&ts-service
+    // ultra:begin web&py-service
+    product.web -> product.apiPy 'POST /api/tasks/{id}/move'
+    product.apiPy -> product.web '200 OK: the task moved'
+    product.apiPy -> product.web '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    // ultra:end web&py-service
+    // ultra:begin mcp-server&go-service
+    product.mcpServer -> product.apiGo 'move-task tool calls POST /api/tasks/{id}/move'
+    product.apiGo -> product.mcpServer '200 OK: the task moved'
+    product.apiGo -> product.mcpServer '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    // ultra:end mcp-server&go-service
+    // ultra:begin mcp-server&ts-service
+    product.mcpServer -> product.apiTs 'move-task tool calls POST /api/tasks/{id}/move'
+    product.apiTs -> product.mcpServer '200 OK: the task moved'
+    product.apiTs -> product.mcpServer '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    // ultra:end mcp-server&ts-service
+    // ultra:begin mcp-server&py-service
+    product.mcpServer -> product.apiPy 'move-task tool calls POST /api/tasks/{id}/move'
+    product.apiPy -> product.mcpServer '200 OK: the task moved'
+    product.apiPy -> product.mcpServer '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    // ultra:end mcp-server&py-service
+  }
 }
