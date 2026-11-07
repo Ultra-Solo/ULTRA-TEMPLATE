@@ -68,11 +68,16 @@ export function runtimeFlowDocumented(model) {
 }
 
 // The flows a dynamic view would narrate: a user entering the product, or product talking to product.
-// Both rules over dynamic views share this premise, so it is stated once here and not in each of them.
 const productRuntime = (model) =>
   [...model.relationships()].filter(
     (r) => (r.source.id === "user" && inProduct(r.target.id)) || (inProduct(r.source.id) && inProduct(r.target.id)),
   );
+
+// What the product is made of, its own system aside. system.c4 declares `product` unconditionally and
+// every element inside it carries the marker of the feature that draws it, so `--features architecture`
+// generates a product that exists and is empty. "Nothing to narrate" is that, and only that: a product
+// with a service and no client has contents, and a view of it that shows no step is the defect.
+const productElements = (model) => [...model.elements()].filter((e) => e.id !== "product" && inProduct(e.id));
 
 // --- What the topological rules cannot see -------------------------------------------------------
 //
@@ -139,8 +144,10 @@ export function routesDeclared(model, options = {}) {
 export function viewsSaySomething(model) {
   // A model with no product in it — `--features architecture` generates one — has nothing to narrate,
   // so a dynamic view without steps is the only honest view there, not a defect. Reporting it made the
-  // rule fire on the clean model the generator's own test blesses. The premise is checked, not assumed.
-  if (productRuntime(model).length === 0) return [];
+  // rule fire on the clean model the generator's own test blesses. The premise is what the product is
+  // made of, not the flows it happens to have: a product with a service and no client still has
+  // something to narrate, and the checked premise says so.
+  if (productElements(model).length === 0) return [];
   return dynamicViews(model).flatMap((view) => {
     const steps = stepsOf(view);
     if (steps.length === 0) return [`${view.id} is a dynamic view with no steps: it narrates nothing`];
@@ -217,8 +224,8 @@ export const violating = {
     views: () => [dynamicView("taskMove", [step("product.web", "product.api", "POST /api/tasks/{id}/move")])],
   },
   viewsSaySomething: {
-    elements: () => [],
-    relationships: () => [{ source: element("product.web", "webapp"), target: element("product.api", "service") }],
+    elements: () => [element("product.api", "service")],
+    relationships: () => [],
     views: () => [dynamicView("taskMove", [])],
   },
   interactionsAnswered: {

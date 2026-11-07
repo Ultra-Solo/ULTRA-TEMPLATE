@@ -20,8 +20,10 @@ test("the model satisfies every rule", () => {
 // generator's own test insists it passes its checks. Nothing is narratable there, so nothing may be
 // reported — a rule whose premise is absent must stay silent rather than blame the empty view.
 test("a model with nothing to narrate satisfies every rule", () => {
+  // The shape `--features architecture` generates: `product` is declared (system.c4 declares it
+  // unconditionally) but every element inside it is marker-wrapped, so the system is an empty shell.
   const chassisOnly = {
-    elements: () => [],
+    elements: () => [{ id: "product", kind: "system" }],
     relationships: () => [],
     views: () => [{ id: "taskMove", isDynamicView: () => true, edges: () => [], includesRelation: () => false }],
   };
@@ -43,7 +45,11 @@ test("viewsSaySomething reports an empty view and an unlabelled step", () => {
     edges: () => [{ isStep: () => true, source: flow.source, target: flow.target, label }],
     includesRelation: () => false,
   });
-  const withFlows = (views) => ({ elements: () => [], relationships: () => [flow], views: () => views });
+  const withFlows = (views) => ({
+    elements: () => [...new Set([flow.source.id, flow.target.id].map((id) => built(id, "service")))],
+    relationships: () => [flow],
+    views: () => views,
+  });
 
   assert.deepEqual(rules.viewsSaySomething(withFlows([emptyView("taskMove")])), [
     "taskMove is a dynamic view with no steps: it narrates nothing",
@@ -60,6 +66,14 @@ test("viewsSaySomething reports an empty view and an unlabelled step", () => {
     }),
     [],
   );
+});
+
+// The premise `viewsSaySomething` excused was "no runtime flows", but a product can have contents and
+// no flow — a service without a client. There the view has something to narrate and narrates nothing.
+test("viewsSaySomething reports an empty view when the product has contents but no flow", () => {
+  const view = { id: "taskMove", isDynamicView: () => true, edges: () => [], includesRelation: () => false };
+  const noFlow = { elements: () => [{ id: "product.api", kind: "service" }], relationships: () => [], views: () => [view] };
+  assert.deepEqual(rules.viewsSaySomething(noFlow), ["taskMove is a dynamic view with no steps: it narrates nothing"]);
 });
 
 // A rule proven only against a clean model passes just as well when it is broken (ADR-0043).

@@ -19,8 +19,9 @@ views {
   // and where an illegal move is refused. Steps carry the markers of the elements they name, so a
   // generated project keeps exactly the steps whose elements it keeps. A client and its service are
   // marked as a *pair* (`web&go-service`): an any-of (`web|go-service`) block would keep a step in a
-  // project that has only one of the two endpoints. The route on every arrow is checked against
-  // `scripts/contract/openapi.json` by `routesDeclared` — prose no check can see is prose that drifts.
+  // project that has only one of the two endpoints. `routesDeclared` checks the route on every arrow
+  // against the published contract, but no check reads a comment — so none of this prose names a file
+  // (ADR-0051).
   dynamic view taskMove {
     title 'Moving a task: every client, and where an illegal move is refused'
 
@@ -44,8 +45,7 @@ views {
     // ultra:end ts-library
 
     // The web client sends a move it judged legal; the service judges it again against the task rules
-    // (scripts/rules/task-rules.json) and either moves the task or refuses without touching the store
-    // (ADR-0019).
+    // and either moves the task or refuses without touching the store (ADR-0019).
     // ultra:begin web&go-service
     product.web -> product.apiGo 'PATCH /api/tasks/{id}/status'
     alt {
@@ -68,13 +68,15 @@ views {
     }
     // ultra:end web&py-service
 
+    // ultra:begin mcp-server
     // The assistant checks the status before it calls anything, reads the task, and judges the move
     // by the same task rules the service uses (scripts/rules/task-rules.json): an unknown status is
     // refused without any call, a forbidden transition for the cost of one GET, and no move request
     // leaves the process either way (services/mcp-server/src/application/task-tools.ts). The 409 here
     // is therefore always a race: the local check accepted the move, and another change reached the
-    // task before this one did. A lost compare-and-set is not a 409 anywhere — the services retry it
-    // against the task as the other change left it (services/api-go/internal/usecase/task.go).
+    // task before this one did. A lost compare-and-set is not a 409 anywhere — every task service
+    // retries it against the task as the other change left it (ADR-0019).
+    // ultra:end mcp-server
     // ultra:begin mcp-server&go-service
     product.mcpServer -> product.mcpServer 'refuses an illegal move locally (isError): no move request leaves the process'
     product.mcpServer -> product.apiGo 'PATCH /api/tasks/{id}/status, only when the local check accepts the move'
