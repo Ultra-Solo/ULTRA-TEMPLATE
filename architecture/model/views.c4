@@ -17,9 +17,13 @@ views {
 
   // ADR-0049: the one runtime question the static views do not answer — what happens on a task move,
   // and where an illegal move is refused. Steps carry the markers of the elements they name, so a
-  // generated project keeps exactly the steps whose elements it keeps.
+  // generated project keeps exactly the steps whose elements it keeps. A client and its service are
+  // marked as a *pair* (`web&go-service`): an any-of (`web|go-service`) block would keep a step in a
+  // project that has only one of the two endpoints. `routesDeclared` checks the route on every arrow
+  // against the published contract, but no check reads a comment — so none of this prose names a file
+  // (ADR-0051).
   dynamic view taskMove {
-    title 'Moving a task, and the refused illegal move'
+    title 'Moving a task: every client, and where an illegal move is refused'
 
     // ultra:begin web
     user -> product.web 'asks to move a task to another status'
@@ -28,47 +32,74 @@ views {
     user -> product.mcpServer 'asks the assistant to move a task'
     // ultra:end mcp-server
     // ultra:begin go-service
-    user -> product.apiGo 'calls POST /api/tasks/{id}/move directly'
+    user -> product.apiGo 'calls PATCH /api/tasks/{id}/status directly'
     // ultra:end go-service
     // ultra:begin ts-service
-    user -> product.apiTs 'calls POST /api/tasks/{id}/move directly'
+    user -> product.apiTs 'calls PATCH /api/tasks/{id}/status directly'
     // ultra:end ts-service
     // ultra:begin py-service
-    user -> product.apiPy 'calls POST /api/tasks/{id}/move directly'
+    user -> product.apiPy 'calls PATCH /api/tasks/{id}/status directly'
     // ultra:end py-service
     // ultra:begin ts-library
     user -> product.tsLibrary 'reads the published package documentation'
     // ultra:end ts-library
 
+    // The web client sends a move it judged legal; the service judges it again against the task rules
+    // and either moves the task or refuses without touching the store (ADR-0019).
     // ultra:begin web&go-service
-    product.web -> product.apiGo 'POST /api/tasks/{id}/move'
-    product.apiGo -> product.web '200 OK: the task moved'
-    product.apiGo -> product.web '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    product.web -> product.apiGo 'PATCH /api/tasks/{id}/status'
+    alt {
+      when 'the move is legal' { product.apiGo -> product.web '200 OK: the task moved' }
+      else 'the rules do not allow this move' { product.apiGo -> product.web '409 Conflict: the store is untouched (ADR-0019)' }
+    }
     // ultra:end web&go-service
     // ultra:begin web&ts-service
-    product.web -> product.apiTs 'POST /api/tasks/{id}/move'
-    product.apiTs -> product.web '200 OK: the task moved'
-    product.apiTs -> product.web '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    product.web -> product.apiTs 'PATCH /api/tasks/{id}/status'
+    alt {
+      when 'the move is legal' { product.apiTs -> product.web '200 OK: the task moved' }
+      else 'the rules do not allow this move' { product.apiTs -> product.web '409 Conflict: the store is untouched (ADR-0019)' }
+    }
     // ultra:end web&ts-service
     // ultra:begin web&py-service
-    product.web -> product.apiPy 'POST /api/tasks/{id}/move'
-    product.apiPy -> product.web '200 OK: the task moved'
-    product.apiPy -> product.web '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    product.web -> product.apiPy 'PATCH /api/tasks/{id}/status'
+    alt {
+      when 'the move is legal' { product.apiPy -> product.web '200 OK: the task moved' }
+      else 'the rules do not allow this move' { product.apiPy -> product.web '409 Conflict: the store is untouched (ADR-0019)' }
+    }
     // ultra:end web&py-service
+
+    // ultra:begin mcp-server
+    // The assistant checks the status before it calls anything, reads the task, and judges the move
+    // by the same task rules the service uses (scripts/rules/task-rules.json): an unknown status is
+    // refused without any call, a forbidden transition for the cost of one GET, and no move request
+    // leaves the process either way (services/mcp-server/src/application/task-tools.ts). The 409 here
+    // is therefore always a race: the local check accepted the move, and another change reached the
+    // task before this one did. A lost compare-and-set is not a 409 anywhere — every task service
+    // retries it against the task as the other change left it (ADR-0019).
+    // ultra:end mcp-server
     // ultra:begin mcp-server&go-service
-    product.mcpServer -> product.apiGo 'move-task tool calls POST /api/tasks/{id}/move'
-    product.apiGo -> product.mcpServer '200 OK: the task moved'
-    product.apiGo -> product.mcpServer '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    product.mcpServer -> product.mcpServer 'refuses an illegal move locally (isError): no move request leaves the process'
+    product.mcpServer -> product.apiGo 'PATCH /api/tasks/{id}/status, only when the local check accepts the move'
+    alt {
+      when 'the move is legal' { product.apiGo -> product.mcpServer '200 OK: the task moved' }
+      else 'the rules do not allow this move' { product.apiGo -> product.mcpServer '409 Conflict: the store is untouched (ADR-0019)' }
+    }
     // ultra:end mcp-server&go-service
     // ultra:begin mcp-server&ts-service
-    product.mcpServer -> product.apiTs 'move-task tool calls POST /api/tasks/{id}/move'
-    product.apiTs -> product.mcpServer '200 OK: the task moved'
-    product.apiTs -> product.mcpServer '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    product.mcpServer -> product.mcpServer 'refuses an illegal move locally (isError): no move request leaves the process'
+    product.mcpServer -> product.apiTs 'PATCH /api/tasks/{id}/status, only when the local check accepts the move'
+    alt {
+      when 'the move is legal' { product.apiTs -> product.mcpServer '200 OK: the task moved' }
+      else 'the rules do not allow this move' { product.apiTs -> product.mcpServer '409 Conflict: the store is untouched (ADR-0019)' }
+    }
     // ultra:end mcp-server&ts-service
     // ultra:begin mcp-server&py-service
-    product.mcpServer -> product.apiPy 'move-task tool calls POST /api/tasks/{id}/move'
-    product.apiPy -> product.mcpServer '200 OK: the task moved'
-    product.apiPy -> product.mcpServer '409 Conflict: the move is illegal, the store is untouched (ADR-0019)'
+    product.mcpServer -> product.mcpServer 'refuses an illegal move locally (isError): no move request leaves the process'
+    product.mcpServer -> product.apiPy 'PATCH /api/tasks/{id}/status, only when the local check accepts the move'
+    alt {
+      when 'the move is legal' { product.apiPy -> product.mcpServer '200 OK: the task moved' }
+      else 'the rules do not allow this move' { product.apiPy -> product.mcpServer '409 Conflict: the store is untouched (ADR-0019)' }
+    }
     // ultra:end mcp-server&py-service
   }
 }

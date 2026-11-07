@@ -395,6 +395,7 @@ model {
       link ../../template/no-version.test.mjs 'no-version.test.mjs'
       link ../../template/provenance.test.mjs 'provenance.test.mjs'
       link ../../template/template-update.test.mjs 'template-update.test.mjs'
+      link ../../template/guides.mjs 'guides.mjs'
       link ../../.github/workflows/template-test.yml 'template-test.yml'
     }
     contributor -> template 'generates a project from'
