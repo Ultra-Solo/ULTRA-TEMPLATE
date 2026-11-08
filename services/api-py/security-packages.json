@@ -89,7 +89,7 @@
         },
         "armel": {
           "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_armel.deb",
-          "sha256": "4ed885dbb6315d1875977a133515f437e264c7c73f6c8bfe220e9f642249076118"
+          "sha256": "4ed885dbb6315d1875977a133515f437e264c73f6c8bfe220e9f642249076118"
         },
         "armhf": {
           "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_armhf.deb",
@@ -97,7 +97,7 @@
         },
         "i386": {
           "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_i386.deb",
-          "sha256": "6c10009e522e0fafde99b5e06dd8d81a353a74e5a439ee8b42d85565cda9b32"
+          "sha256": "6c10009e522e0fafde99b5e06dd8d81a353a74ea5a439ee8b42d85565cda9b32"
         },
         "ppc64el": {
           "path": "pool/updates/main/o/openssl/openssl_3.5.7-1~deb13u3_ppc64el.deb",
@@ -130,7 +130,7 @@
         },
         "armhf": {
           "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_armhf.deb",
-          "sha256": "4dfd45ef1125d9aad8a78a23b9ab73e8cb8ba1ee103ef55c9c56befe3bca39787e"
+          "sha256": "4dfd45ef1125d9aad8a78a23b9ab73ec8ba1ee103ef55c9c56befe3bca39787e"
         },
         "i386": {
           "path": "pool/updates/main/o/openssl/openssl-provider-legacy_3.5.7-1~deb13u3_i386.deb",
