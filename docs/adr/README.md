@@ -33,7 +33,7 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0021](0021-bound-request-receive-time.md) | Bound request receive time | Accepted, amends 0018 |
 | [0022](0022-advance-the-release-when-generated-output-changes.md) | Advance the release when generated output changes | Accepted, amends 0020, amended by 0023, superseded by 0041 |
 | [0023](0023-reconstruct-projects-from-exact-source.md) | Reconstruct projects from exact source | Accepted, amends 0022, amended by 0041 |
-| [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003 |
+| [0024](0024-lock-runtime-security-payloads.md) | Lock runtime security payloads | Accepted, amends 0003, amended by 0052 |
 | [0025](0025-prioritize-verified-foundation-before-capability-expansion.md) | Prioritize verified foundation before capability expansion | Accepted, amended by 0026 |
 | [0026](0026-remap-the-foundation-milestones-to-versions.md) | Remap the foundation milestones to versions | Accepted, amends 0025, amended by 0027 |
 | [0027](0027-ship-run-and-diagnose-before-the-browser-smoke-test.md) | Ship run and diagnose before the browser smoke test | Accepted, amends 0026, 0014, amended by 0028 |
@@ -59,3 +59,6 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0047](0047-draw-every-workflow-and-scripts-file-in-the-model.md) | Draw every workflow and every scripts/ file in the architecture model | Accepted, amends 0046, amended by 0048 |
 | [0048](0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) | Draw every tracked file outside the modules in the architecture model | Accepted, amends 0044, amends 0047 |
 | [0049](0049-narrate-every-runtime-flow-as-a-dynamic-view.md) | Narrate every runtime flow as a dynamic view | Proposed |
+| [0050](0050-hold-a-route-claim-to-the-contract.md) | Hold a diagram's route claim to the API contract | Proposed, amended by 0051 |
+| [0051](0051-a-generated-project-names-only-what-it-ships.md) | A generated project's guides name only what the project ships | Proposed, amends 0050 |
+| [0052](0052-refresh-the-runtime-security-lock-when-the-vendor-publishes-a-fix.md) | Refresh the runtime security lock when the vendor publishes a fix | Proposed, amends 0024 |

@@ -59,11 +59,11 @@ def test_a_newer_pinned_base_is_never_downgraded(monkeypatch: MonkeyPatch) -> No
         patch.install([_package("first", b"first")], lambda _url: pytest.fail("must not download"))
 
 
-def test_all_base_architectures_have_four_complete_locks_and_unknown_architectures_fail() -> None:
+def test_all_base_architectures_have_five_complete_locks_and_unknown_architectures_fail() -> None:
     lock = Path(__file__).parent.parent / "security-packages.json"
     for architecture in ["amd64", "arm64", "armel", "armhf", "i386", "ppc64el", "riscv64", "s390x"]:
         packages = patch.load_packages(lock, architecture)
-        assert len(packages) == 4
+        assert len(packages) == 5
         assert all(package.architecture == architecture for package in packages)
     with pytest.raises(patch.PatchError, match="No reviewed payload"):
         patch.load_packages(lock, "unknown")

@@ -1,6 +1,6 @@
 # ADR-0024: Lock runtime security payloads
 
-**Status:** Accepted · Amends [ADR-0003](0003-pin-third-party-code.md) · **Date:** 2026-10-01
+**Status:** Accepted · Amends [ADR-0003](0003-pin-third-party-code.md) · Amended by [ADR-0052](0052-refresh-the-runtime-security-lock-when-the-vendor-publishes-a-fix.md) · **Date:** 2026-10-01
 
 ## Context
 

@@ -149,6 +149,43 @@
           "sha256": "ea4bb842aa29fddef9f1eb7173be81f9e51c090dafa6bb8b86977a63fbf871aa"
         }
       }
+    },
+    "zlib1g": {
+      "version": "1:1.3.dfsg+really1.3.1-1+deb13u1",
+      "files": {
+        "amd64": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_amd64.deb",
+          "sha256": "8c27c342230503b73dfde629642c3b352e87b554e06d60cf58772f236a305ceb"
+        },
+        "arm64": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_arm64.deb",
+          "sha256": "0e41b3d7ad8ad7fcd36dd4d61ca91a70018478fc4af652e044f4be770784ddff"
+        },
+        "armel": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_armel.deb",
+          "sha256": "1ec5199d5b4b6ac8ff18cdcd80f46fc1342b8e3367aff4ac4f078dcf22ccae0a"
+        },
+        "armhf": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_armhf.deb",
+          "sha256": "b16974b6df584157f5d2bb0f3a75e6688ee6d39f7b7f7e9261b445933e7c12ad"
+        },
+        "i386": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_i386.deb",
+          "sha256": "afae7e13993b441bcedf77b1497d81483ed0cec29c2ed90abbc03a46edb93754"
+        },
+        "ppc64el": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_ppc64el.deb",
+          "sha256": "b78324aed52229bf4b984553f68bf710b2faa41da43250355d072d2ab2f2d11c"
+        },
+        "riscv64": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_riscv64.deb",
+          "sha256": "9ef7002c66324b32b66d894dbe2fd045db8fab38da32be5007c4a01ed0a7b495"
+        },
+        "s390x": {
+          "path": "pool/updates/main/z/zlib/zlib1g_1.3.dfsg+really1.3.1-1+deb13u1_s390x.deb",
+          "sha256": "b1ba54fa14d8bd9ecb4ef322ca4bc5abb67a68ce5914712bacd401b122d959e5"
+        }
+      }
     }
   }
 }

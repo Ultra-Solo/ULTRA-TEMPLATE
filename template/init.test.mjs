@@ -8,6 +8,7 @@ import { sourceFixture } from "./test-source.mjs";
 import { presentModules } from "../scripts/modules.mjs";
 import { PROVENANCE_FILE } from "../scripts/template-source.mjs";
 import { checkGate } from "../scripts/check-hygiene.mjs";
+import { absentPaths, assertEveryGuideNamesWhatShips, assertGuidesNameWhatShips } from "./guides.mjs";
 import {
   applyMarkers, DESCRIPTION_ANCHOR, describeProject, InitError, loadManifest, MARKER_RE, originDefaults, originIdentity, plan, recordDescription,
   removedPaths, replaceIdentity, resolveSelection, ROOT, toProjectName, validateDescription, validateIdentity, validateManifest,
@@ -335,10 +336,7 @@ test("every preset generates a project that passes its own chassis checks and do
     assert.doesNotMatch(readFileSync(join(out, ".github/workflows/verify.yml"), "utf8"), /template-presets|template-release-check|template-test\.yml/);
     assert.ok(!readme.includes(DESCRIPTION_ANCHOR), `${preset}: README keeps the description anchor`);
     assert.ok(readme.includes(`\n${describeProject(manifest, new Set(selected))}\n`), `${preset}: README has no description`);
-    // What this project does not have. A path several features own goes only when none of its owners
-    // is selected, so an unselected feature's path may still be here because another one keeps it.
-    const absent = [...new Set(Object.values(manifest.features).flatMap((feature) => feature.paths))]
-      .filter((path) => !Object.entries(manifest.features).some(([id, f]) => selected.includes(id) && f.paths.includes(path)));
+    const absent = absentPaths(manifest, selected);
     for (const path of absent) {
       assert.ok(!readme.includes(`](${path}`) && !readme.includes(`\`${path}`), `${preset}: README still points at ${path}`);
     }
@@ -347,20 +345,21 @@ test("every preset generates a project that passes its own chassis checks and do
     // it step by step — to a directory that is not there. A path is looked for only where it cannot be
     // mistaken for prose: `architecture` is a word, `apps/web` is not, and the last segment counts only
     // under services/ and .claude/skills/. ADRs are not guides: a decision record names what it decided.
+    // The sweep itself lives in template/guides.mjs so both matrices share it.
     const guides = ["AGENTS.md", "README.md", "CONTRIBUTING.md", "docs/README.md", ...tracked.filter((f) => f.startsWith(".claude/skills/"))];
     for (const file of guides.filter((f) => existsSync(join(out, f)))) {
-      const text = readFileSync(join(out, file), "utf8");
-      for (const path of absent) {
-        if (/[/.]/.test(path)) assert.ok(!text.includes(path), `${preset}: ${file} names ${path}, which this project does not have`);
-        const leaf = path.split("/").at(-1);
-        if (!/^(services|\.claude\/skills)\//.test(path)) continue;
-        assert.ok(!text.includes(leaf), `${preset}: ${file} names ${leaf}, which this project does not have`);
-      }
+      assertGuidesNameWhatShips(out, selected, preset, file);
     }
-    // Nothing a project keeps may send its reader to a file only the template has.
+    // Nothing a project keeps may send its reader to a file only the template has. Every file the
+    // template itself holds is checked as a full path, but only in files outside the chassis
+    // machinery (scripts/, test/, data/, .github/, architecture/), which legitimately names
+    // `template/` while the template exists; a guide that does would send its reader nowhere.
+    const templateFiles = execFileSync("git", ["ls-files", "template/"], { encoding: "utf8" }).trim().split("\n");
     for (const file of tracked) {
+      const chassis = ["scripts/", "test/", "data/", ".github/", "architecture/"].some((p) => file.startsWith(p));
+      if (chassis) continue;
       const text = readFileSync(join(out, file), "utf8");
-      for (const only of ["template-test.yml", "template-release.yml", "template/README.md"]) {
+      for (const only of templateFiles) {
         assert.ok(!text.includes(only), `${preset}: ${file} mentions ${only}, which the project does not have`);
       }
     }
@@ -383,6 +382,9 @@ test("every feature on its own generates a project that passes its chassis check
       assert.doesNotThrow(() => execFileSync("node", [check], { cwd: out, stdio: "pipe" }), `${id}: ${check}`);
     }
     assert.equal(existsSync(join(out, "template")), false, `${id}: template/ survived`);
+    // A feature selected alone is the thinnest project the generator can make, so it is where prose
+    // that only one other feature's files make true is most likely to be left standing (ADR-0051).
+    assertEveryGuideNamesWhatShips(out, [id], id);
   }
 });
 

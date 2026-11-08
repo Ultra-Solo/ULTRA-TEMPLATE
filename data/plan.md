@@ -88,13 +88,20 @@ entry per gate check, in status order: `blocked` → `pending` → `in_progress`
 ### facts-routes
 - id: facts-routes
 - status: pending
-- trigger: an external-facing fact (status, transition, port, limit) drifts from
-  `scripts/rules/task-rules.json` / `scripts/contract/tasks-api.json`
+- trigger: an external-facing fact (status, transition, port, limit, route) drifts from
+  `scripts/rules/task-rules.json` / `scripts/contract/tasks-api.json` /
+  `scripts/contract/openapi.json`
 - verdict: never rewrite the SoT; a facts mismatch opens a minimal PR and fails verify
-  until a human applies it
+  until a human applies it. A route is a fact by the same definition: `check-facts.mjs`
+  compares a module's printed copies of it, and `routesDeclared` in
+  `architecture/rules.mjs` compares a diagram's claims about it with
+  `scripts/contract/openapi.json`, so a route reaches the model only after it reaches
+  the contract (ADR-0050). Neither repairs the SoT
 - evidence:
     PASS node scripts/check-facts.mjs in the current tree — every module's facts match the files that state them
     FAIL node scripts/check-facts.mjs with mcp-server's apiDefaultPort drifted to 8081 — "mcp-server apiDefaultPort is 8081, expected 8080", exit 1; restored, exit 0
+    PASS routesDeclared on the tree ADR-0050 ships — 0 findings in architecture/, `npm run verify` exit 0, `node --test test/model.test.mjs` 4/4 pass
+    FAIL routesDeclared on the tree ADR-0049 opened — the dynamic view named `POST /api/tasks/{id}/move`, which `scripts/contract/openapi.json` does not declare: "taskMove: step \"POST /api/tasks/{id}/move\" names POST /api/tasks/{id}/move, which the contract does not declare", 9 findings at the `all` preset and 1/1/2 at go-api/py-api/fullstack-ts, exit 1; unchanged in every module other than architecture/
 
 ### drift-proof
 - id: drift-proof
