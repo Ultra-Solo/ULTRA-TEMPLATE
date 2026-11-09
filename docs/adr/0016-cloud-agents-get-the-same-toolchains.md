@@ -1,6 +1,6 @@
 # ADR-0016: Cloud agents get the same toolchains
 
-**Status:** Accepted, amends [ADR-0009](0009-where-agent-adapters-and-skills-live.md) and [ADR-0011](0011-what-local-verify-guarantees.md) · **Date:** 2026-09-24
+**Status:** Accepted · Amends [ADR-0009](0009-where-agent-adapters-and-skills-live.md) and [ADR-0011](0011-what-local-verify-guarantees.md) · Amended by [ADR-0053](0053-run-agent-env-on-the-oldest-cached-node.md) · **Date:** 2026-09-24
 
 ## Context
 
