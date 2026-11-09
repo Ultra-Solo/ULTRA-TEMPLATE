@@ -25,7 +25,7 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0013](0013-declare-each-fact-once.md) | Declare each fact once, then derive it or check every copy | Accepted, amends 0004, 0010, 0012, amended by 0018 |
 | [0014](0014-modules-describe-themselves.md) | Modules describe themselves in `module.json` | Accepted, amends 0004, 0008, 0011, amended by 0027 |
 | [0015](0015-one-manifest-for-hand-pinned-tools.md) | Hand-pinned tools live in one manifest | Accepted, amends 0003, 0011, amended by 0017 |
-| [0016](0016-cloud-agents-get-the-same-toolchains.md) | Cloud agents get the same toolchains | Accepted, amends 0009, 0011 |
+| [0016](0016-cloud-agents-get-the-same-toolchains.md) | Cloud agents get the same toolchains | Accepted, amends 0009, 0011, amended by 0053 |
 | [0017](0017-prove-the-supply-chain-before-it-runs.md) | Prove every pin before it runs, not where it first runs | Accepted, amends 0003, 0011, 0015, amended by 0041 |
 | [0018](0018-every-task-service-reads-and-answers-alike.md) | Every task service reads a request and answers it the same way | Accepted, amends 0010, 0013, amended by 0021, 0036 |
 | [0019](0019-moves-are-compare-and-set-on-the-store.md) | Moves are compare-and-set on the store | Accepted, amends 0005 |
@@ -62,3 +62,4 @@ From ADR-0042 on, every record also carries an `## Enforcement` section naming t
 | [0050](0050-hold-a-route-claim-to-the-contract.md) | Hold a diagram's route claim to the API contract | Proposed, amended by 0051 |
 | [0051](0051-a-generated-project-names-only-what-it-ships.md) | A generated project's guides name only what the project ships | Proposed, amends 0050 |
 | [0052](0052-refresh-the-runtime-security-lock-when-the-vendor-publishes-a-fix.md) | Refresh the runtime security lock when the vendor publishes a fix | Proposed, amends 0024 |
+| [0053](0053-run-agent-env-on-the-oldest-cached-node.md) | Run the agent environment on the oldest Node the runner caches | Proposed, amends 0016 |

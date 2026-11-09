@@ -19,7 +19,7 @@
  *
  * Everything lands under .tools/, which git ignores, and reaches the session through $CLAUDE_ENV_FILE. A
  * checksum from the server that also served the file proves the download is whole, not who made it.
- * Written for Node 18 and later, because it may be what installs the Node .node-version names.
+ * Written for Node 22 and later, because it may be what installs the Node .node-version names.
  * Exit 0 ready, or nothing to do · 2 a step failed, with the reason.
  */
 import { spawnSync } from "node:child_process";
@@ -31,7 +31,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** The oldest Node major this script runs on; CI runs it there. */
-export const OLDEST_NODE = 18;
+export const OLDEST_NODE = 22;
 export const TOOLS_DIR = join(ROOT, ".tools");
 
 class EnvError extends Error {}
