@@ -1,6 +1,6 @@
 # ADR-0049: Narrate every runtime flow as a dynamic view
 
-**Status:** Proposed · **Date:** 2026-11-06
+**Status:** Accepted · **Date:** 2026-11-06
 
 ## Context
 

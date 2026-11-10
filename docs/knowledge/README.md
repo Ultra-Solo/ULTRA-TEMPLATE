@@ -30,11 +30,11 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
-- [ADR-0053](../adr/0053-run-agent-env-on-the-oldest-cached-node.md) Run the agent environment on the oldest Node the runner caches (Proposed)
-- [ADR-0052](../adr/0052-refresh-the-runtime-security-lock-when-the-vendor-publishes-a-fix.md) Refresh the runtime security lock when the vendor publishes a fix (Proposed)
-- [ADR-0051](../adr/0051-a-generated-project-names-only-what-it-ships.md) A generated project's guides name only what the project ships (Proposed)
-- [ADR-0050](../adr/0050-hold-a-route-claim-to-the-contract.md) Hold a diagram's route claim to the API contract (Proposed)
-- [ADR-0049](../adr/0049-narrate-every-runtime-flow-as-a-dynamic-view.md) Narrate every runtime flow as a dynamic view (Proposed)
+- [ADR-0053](../adr/0053-run-agent-env-on-the-oldest-cached-node.md) Run the agent environment on the oldest Node the runner caches (Accepted)
+- [ADR-0052](../adr/0052-refresh-the-runtime-security-lock-when-the-vendor-publishes-a-fix.md) Refresh the runtime security lock when the vendor publishes a fix (Accepted)
+- [ADR-0051](../adr/0051-a-generated-project-names-only-what-it-ships.md) A generated project's guides name only what the project ships (Accepted)
+- [ADR-0050](../adr/0050-hold-a-route-claim-to-the-contract.md) Hold a diagram's route claim to the API contract (Accepted)
+- [ADR-0049](../adr/0049-narrate-every-runtime-flow-as-a-dynamic-view.md) Narrate every runtime flow as a dynamic view (Accepted)
 - [ADR-0048](../adr/0048-draw-every-tracked-file-outside-the-modules-in-the-model.md) Draw every tracked file outside the modules in the architecture model (Accepted)
 - [ADR-0047](../adr/0047-draw-every-workflow-and-scripts-file-in-the-model.md) Draw every workflow and every scripts/ file in the architecture model (Accepted)
 - [ADR-0046](../adr/0046-draw-every-chassis-script-in-the-model.md) Draw every chassis script in the architecture model (Accepted, amended by ADR-0047)

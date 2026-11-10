@@ -1,6 +1,6 @@
 # ADR-0052: Refresh the runtime security lock when the vendor publishes a fix
 
-**Status:** Proposed · Amends [ADR-0024](0024-lock-runtime-security-payloads.md) · **Date:** 2026-11-07
+**Status:** Accepted · Amends [ADR-0024](0024-lock-runtime-security-payloads.md) · **Date:** 2026-11-07
 
 ## Context
 

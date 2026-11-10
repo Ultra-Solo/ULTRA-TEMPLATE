@@ -1,6 +1,6 @@
 # ADR-0051: A generated project's guides name only what the project ships
 
-**Status:** Proposed · Amends [ADR-0050](0050-hold-a-route-claim-to-the-contract.md) · **Date:** 2026-11-07
+**Status:** Accepted · Amends [ADR-0050](0050-hold-a-route-claim-to-the-contract.md) · **Date:** 2026-11-07
 
 ## Context
 
