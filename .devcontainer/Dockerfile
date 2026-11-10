@@ -2,6 +2,11 @@
 # image with no diff here. Dependabot's docker entry for /.devcontainer proposes each new digest.
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae
 
+# ultra:begin go-service
+# The Go devcontainer feature installs pkg-config, which Ubuntu 26.04 dropped in favour of pkgconf
+# (devcontainers/features#1655); without this layer the feature fails to install on a 26.04 runner.
+RUN apt-get update && apt-get install -y --no-install-recommends pkgconf && rm -rf /var/lib/apt/lists/*
+# ultra:end go-service
 # ultra:begin architecture
 # likec4's build lays out views with Graphviz's dot and unflatten; GitHub's runner images ship them,
 # this base image does not, so the architecture build would fail inside the container without this layer.
