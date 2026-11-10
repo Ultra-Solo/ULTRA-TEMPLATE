@@ -1,6 +1,6 @@
 # ADR-0050: Hold a diagram's route claim to the API contract
 
-**Status:** Proposed · Amended by [ADR-0051](0051-a-generated-project-names-only-what-it-ships.md) · **Date:** 2026-11-07
+**Status:** Accepted · Amended by [ADR-0051](0051-a-generated-project-names-only-what-it-ships.md) · **Date:** 2026-11-07
 
 ## Context
 

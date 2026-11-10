@@ -1,6 +1,6 @@
 # ADR-0053: Run the agent environment on the oldest Node the runner caches
 
-**Status:** Proposed · Amends [ADR-0016](0016-cloud-agents-get-the-same-toolchains.md) · **Date:** 2026-11-09
+**Status:** Accepted · Amends [ADR-0016](0016-cloud-agents-get-the-same-toolchains.md) · **Date:** 2026-11-09
 
 ## Context
 
