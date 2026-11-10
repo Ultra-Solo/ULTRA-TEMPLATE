@@ -14,7 +14,7 @@ This repository's memory, in layers. Instructions live only in [AGENTS.md](../..
 
 Precedence when layers disagree: L2, then L4, then L3. A source file beats all of them.
 
-Now: 7 modules, 53 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 59 scripts, 460 edges, 0 active episodes.
+Now: 7 modules, 54 decisions, 23 documents, 10 skills, 12 workflows, 38 jobs, 11 pinned tools, 59 scripts, 465 edges, 0 active episodes.
 
 Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>`, `explain <node>`, `stats`.
 
@@ -30,6 +30,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 
 ## Recent decisions
 
+- [ADR-0053](../adr/0053-run-agent-env-on-the-oldest-cached-node.md) Run the agent environment on the oldest Node the runner caches (Proposed)
 - [ADR-0052](../adr/0052-refresh-the-runtime-security-lock-when-the-vendor-publishes-a-fix.md) Refresh the runtime security lock when the vendor publishes a fix (Proposed)
 - [ADR-0051](../adr/0051-a-generated-project-names-only-what-it-ships.md) A generated project's guides name only what the project ships (Proposed)
 - [ADR-0050](../adr/0050-hold-a-route-claim-to-the-contract.md) Hold a diagram's route claim to the API contract (Proposed)
@@ -41,8 +42,7 @@ Ask it, offline: `node scripts/knowledge.mjs query "<words>"`, `path <from> <to>
 - [ADR-0044](../adr/0044-model-the-repositorys-own-machinery.md) Model the repository's own machinery in the architecture model (Accepted)
 - [ADR-0043](../adr/0043-rules-ship-failing-cases.md) Every architecture rule ships a failing case; a structural PR carries the whole set (Accepted)
 - [ADR-0042](../adr/0042-make-every-adr-falsifiable.md) Make every ADR falsifiable: a full status grammar and a required Enforcement section (Accepted)
-- [ADR-0041](../adr/0041-remove-template-self-versioning.md) Remove the template's self-versioning; address a template by commit (Accepted)
-- 41 older: see the [decision index](../adr/README.md).
+- 42 older: see the [decision index](../adr/README.md).
 
 ## Active episodes
 
