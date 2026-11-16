@@ -1,6 +1,6 @@
 # The base image is pinned by digest as well as tag: a tag can be repointed at a different image.
 # Dependabot updates both together.
-FROM python:3.15-slim@sha256:ea4f1f290e071bf7d28199cfb3e09f5dbad31b50e9c32fd58f2f2d7be915f3ae
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 COPY security-packages.json scripts/install_security_packages.py /tmp/security/
 # Payload versions, architecture and SHA-256 are locked; no changing apt indexes affect the build.
 # An optional public CA build secret supports a managed HTTPS proxy without entering image layers.
