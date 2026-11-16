@@ -15,7 +15,7 @@
     "verify": "npm run lint && npm run validate && npm test && npm run build"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.4",
+    "@biomejs/biome": "2.6.6",
     "likec4": "^1.59.4"
   }
 }
