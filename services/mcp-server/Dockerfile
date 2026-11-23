@@ -1,6 +1,6 @@
 # The base image is pinned by digest as well as tag: a tag can be repointed at a different image.
 # Dependabot updates both together.
-FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
